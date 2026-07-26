@@ -12,9 +12,9 @@ const launchSchema = z.object({
   knownCostMinor: z.number().int().nonnegative().optional(),
   stock: z.number().int().nonnegative().optional(),
   instructions: z.string().max(2000).optional(),
-  requestedChannels: z.array(
-    z.enum(["mercadolibre", "instagram", "facebook", "tiktok", "owned"]),
-  ).min(1),
+  requestedChannels: z
+    .array(z.enum(["mercadolibre", "instagram", "facebook", "tiktok", "owned"]))
+    .min(1),
 });
 
 const actionSchema = z.object({
@@ -28,17 +28,19 @@ const actionSchema = z.object({
   evidenceBundle: z.object({
     id: z.string().min(3),
     accountId: z.string().min(3),
-    references: z.array(
-      z.object({
-        id: z.string(),
-        source: z.string(),
-        sourceRecordId: z.string(),
-        observedAt: z.string(),
-        freshness: z.enum(["fresh", "stale", "unknown"]),
-        confidence: z.enum(["low", "medium", "high"]),
-        contentHash: z.string(),
-      }),
-    ).min(1),
+    references: z
+      .array(
+        z.object({
+          id: z.string(),
+          source: z.string(),
+          sourceRecordId: z.string(),
+          observedAt: z.string(),
+          freshness: z.enum(["fresh", "stale", "unknown"]),
+          confidence: z.enum(["low", "medium", "high"]),
+          contentHash: z.string(),
+        }),
+      )
+      .min(1),
     complete: z.literal(true),
     missingInputs: z.array(z.string()).max(0),
   }),
@@ -120,7 +122,10 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       void reply.code(400).send({ error: "validation-error", issues: error.issues });
       return;
     }
-    void reply.code(500).send({ error: "internal-error", message: error.message });
+    void reply.code(500).send({
+      error: "internal-error",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
   });
 
   return app;
