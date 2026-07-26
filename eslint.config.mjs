@@ -24,7 +24,9 @@ export default tseslint.config(
     files: ["eslint.config.mjs", "scripts/*.mjs"],
     languageOptions: {
       globals: {
+        Buffer: "readonly",
         console: "readonly",
+        fetch: "readonly",
         process: "readonly",
       },
     },
