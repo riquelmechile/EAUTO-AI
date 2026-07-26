@@ -69,6 +69,39 @@ class FakeMercadoLibreClient implements MercadoLibreClientPort {
       }),
     ]);
   }
+
+  searchSellerClaims() {
+    return Promise.resolve([
+      Object.freeze({
+        claimId: "9001",
+        resourceId: "order-1",
+        resource: "order",
+        status: "opened",
+        type: "mediations",
+        stage: "claim",
+        reasonId: "PDD",
+        fulfilled: false,
+        dateCreated: "2026-07-26T10:00:00.000Z",
+        lastUpdated: "2026-07-26T11:00:00.000Z",
+        sourceHash: "claim-hash",
+      }),
+    ]);
+  }
+
+  searchSellerQuestions() {
+    return Promise.resolve([
+      Object.freeze({
+        questionId: "7001",
+        itemId: "MLC1",
+        status: "UNANSWERED",
+        dateCreated: "2026-07-26T11:30:00.000Z",
+        hasAnswer: false,
+        hold: false,
+        suspectedSpam: false,
+        sourceHash: "question-hash",
+      }),
+    ]);
+  }
 }
 
 function createFixture() {
@@ -135,7 +168,7 @@ describe("MercadoLibreService", () => {
     );
   });
 
-  it("refreshes lazily, rotates the refresh token and stores read-only snapshots", async () => {
+  it("refreshes lazily, rotates the refresh token and stores listing snapshots", async () => {
     const { service, client } = createFixture();
     const { state } = await authorizePlasticov(service);
     await service.completeAuthorization({ state, code: "code-1" });
@@ -153,18 +186,51 @@ describe("MercadoLibreService", () => {
       currencyId: "CLP",
       priceMinor: 19_990,
     });
+  });
+
+  it("stores compact claims and questions without buyer text or identity", async () => {
+    const { service } = createFixture();
+    const { state } = await authorizePlasticov(service);
+    await service.completeAuthorization({ state, code: "code-1" });
+
+    const result = await service.syncCustomerOperations({
+      organizationId: "maustian",
+      accountId: "plasticov",
+    });
+
+    expect(result.claims).toHaveLength(1);
+    expect(result.questions).toHaveLength(1);
+    expect(result.claims[0]).toMatchObject({
+      accountId: "plasticov",
+      sellerId: "111",
+      status: "opened",
+    });
+    expect(result.questions[0]).toMatchObject({
+      accountId: "plasticov",
+      itemId: "MLC1",
+      hasAnswer: false,
+    });
+    expect(result.questions[0]).not.toHaveProperty("text");
+    expect(result.questions[0]).not.toHaveProperty("buyerId");
+    expect(result.claims[0]).not.toHaveProperty("messages");
     expect(
-      await service.listListingSnapshots({
+      await service.listClaimSnapshots({
         organizationId: "maustian",
         accountId: "plasticov",
       }),
-    ).toEqual(result.listings);
+    ).toEqual(result.claims);
+    expect(
+      await service.listQuestionSnapshots({
+        organizationId: "maustian",
+        accountId: "plasticov",
+      }),
+    ).toEqual(result.questions);
   });
 });
 
 describe("MercadoLibre write boundary", () => {
   it("blocks every mutation until a separately verified write adapter exists", () => {
-    expect(() => assertMercadoLibreWriteDisabled("update-price", "111")).toThrow(
+    expect(() => assertMercadoLibreWriteDisabled("answer-question", "111")).toThrow(
       MercadoLibreWriteBlockedError,
     );
   });
