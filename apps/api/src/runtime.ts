@@ -6,16 +6,23 @@ import {
   type BusinessAction,
   type CommerceAccount,
 } from "@eauto/domain";
-import { ActionService, ContentStudioService } from "@eauto/application";
+import {
+  ActionService,
+  ContentStudioService,
+  OutboxProcessor,
+  type OutboxEventHandler,
+} from "@eauto/application";
 import { DeterministicContentProvider } from "@eauto/content";
 import {
   InMemoryAccountRepository,
   InMemoryActionRepository,
   InMemoryContentAssetRepository,
+  InMemoryOutboxRepository,
   InMemoryReceiptRepository,
   PostgresAccountRepository,
   PostgresActionRepository,
   PostgresContentAssetRepository,
+  PostgresOutboxRepository,
   PostgresReceiptRepository,
 } from "@eauto/infrastructure";
 import type { AppConfig } from "./config.js";
@@ -62,14 +69,26 @@ class VerifiedDevelopmentExecutor {
   }
 }
 
+const lifecycleHandler: OutboxEventHandler = () => Promise.resolve();
+const lifecycleHandlers: Readonly<Record<string, OutboxEventHandler>> = Object.freeze({
+  "action.proposed": lifecycleHandler,
+  "action.reviewed": lifecycleHandler,
+  "action.approved": lifecycleHandler,
+  "action.execution.started": lifecycleHandler,
+  "action.executed": lifecycleHandler,
+  "action.verified": lifecycleHandler,
+  "action.failed": lifecycleHandler,
+});
+
 export function createRuntime(config: AppConfig) {
   const pool = config.DATABASE_URL ? new Pool({ connectionString: config.DATABASE_URL }) : null;
+  const outbox = pool ? new PostgresOutboxRepository(pool) : new InMemoryOutboxRepository();
   const accountRepository = pool
     ? new PostgresAccountRepository(pool)
     : new InMemoryAccountRepository(developmentAccounts);
   const actionRepository = pool
     ? new PostgresActionRepository(pool)
-    : new InMemoryActionRepository();
+    : new InMemoryActionRepository(outbox);
   const receiptRepository = pool
     ? new PostgresReceiptRepository(pool)
     : new InMemoryReceiptRepository();
@@ -89,14 +108,24 @@ export function createRuntime(config: AppConfig) {
     new DeterministicContentProvider(),
     assetRepository,
   );
+  const outboxProcessor = new OutboxProcessor(outbox, lifecycleHandlers, {
+    workerId: `${config.OUTBOX_WORKER_ID}-${process.pid}`,
+    leaseMs: config.OUTBOX_LEASE_MS,
+    maxAttempts: config.OUTBOX_MAX_ATTEMPTS,
+    baseRetryMs: config.OUTBOX_BASE_RETRY_MS,
+    maxRetryMs: config.OUTBOX_MAX_RETRY_MS,
+    now: () => new Date(),
+  });
 
   return {
     accounts: accountRepository,
     actions: actionRepository,
     receipts: receiptRepository,
     assets: assetRepository,
+    outbox,
     actionService,
     contentStudio,
+    outboxProcessor,
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
     close: () => pool?.end() ?? Promise.resolve(),
   };
