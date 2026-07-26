@@ -20,6 +20,7 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
     "dev:api": "npm run dev -w @eauto/api",
+    "dev:worker": "npm run dev:worker -w @eauto/api",
     "dev:mobile": "npm run start -w @eauto/mobile",
     "doctor": "node scripts/doctor.mjs",
     "build:server": "tsc -b packages/domain packages/agent-kernel packages/application packages/content packages/infrastructure apps/api",

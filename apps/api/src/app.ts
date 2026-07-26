@@ -1,7 +1,18 @@
-import Fastify from "fastify";
+import Fastify, { type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import { z } from "zod";
-import type { BusinessAction, ProductLaunchBrief } from "@eauto/domain";
+import {
+  AuthenticationError,
+  AuthorizationError,
+  assertAuthorized,
+  canAccessAccount,
+  type ActorIdentity,
+  type BusinessAction,
+  type CommerceAccount,
+  type Permission,
+  type ProductLaunchBrief,
+} from "@eauto/domain";
+import { createAuthenticator, type Authenticator } from "./auth.js";
 import { createRuntime, type Runtime } from "./runtime.js";
 import type { AppConfig } from "./config.js";
 
@@ -17,102 +28,179 @@ const launchSchema = z.object({
     .min(1),
 });
 
-const actionSchema = z.object({
-  id: z.string().min(3),
-  accountId: z.string().min(3),
-  kind: z.string().min(3),
-  target: z.string().min(1),
-  exactChanges: z.array(z.object({ field: z.string(), from: z.unknown(), to: z.unknown() })).min(1),
-  rationale: z.string().min(3),
-  risk: z.enum(["low", "medium", "high", "critical"]),
-  evidenceBundle: z.object({
+const actionSchema = z
+  .object({
     id: z.string().min(3),
     accountId: z.string().min(3),
-    references: z
-      .array(
-        z.object({
-          id: z.string(),
-          source: z.string(),
-          sourceRecordId: z.string(),
-          observedAt: z.string(),
-          freshness: z.enum(["fresh", "stale", "unknown"]),
-          confidence: z.enum(["low", "medium", "high"]),
-          contentHash: z.string(),
-        }),
-      )
+    kind: z.string().min(3),
+    target: z.string().min(1),
+    exactChanges: z
+      .array(z.object({ field: z.string(), from: z.unknown(), to: z.unknown() }))
       .min(1),
-    complete: z.literal(true),
-    missingInputs: z.array(z.string()).max(0),
-  }),
-  policyVersion: z.string().min(1),
-  expiresAt: z.string().datetime(),
-});
+    rationale: z.string().min(3),
+    risk: z.enum(["low", "medium", "high", "critical"]),
+    evidenceBundle: z.object({
+      id: z.string().min(3),
+      accountId: z.string().min(3),
+      references: z
+        .array(
+          z.object({
+            id: z.string(),
+            source: z.string(),
+            sourceRecordId: z.string(),
+            observedAt: z.string(),
+            freshness: z.enum(["fresh", "stale", "unknown"]),
+            confidence: z.enum(["low", "medium", "high"]),
+            contentHash: z.string(),
+          }),
+        )
+        .min(1),
+      complete: z.literal(true),
+      missingInputs: z.array(z.string()).max(0),
+    }),
+    policyVersion: z.string().min(1),
+    expiresAt: z.string().datetime(),
+  })
+  .refine((value) => value.accountId === value.evidenceBundle.accountId, {
+    message: "Action and evidence bundle must belong to the same account.",
+    path: ["evidenceBundle", "accountId"],
+  });
+
+class NotFoundError extends Error {
+  constructor(resource: string) {
+    super(`${resource} not found.`);
+    this.name = "NotFoundError";
+  }
+}
 
 export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   const runtime = suppliedRuntime ?? createRuntime(config);
+  const authenticator = createAuthenticator({
+    mode: config.AUTH_MODE,
+    identitiesJson: config.OPERATOR_TOKENS_JSON,
+    nodeEnv: config.NODE_ENV,
+  });
   const app = Fastify({ logger: config.NODE_ENV !== "test" });
   await app.register(cors, { origin: config.CORS_ORIGIN === "*" ? true : config.CORS_ORIGIN });
 
   app.get("/health", () => ({ ok: true, service: "eauto-api" }));
-  app.get("/ready", () => ({
+  app.get("/ready", async () => ({
     ok: true,
     mode: config.NODE_ENV,
+    authentication: authenticator.mode,
     persistence: runtime.persistenceMode,
+    outbox: await runtime.outbox.stats(),
     externalWrites: false,
     contentGeneration: "development-simulator",
   }));
 
-  app.get("/v1/dashboard", async () => {
-    const accounts = await runtime.accounts.list();
-    const pending = await runtime.actions.listPending();
+  app.get("/v1/me", (request) => {
+    const actor = authorize(request, authenticator, "dashboard.read");
+    return { actor };
+  });
+
+  app.get("/v1/dashboard", async (request) => {
+    const actor = authorize(request, authenticator, "dashboard.read");
+    const accounts = await authorizedAccounts(runtime, actor);
+    const pending = (
+      await Promise.all(accounts.map((account) => runtime.actions.listPending(account.id)))
+    ).flat();
     return {
       company: "EAUTO-AI",
       doctrine: "https://the-amazing-gentleman-programming-book.vercel.app/es",
+      actor: { id: actor.id, roles: actor.roles },
       accounts,
       pendingDecisions: pending.length,
-      status: "foundation",
+      status: "secured-foundation",
     };
   });
 
   app.get("/v1/inbox", async (request) => {
+    const actor = authorize(request, authenticator, "inbox.read");
     const query = z.object({ accountId: z.string().optional() }).parse(request.query);
-    return { actions: await runtime.actions.listPending(query.accountId) };
+    if (query.accountId) {
+      await requireAccount(runtime, actor, query.accountId, "inbox.read");
+      return { actions: await runtime.actions.listPending(query.accountId) };
+    }
+    const accounts = await authorizedAccounts(runtime, actor);
+    const actions = (
+      await Promise.all(accounts.map((account) => runtime.actions.listPending(account.id)))
+    ).flat();
+    return { actions };
   });
 
   app.post("/v1/content/launches", async (request, reply) => {
+    const actor = authenticate(request, authenticator);
     const brief = launchSchema.parse(request.body) as ProductLaunchBrief;
-    const account = await runtime.accounts.get(brief.accountId);
-    if (!account) return reply.code(404).send({ error: "account-not-found" });
+    await requireAccount(runtime, actor, brief.accountId, "content.create");
     const assets = await runtime.contentStudio.createLaunch(brief);
-    return reply.code(201).send({ brief, assets, externalGenerationPerformed: false });
+    return reply.code(201).send({
+      brief,
+      assets,
+      requestedBy: actor.id,
+      externalGenerationPerformed: false,
+    });
   });
 
   app.post("/v1/actions", async (request, reply) => {
+    const actor = authenticate(request, authenticator);
     const body = actionSchema.parse(request.body);
+    await requireAccount(runtime, actor, body.accountId, "action.propose");
     const action: BusinessAction = Object.freeze({ ...body, status: "draft" });
-    const proposed = await runtime.actionService.propose(action);
+    const proposed = await runtime.actionService.propose(action, actor.id);
     return reply.code(201).send(proposed);
   });
 
   app.post("/v1/actions/:id/review", async (request) => {
+    const actor = authenticate(request, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
-    return runtime.actionService.markReviewed(params.id);
+    await requireAction(runtime, actor, params.id, "action.review");
+    return runtime.actionService.markReviewed(params.id, actor.id);
   });
 
   app.post("/v1/actions/:id/approve", async (request) => {
+    const actor = authenticate(request, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
-    const body = z.object({ approvedBy: z.string().min(1) }).parse(request.body);
-    return runtime.actionService.approve(params.id, body.approvedBy);
+    await requireAction(runtime, actor, params.id, "action.approve");
+    return runtime.actionService.approve(params.id, actor.id);
   });
 
   app.post("/v1/actions/:id/execute", async (request) => {
+    const actor = authenticate(request, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
-    return runtime.actionService.execute(params.id);
+    await requireAction(runtime, actor, params.id, "action.execute");
+    return runtime.actionService.execute(params.id, actor.id);
   });
 
   app.get("/v1/actions/:id/receipts", async (request) => {
+    const actor = authenticate(request, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
+    await requireAction(runtime, actor, params.id, "receipts.read");
     return { receipts: await runtime.receipts.listForAction(params.id) };
+  });
+
+  app.get("/v1/operations/outbox", async (request) => {
+    authorize(request, authenticator, "operations.read");
+    return { stats: await runtime.outbox.stats() };
+  });
+
+  app.get("/v1/operations/outbox/dead", async (request) => {
+    authorize(request, authenticator, "operations.read");
+    const query = z
+      .object({ limit: z.coerce.number().int().min(1).max(100).default(20) })
+      .parse(request.query);
+    return { events: await runtime.outbox.listDead(query.limit) };
+  });
+
+  app.post("/v1/operations/outbox/dead/:id/requeue", async (request) => {
+    const actor = authorize(request, authenticator, "operations.manage");
+    const params = z.object({ id: z.string().min(1) }).parse(request.params);
+    try {
+      await runtime.outbox.requeueDead({ id: params.id, availableAt: new Date().toISOString() });
+    } catch {
+      throw new NotFoundError("Dead-letter event");
+    }
+    return { requeued: true, eventId: params.id, requeuedBy: actor.id };
   });
 
   app.addHook("onClose", async () => runtime.close());
@@ -122,6 +210,25 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       void reply.code(400).send({ error: "validation-error", issues: error.issues });
       return;
     }
+    if (error instanceof AuthenticationError) {
+      void reply.code(401).send({ error: error.code, message: error.message });
+      return;
+    }
+    if (error instanceof AuthorizationError) {
+      void reply.code(403).send({ error: error.code, message: error.message });
+      return;
+    }
+    if (error instanceof NotFoundError) {
+      void reply.code(404).send({ error: "not-found", message: error.message });
+      return;
+    }
+    if (
+      error instanceof Error &&
+      /(must|required|expired|matches|verification failed)/i.test(error.message)
+    ) {
+      void reply.code(409).send({ error: "action-conflict", message: error.message });
+      return;
+    }
     void reply.code(500).send({
       error: "internal-error",
       message: error instanceof Error ? error.message : "Unknown error",
@@ -129,4 +236,59 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
 
   return app;
+}
+
+function authenticate(request: FastifyRequest, authenticator: Authenticator): ActorIdentity {
+  return authenticator.authenticate(request.headers.authorization);
+}
+
+function authorize(
+  request: FastifyRequest,
+  authenticator: Authenticator,
+  permission: Permission,
+): ActorIdentity {
+  const actor = authenticate(request, authenticator);
+  assertAuthorized(actor, permission);
+  return actor;
+}
+
+async function authorizedAccounts(
+  runtime: Runtime,
+  actor: ActorIdentity,
+): Promise<readonly CommerceAccount[]> {
+  const accounts = await runtime.accounts.list();
+  return accounts.filter(
+    (account) =>
+      account.organizationId === actor.organizationId && canAccessAccount(actor, account.id),
+  );
+}
+
+async function requireAccount(
+  runtime: Runtime,
+  actor: ActorIdentity,
+  accountId: string,
+  permission: Permission,
+): Promise<CommerceAccount> {
+  const account = await runtime.accounts.get(accountId);
+  if (
+    !account ||
+    account.organizationId !== actor.organizationId ||
+    !canAccessAccount(actor, account.id)
+  ) {
+    throw new NotFoundError("Account");
+  }
+  assertAuthorized(actor, permission, account.id);
+  return account;
+}
+
+async function requireAction(
+  runtime: Runtime,
+  actor: ActorIdentity,
+  actionId: string,
+  permission: Permission,
+): Promise<BusinessAction> {
+  const action = await runtime.actions.get(actionId);
+  if (!action) throw new NotFoundError("Action");
+  await requireAccount(runtime, actor, action.accountId, permission);
+  return action;
 }

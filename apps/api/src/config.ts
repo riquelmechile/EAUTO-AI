@@ -6,6 +6,15 @@ const configSchema = z.object({
   HOST: z.string().default("0.0.0.0"),
   DATABASE_URL: z.string().url().optional(),
   CORS_ORIGIN: z.string().default("*"),
+  AUTH_MODE: z.enum(["disabled", "static-token"]).default("disabled"),
+  OPERATOR_TOKENS_JSON: z.string().default("[]"),
+  OUTBOX_WORKER_ID: z.string().min(1).default("eauto-outbox"),
+  OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
+  OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(20),
+  OUTBOX_LEASE_MS: z.coerce.number().int().min(1_000).max(300_000).default(30_000),
+  OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(8),
+  OUTBOX_BASE_RETRY_MS: z.coerce.number().int().min(100).max(300_000).default(1_000),
+  OUTBOX_MAX_RETRY_MS: z.coerce.number().int().min(1_000).max(86_400_000).default(300_000),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
@@ -13,8 +22,26 @@ export type AppConfig = z.infer<typeof configSchema>;
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = configSchema.safeParse(environment);
   if (!parsed.success) throw new Error(`Invalid environment: ${parsed.error.message}`);
-  if (parsed.data.NODE_ENV === "production" && !parsed.data.DATABASE_URL) {
-    throw new Error("DATABASE_URL is mandatory in production.");
+
+  let operatorIdentities: unknown;
+  try {
+    operatorIdentities = JSON.parse(parsed.data.OPERATOR_TOKENS_JSON);
+  } catch {
+    throw new Error("OPERATOR_TOKENS_JSON must contain valid JSON.");
   }
+  if (!Array.isArray(operatorIdentities)) {
+    throw new Error("OPERATOR_TOKENS_JSON must contain a JSON array.");
+  }
+
+  if (parsed.data.NODE_ENV === "production") {
+    if (!parsed.data.DATABASE_URL) throw new Error("DATABASE_URL is mandatory in production.");
+    if (parsed.data.AUTH_MODE !== "static-token") {
+      throw new Error("AUTH_MODE=static-token is mandatory in production.");
+    }
+    if (operatorIdentities.length === 0) {
+      throw new Error("At least one operator identity is mandatory in production.");
+    }
+  }
+
   return parsed.data;
 }

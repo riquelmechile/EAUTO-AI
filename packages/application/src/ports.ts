@@ -6,6 +6,7 @@ import type {
   ProductLaunchBrief,
 } from "@eauto/domain";
 import type { VerifiableReceipt } from "@eauto/agent-kernel";
+import type { OutboxEventDraft } from "./outbox.js";
 
 export type AccountRepository = {
   list(): Promise<readonly CommerceAccount[]>;
@@ -13,10 +14,14 @@ export type AccountRepository = {
 };
 
 export type ActionRepository = {
-  save(action: BusinessAction): Promise<void>;
+  save(action: BusinessAction, event?: OutboxEventDraft): Promise<void>;
   get(id: string): Promise<BusinessAction | null>;
   listPending(accountId?: string): Promise<readonly BusinessAction[]>;
-  saveApproval(approval: Approval): Promise<void>;
+  saveApproval(
+    approval: Approval,
+    approvedAction: BusinessAction,
+    event?: OutboxEventDraft,
+  ): Promise<void>;
   getApproval(actionId: string): Promise<Approval | null>;
 };
 

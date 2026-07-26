@@ -16,9 +16,11 @@
   },
   "scripts": {
     "dev": "node --watch --import=tsx src/server.ts",
+    "dev:worker": "node --watch --import=tsx src/worker.ts",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "start:worker": "node dist/worker.js"
   },
   "devDependencies": {
     "tsx": "^4.20.3"

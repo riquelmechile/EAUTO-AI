@@ -1,3 +1,4 @@
+export * from "./access.js";
 export * from "./accounts.js";
 export * from "./actions.js";
 export * from "./autonomy.js";

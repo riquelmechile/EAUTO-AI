@@ -4,8 +4,11 @@ import type {
   AccountRepository,
   ActionRepository,
   ContentAssetRepository,
+  OutboxEventDraft,
+  OutboxRepository,
   ReceiptRepository,
 } from "@eauto/application";
+import { InMemoryOutboxRepository } from "./inMemoryOutboxRepository.js";
 
 export class InMemoryAccountRepository implements AccountRepository {
   constructor(private readonly accounts: readonly CommerceAccount[]) {}
@@ -21,13 +24,17 @@ export class InMemoryActionRepository implements ActionRepository {
   private readonly actions = new Map<string, BusinessAction>();
   private readonly approvals = new Map<string, Approval>();
 
-  save(action: BusinessAction): Promise<void> {
+  constructor(private readonly outbox: OutboxRepository = new InMemoryOutboxRepository()) {}
+
+  async save(action: BusinessAction, event?: OutboxEventDraft): Promise<void> {
     this.actions.set(action.id, action);
-    return Promise.resolve();
+    if (event) await this.outbox.enqueue(event);
   }
+
   get(id: string): Promise<BusinessAction | null> {
     return Promise.resolve(this.actions.get(id) ?? null);
   }
+
   listPending(accountId?: string): Promise<readonly BusinessAction[]> {
     const pending = [...this.actions.values()].filter(
       (action) =>
@@ -36,10 +43,17 @@ export class InMemoryActionRepository implements ActionRepository {
     );
     return Promise.resolve(pending);
   }
-  saveApproval(approval: Approval): Promise<void> {
+
+  async saveApproval(
+    approval: Approval,
+    approvedAction: BusinessAction,
+    event?: OutboxEventDraft,
+  ): Promise<void> {
     this.approvals.set(approval.actionId, approval);
-    return Promise.resolve();
+    this.actions.set(approvedAction.id, approvedAction);
+    if (event) await this.outbox.enqueue(event);
   }
+
   getApproval(actionId: string): Promise<Approval | null> {
     return Promise.resolve(this.approvals.get(actionId) ?? null);
   }
