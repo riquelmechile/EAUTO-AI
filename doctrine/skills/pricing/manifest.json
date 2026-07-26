@@ -1,0 +1,30 @@
+{
+  "id": "pricing",
+  "version": "1.0.0",
+  "purpose": "Preparar decisiones de precio con margen verificable",
+  "authorizedAgents": ["finance-director", "pricing-agent", "devils-advocate"],
+  "allowedTools": [
+    "read-unit-economics",
+    "read-current-price",
+    "read-competition",
+    "prepare-price-change"
+  ],
+  "forbiddenTools": ["execute-price-change-without-policy"],
+  "requiredEvidence": [
+    "product_cost",
+    "marketplace_fee",
+    "shipping_cost",
+    "current_price",
+    "minimum_margin"
+  ],
+  "modelPolicy": { "default": "fast", "escalate": "reasoning" },
+  "cachePolicy": { "stablePrefix": "agent-account-skill-version", "volatileTail": true },
+  "limits": { "maxIterations": 6, "timeoutMs": 120000, "budgetMicrousd": 10000 },
+  "requiresHumanApproval": true,
+  "stopRules": [
+    "missing-required-evidence",
+    "budget-exceeded",
+    "repeated-tool-call",
+    "low-confidence"
+  ]
+}

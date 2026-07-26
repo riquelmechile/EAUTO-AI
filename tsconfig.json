@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["tests/**/*.ts", "vitest.config.ts"],
+  "references": [
+    { "path": "./packages/domain" },
+    { "path": "./packages/agent-kernel" },
+    { "path": "./packages/application" },
+    { "path": "./packages/content" },
+    { "path": "./packages/infrastructure" },
+    { "path": "./apps/api" }
+  ]
+}

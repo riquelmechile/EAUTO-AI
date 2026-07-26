@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "EAUTO-AI",
+    "slug": "eauto-ai",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "android": {
+      "package": "cl.maustian.eautoai",
+      "versionCode": 1,
+      "adaptiveIcon": { "backgroundColor": "#111827" },
+      "permissions": ["CAMERA"]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "EAUTO-AI necesita acceder a tus fotos para crear contenido comercial.",
+          "cameraPermission": "EAUTO-AI necesita la cámara para identificar y lanzar productos."
+        }
+      ],
+      ["expo-status-bar", { "style": "light" }]
+    ],
+    "extra": { "apiUrl": "http://10.0.2.2:3000" }
+  }
+}
