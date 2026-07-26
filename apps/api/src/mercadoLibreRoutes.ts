@@ -72,6 +72,51 @@ export function registerMercadoLibreRoutes(
       }),
     };
   });
+
+  app.post(
+    "/v1/integrations/mercadolibre/:accountId/customer-operations/sync",
+    async (request) => {
+      const actor = await dependencies.authenticate(request);
+      const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
+      await dependencies.requireAccount(actor, params.accountId, "integrations.sync");
+      const result = await requireService(dependencies.runtime).syncCustomerOperations({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+      });
+      return {
+        claimCount: result.claims.length,
+        openClaimCount: result.claims.filter((claim) => claim.status === "opened").length,
+        questionCount: result.questions.length,
+        unansweredQuestionCount: result.questions.filter((question) => !question.hasAnswer).length,
+        observedAt: result.observedAt,
+        writesPerformed: false,
+      };
+    },
+  );
+
+  app.get("/v1/integrations/mercadolibre/:accountId/claims", async (request) => {
+    const actor = await dependencies.authenticate(request);
+    const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
+    await dependencies.requireAccount(actor, params.accountId, "integrations.read");
+    return {
+      claims: await requireService(dependencies.runtime).listClaimSnapshots({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+      }),
+    };
+  });
+
+  app.get("/v1/integrations/mercadolibre/:accountId/questions", async (request) => {
+    const actor = await dependencies.authenticate(request);
+    const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
+    await dependencies.requireAccount(actor, params.accountId, "integrations.read");
+    return {
+      questions: await requireService(dependencies.runtime).listQuestionSnapshots({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+      }),
+    };
+  });
 }
 
 export function createMercadoLibreMobileReturnUrl(connection: {
