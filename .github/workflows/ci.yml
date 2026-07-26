@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -20,38 +20,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
+          ref: ${{ github.head_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Generate reproducible formatting patch
-        run: |
-          npx prettier --write .
-          git diff --binary > /tmp/prettier.patch
-          cp package-lock.json /tmp/package-lock.json
-      - name: Typecheck
-        id: typecheck
-        continue-on-error: true
+      - name: Apply bootstrap formatting and lockfile
+        run: npx prettier --write .
+      - name: Commit reproducible generated files
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         shell: bash
         run: |
-          set -o pipefail
-          npm run typecheck 2>&1 | tee /tmp/typecheck.log
-      - name: Upload generated files and diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-generated-${{ github.sha }}
-          path: |
-            /tmp/prettier.patch
-            /tmp/package-lock.json
-            /tmp/typecheck.log
-          if-no-files-found: error
-          retention-days: 1
-      - name: Enforce typecheck
-        if: steps.typecheck.outcome == 'failure'
-        run: exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "style: apply canonical formatting and lockfile"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+      - run: npm run typecheck
       - run: npm run lint
       - run: npm test
       - run: npm run build
