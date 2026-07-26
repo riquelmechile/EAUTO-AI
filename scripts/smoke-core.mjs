@@ -63,8 +63,8 @@ const service = new ActionService(
   actions,
   receipts,
   {
-    execute: async () => ({ providerReceipt: { requestId: "simulated" } }),
-    verify: async () => ({ verified: true, observedState: { title: "Nuevo" } }),
+    execute: () => Promise.resolve({ providerReceipt: { requestId: "simulated" } }),
+    verify: () => Promise.resolve({ verified: true, observedState: { title: "Nuevo" } }),
   },
   { now: () => new Date(1_800_000_000_000 + sequence++) },
   { next: (prefix) => `${prefix}-${sequence}` },
