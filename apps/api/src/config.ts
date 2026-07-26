@@ -10,6 +10,16 @@ const optionalString = z.preprocess(
   z.string().min(1).optional(),
 );
 
+const environmentBoolean = z.preprocess((value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return value;
+}, z.boolean());
+
 const configSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -31,7 +41,7 @@ const configSchema = z.object({
   OBJECT_STORAGE_INTERNAL_ENDPOINT: optionalUrl,
   OBJECT_STORAGE_ACCESS_KEY: optionalString,
   OBJECT_STORAGE_SECRET_KEY: optionalString,
-  OBJECT_STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
+  OBJECT_STORAGE_FORCE_PATH_STYLE: environmentBoolean.default(true),
   SOURCE_IMAGE_MAX_BYTES: z.coerce
     .number()
     .int()
@@ -80,6 +90,9 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     }
     if (!parsed.data.OBJECT_STORAGE_PUBLIC_ENDPOINT) {
       throw new Error("OBJECT_STORAGE_PUBLIC_ENDPOINT is mandatory in production.");
+    }
+    if (new URL(parsed.data.OBJECT_STORAGE_PUBLIC_ENDPOINT).protocol !== "https:") {
+      throw new Error("OBJECT_STORAGE_PUBLIC_ENDPOINT must use HTTPS in production.");
     }
   }
 
