@@ -6,16 +6,11 @@ export class PostgresActionRepository implements ActionRepository {
   constructor(private readonly pool: Pool) {}
 
   async save(action: BusinessAction, event?: OutboxEventDraft): Promise<void> {
-    if (!event) {
-      await this.persistAction(this.pool, action);
-      return;
-    }
-
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       await this.persistAction(client, action);
-      await this.persistEvent(client, event);
+      if (event) await this.persistEvent(client, event);
       await client.query("COMMIT");
     } catch (error) {
       await client.query("ROLLBACK");
@@ -88,11 +83,8 @@ export class PostgresActionRepository implements ActionRepository {
     return result.rows[0]?.payload_json ?? null;
   }
 
-  private async persistAction(
-    database: Pick<Pool, "query"> | Pick<PoolClient, "query">,
-    action: BusinessAction,
-  ): Promise<void> {
-    await database.query(
+  private async persistAction(client: PoolClient, action: BusinessAction): Promise<void> {
+    await client.query(
       `INSERT INTO business_actions (id, account_id, status, payload_json, updated_at)
        VALUES ($1, $2, $3, $4::jsonb, now())
        ON CONFLICT (id) DO UPDATE SET
