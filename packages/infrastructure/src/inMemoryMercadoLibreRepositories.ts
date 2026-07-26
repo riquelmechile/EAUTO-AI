@@ -74,12 +74,15 @@ export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreCon
   releaseRefreshLease(accountId: string, owner: string): Promise<void> {
     const record = this.records.get(accountId);
     if (!record || record.refreshLeaseOwner !== owner) return Promise.resolve();
-    const {
-      refreshLeaseOwner: _refreshLeaseOwner,
-      refreshLeaseUntil: _refreshLeaseUntil,
-      ...withoutLease
-    } = record;
-    this.records.set(accountId, Object.freeze(withoutLease));
+    this.records.set(
+      accountId,
+      Object.freeze({
+        connection: record.connection,
+        protectedAccessToken: record.protectedAccessToken,
+        protectedRefreshToken: record.protectedRefreshToken,
+        tokenType: record.tokenType,
+      }),
+    );
     return Promise.resolve();
   }
 
