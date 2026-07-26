@@ -12,9 +12,7 @@ import type {
   MercadoLibreReputationSnapshot,
 } from "@eauto/domain";
 
-export class InMemoryMercadoLibreOAuthStateRepository
-  implements MercadoLibreOAuthStateRepository
-{
+export class InMemoryMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
   private readonly records = new Map<string, MercadoLibreOAuthStateRecord>();
 
   create(record: MercadoLibreOAuthStateRecord): Promise<void> {
@@ -35,19 +33,11 @@ export class InMemoryMercadoLibreOAuthStateRepository
   }
 }
 
-export class InMemoryMercadoLibreConnectionRepository
-  implements MercadoLibreConnectionRepository
-{
+export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreConnectionRepository {
   private readonly records = new Map<string, MercadoLibreCredentialRecord>();
-  private readonly listingSnapshots = new Map<
-    string,
-    readonly MercadoLibreListingSnapshot[]
-  >();
+  private readonly listingSnapshots = new Map<string, readonly MercadoLibreListingSnapshot[]>();
   private readonly claimSnapshots = new Map<string, readonly MercadoLibreClaimSnapshot[]>();
-  private readonly questionSnapshots = new Map<
-    string,
-    readonly MercadoLibreQuestionSnapshot[]
-  >();
+  private readonly questionSnapshots = new Map<string, readonly MercadoLibreQuestionSnapshot[]>();
   private readonly orderSnapshots = new Map<string, readonly MercadoLibreOrderSnapshot[]>();
   private readonly reputationSnapshots = new Map<string, MercadoLibreReputationSnapshot>();
 
@@ -57,10 +47,7 @@ export class InMemoryMercadoLibreConnectionRepository
 
   save(record: MercadoLibreCredentialRecord): Promise<void> {
     const current = this.records.get(record.connection.accountId);
-    if (
-      current !== undefined &&
-      current.connection.sellerId !== record.connection.sellerId
-    ) {
+    if (current !== undefined && current.connection.sellerId !== record.connection.sellerId) {
       throw new Error(
         `MercadoLibre seller binding cannot change for ${record.connection.accountId}.`,
       );

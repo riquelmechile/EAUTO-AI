@@ -10,9 +10,7 @@ const ACCOUNTS = [
 ] as const;
 
 export function MercadoLibreCommercialScreen({ roles }: Readonly<{ roles: readonly string[] }>) {
-  const canSync = roles.some(
-    (role) => role === "owner" || role === "admin" || role === "operator",
-  );
+  const canSync = roles.some((role) => role === "owner" || role === "admin" || role === "operator");
   return (
     <View style={styles.stack}>
       <Panel title="Ventas y reputación MLC">
@@ -45,7 +43,9 @@ function CommercialAccount({
     try {
       const current = await api.mercadoLibreStatus(accountId);
       setStatus(current);
-      setMessage(current.connected ? "Cuenta conectada en modo solo lectura." : "Cuenta sin conectar.");
+      setMessage(
+        current.connected ? "Cuenta conectada en modo solo lectura." : "Cuenta sin conectar.",
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No fue posible consultar la cuenta.");
     }

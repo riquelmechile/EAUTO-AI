@@ -21,9 +21,7 @@ type QuestionSnapshotRow = { payload_json: MercadoLibreQuestionSnapshot };
 type OrderSnapshotRow = { payload_json: MercadoLibreOrderSnapshot };
 type ReputationSnapshotRow = { payload_json: MercadoLibreReputationSnapshot };
 
-export class PostgresMercadoLibreOAuthStateRepository
-  implements MercadoLibreOAuthStateRepository
-{
+export class PostgresMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
   constructor(private readonly pool: Pool) {}
 
   async create(record: MercadoLibreOAuthStateRecord): Promise<void> {
@@ -52,9 +50,7 @@ export class PostgresMercadoLibreOAuthStateRepository
   }
 }
 
-export class PostgresMercadoLibreConnectionRepository
-  implements MercadoLibreConnectionRepository
-{
+export class PostgresMercadoLibreConnectionRepository implements MercadoLibreConnectionRepository {
   constructor(private readonly pool: Pool) {}
 
   async get(accountId: string): Promise<MercadoLibreCredentialRecord | null> {
@@ -216,9 +212,7 @@ export class PostgresMercadoLibreConnectionRepository
     });
   }
 
-  async listQuestionSnapshots(
-    accountId: string,
-  ): Promise<readonly MercadoLibreQuestionSnapshot[]> {
+  async listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]> {
     const result = await this.pool.query<QuestionSnapshotRow>(
       `SELECT payload_json
        FROM mercadolibre_question_snapshots
@@ -273,15 +267,11 @@ export class PostgresMercadoLibreConnectionRepository
       ],
     );
     if (result.rowCount !== 1) {
-      throw new Error(
-        `MercadoLibre reputation binding cannot change for ${snapshot.accountId}.`,
-      );
+      throw new Error(`MercadoLibre reputation binding cannot change for ${snapshot.accountId}.`);
     }
   }
 
-  async getReputationSnapshot(
-    accountId: string,
-  ): Promise<MercadoLibreReputationSnapshot | null> {
+  async getReputationSnapshot(accountId: string): Promise<MercadoLibreReputationSnapshot | null> {
     const result = await this.pool.query<ReputationSnapshotRow>(
       `SELECT payload_json
        FROM mercadolibre_reputation_snapshots

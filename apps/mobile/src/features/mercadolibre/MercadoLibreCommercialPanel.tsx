@@ -93,7 +93,11 @@ export function MercadoLibreCommercialPanel({
       <View style={styles.metrics}>
         <Metric label="Órdenes" value={orders.length} />
         <Metric label="Pagadas" value={paidOrders.length} />
-        <Metric label="Canceladas" urgent={canceledOrders.length > 0} value={canceledOrders.length} />
+        <Metric
+          label="Canceladas"
+          urgent={canceledOrders.length > 0}
+          value={canceledOrders.length}
+        />
       </View>
 
       <View style={styles.metrics}>
@@ -104,11 +108,9 @@ export function MercadoLibreCommercialPanel({
 
       {reputation ? (
         <Text style={styles.reputation}>
-          {reputation.completedTransactions}/{reputation.totalTransactions} transacciones completadas ·
-          {" "}
-          {formatPercent(reputation.positiveRating)} positivas · {formatPercent(reputation.negativeRating)}
-          {" "}
-          negativas
+          {reputation.completedTransactions}/{reputation.totalTransactions} transacciones
+          completadas · {formatPercent(reputation.positiveRating)} positivas ·{" "}
+          {formatPercent(reputation.negativeRating)} negativas
         </Text>
       ) : null}
 
@@ -181,7 +183,12 @@ const styles = StyleSheet.create({
   section: { borderTopColor: "#334155", borderTopWidth: 1, gap: 10, paddingTop: 12 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   title: { color: "#f8fafc", fontSize: 15, fontWeight: "800" },
-  syncButton: { backgroundColor: "#075985", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
+  syncButton: {
+    backgroundColor: "#075985",
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
   syncText: { color: "#e0f2fe", fontSize: 11, fontWeight: "800" },
   disabled: { opacity: 0.4 },
   message: { color: "#bae6fd", fontSize: 12, lineHeight: 18 },

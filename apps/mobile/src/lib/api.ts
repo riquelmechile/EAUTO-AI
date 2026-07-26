@@ -227,10 +227,9 @@ export const api = {
       unansweredQuestionCount: number;
       observedAt: string;
       writesPerformed: false;
-    }>(
-      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/customer-operations/sync`,
-      { method: "POST" },
-    ),
+    }>(`/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/customer-operations/sync`, {
+      method: "POST",
+    }),
 
   mercadoLibreClaims: (accountId: string) =>
     request<{ claims: readonly MercadoLibreClaim[] }>(
