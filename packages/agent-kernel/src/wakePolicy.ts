@@ -30,7 +30,11 @@ export function decideWake(input: {
       JSON.stringify(
         [...input.signals]
           .sort((a, b) => `${a.kind}:${a.entityId}`.localeCompare(`${b.kind}:${b.entityId}`))
-          .map(({ observedAt: _observedAt, ...stable }) => stable),
+          .map((signal) => {
+            const { observedAt, ...stable } = signal;
+            void observedAt;
+            return stable;
+          }),
       ),
     )
     .digest("hex");
