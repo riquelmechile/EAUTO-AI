@@ -4,6 +4,8 @@ import { z } from "zod";
 import {
   AuthenticationError,
   AuthorizationError,
+  SessionExpiredError,
+  SessionRevokedError,
   assertAuthorized,
   canAccessAccount,
   type ActorIdentity,
@@ -12,7 +14,7 @@ import {
   type Permission,
   type ProductLaunchBrief,
 } from "@eauto/domain";
-import { createAuthenticator, type Authenticator } from "./auth.js";
+import { createAuthenticator, readBearerToken, type EnrollmentAuthenticator } from "./auth.js";
 import { createRuntime, type Runtime } from "./runtime.js";
 import type { AppConfig } from "./config.js";
 
@@ -87,20 +89,37 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   app.get("/ready", async () => ({
     ok: true,
     mode: config.NODE_ENV,
-    authentication: authenticator.mode,
+    authentication: authenticator.mode === "disabled" ? "development-owner" : "rotating-session",
     persistence: runtime.persistenceMode,
     outbox: await runtime.outbox.stats(),
     externalWrites: false,
     contentGeneration: "development-simulator",
   }));
 
-  app.get("/v1/me", (request) => {
-    const actor = authorize(request, authenticator, "dashboard.read");
+  app.post("/v1/auth/session", async (request, reply) => {
+    const actor = authenticator.authenticateEnrollment(request.headers.authorization);
+    const session = await runtime.sessionService.issue(actor);
+    return reply.code(201).send(session);
+  });
+
+  app.post("/v1/auth/refresh", async (request) => {
+    const refreshToken = readBearerToken(request.headers.authorization);
+    return runtime.sessionService.rotate(refreshToken);
+  });
+
+  app.post("/v1/auth/logout", async (request, reply) => {
+    const accessToken = readBearerToken(request.headers.authorization);
+    await runtime.sessionService.revokeAccess(accessToken);
+    return reply.code(204).send();
+  });
+
+  app.get("/v1/me", async (request) => {
+    const actor = await authorize(request, runtime, authenticator, "dashboard.read");
     return { actor };
   });
 
   app.get("/v1/dashboard", async (request) => {
-    const actor = authorize(request, authenticator, "dashboard.read");
+    const actor = await authorize(request, runtime, authenticator, "dashboard.read");
     const accounts = await authorizedAccounts(runtime, actor);
     const pending = (
       await Promise.all(accounts.map((account) => runtime.actions.listPending(account.id)))
@@ -116,7 +135,7 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
 
   app.get("/v1/inbox", async (request) => {
-    const actor = authorize(request, authenticator, "inbox.read");
+    const actor = await authorize(request, runtime, authenticator, "inbox.read");
     const query = z.object({ accountId: z.string().optional() }).parse(request.query);
     if (query.accountId) {
       await requireAccount(runtime, actor, query.accountId, "inbox.read");
@@ -130,7 +149,7 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
 
   app.post("/v1/content/launches", async (request, reply) => {
-    const actor = authenticate(request, authenticator);
+    const actor = await authenticate(request, runtime, authenticator);
     const brief = launchSchema.parse(request.body) as ProductLaunchBrief;
     await requireAccount(runtime, actor, brief.accountId, "content.create");
     const assets = await runtime.contentStudio.createLaunch(brief);
@@ -143,7 +162,7 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
 
   app.post("/v1/actions", async (request, reply) => {
-    const actor = authenticate(request, authenticator);
+    const actor = await authenticate(request, runtime, authenticator);
     const body = actionSchema.parse(request.body);
     await requireAccount(runtime, actor, body.accountId, "action.propose");
     const action: BusinessAction = Object.freeze({ ...body, status: "draft" });
@@ -152,40 +171,40 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
 
   app.post("/v1/actions/:id/review", async (request) => {
-    const actor = authenticate(request, authenticator);
+    const actor = await authenticate(request, runtime, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
     await requireAction(runtime, actor, params.id, "action.review");
     return runtime.actionService.markReviewed(params.id, actor.id);
   });
 
   app.post("/v1/actions/:id/approve", async (request) => {
-    const actor = authenticate(request, authenticator);
+    const actor = await authenticate(request, runtime, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
     await requireAction(runtime, actor, params.id, "action.approve");
     return runtime.actionService.approve(params.id, actor.id);
   });
 
   app.post("/v1/actions/:id/execute", async (request) => {
-    const actor = authenticate(request, authenticator);
+    const actor = await authenticate(request, runtime, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
     await requireAction(runtime, actor, params.id, "action.execute");
     return runtime.actionService.execute(params.id, actor.id);
   });
 
   app.get("/v1/actions/:id/receipts", async (request) => {
-    const actor = authenticate(request, authenticator);
+    const actor = await authenticate(request, runtime, authenticator);
     const params = z.object({ id: z.string() }).parse(request.params);
     await requireAction(runtime, actor, params.id, "receipts.read");
     return { receipts: await runtime.receipts.listForAction(params.id) };
   });
 
   app.get("/v1/operations/outbox", async (request) => {
-    authorize(request, authenticator, "operations.read");
+    await authorize(request, runtime, authenticator, "operations.read");
     return { stats: await runtime.outbox.stats() };
   });
 
   app.get("/v1/operations/outbox/dead", async (request) => {
-    authorize(request, authenticator, "operations.read");
+    await authorize(request, runtime, authenticator, "operations.read");
     const query = z
       .object({ limit: z.coerce.number().int().min(1).max(100).default(20) })
       .parse(request.query);
@@ -193,7 +212,7 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
 
   app.post("/v1/operations/outbox/dead/:id/requeue", async (request) => {
-    const actor = authorize(request, authenticator, "operations.manage");
+    const actor = await authorize(request, runtime, authenticator, "operations.manage");
     const params = z.object({ id: z.string().min(1) }).parse(request.params);
     try {
       await runtime.outbox.requeueDead({ id: params.id, availableAt: new Date().toISOString() });
@@ -210,7 +229,11 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       void reply.code(400).send({ error: "validation-error", issues: error.issues });
       return;
     }
-    if (error instanceof AuthenticationError) {
+    if (
+      error instanceof AuthenticationError ||
+      error instanceof SessionExpiredError ||
+      error instanceof SessionRevokedError
+    ) {
       void reply.code(401).send({ error: error.code, message: error.message });
       return;
     }
@@ -238,16 +261,23 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   return app;
 }
 
-function authenticate(request: FastifyRequest, authenticator: Authenticator): ActorIdentity {
-  return authenticator.authenticate(request.headers.authorization);
+async function authenticate(
+  request: FastifyRequest,
+  runtime: Runtime,
+  authenticator: EnrollmentAuthenticator,
+): Promise<ActorIdentity> {
+  if (authenticator.developmentActor) return authenticator.developmentActor;
+  const accessToken = readBearerToken(request.headers.authorization);
+  return runtime.sessionService.authenticateAccess(accessToken);
 }
 
-function authorize(
+async function authorize(
   request: FastifyRequest,
-  authenticator: Authenticator,
+  runtime: Runtime,
+  authenticator: EnrollmentAuthenticator,
   permission: Permission,
-): ActorIdentity {
-  const actor = authenticate(request, authenticator);
+): Promise<ActorIdentity> {
+  const actor = await authenticate(request, runtime, authenticator);
   assertAuthorized(actor, permission);
   return actor;
 }

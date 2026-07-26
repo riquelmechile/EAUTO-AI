@@ -8,6 +8,13 @@ const configSchema = z.object({
   CORS_ORIGIN: z.string().default("*"),
   AUTH_MODE: z.enum(["disabled", "static-token"]).default("disabled"),
   OPERATOR_TOKENS_JSON: z.string().default("[]"),
+  SESSION_ACCESS_TTL_MS: z.coerce.number().int().min(60_000).max(86_400_000).default(900_000),
+  SESSION_REFRESH_TTL_MS: z.coerce
+    .number()
+    .int()
+    .min(3_600_000)
+    .max(90 * 86_400_000)
+    .default(30 * 86_400_000),
   OUTBOX_WORKER_ID: z.string().min(1).default("eauto-outbox"),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(20),

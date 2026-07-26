@@ -5,10 +5,13 @@ const required = [
   "package.json",
   "apps/api/package.json",
   "apps/api/src/auth.ts",
+  "apps/api/src/sessionSecrets.ts",
   "apps/api/src/worker.ts",
   "apps/mobile/app.json",
+  "apps/mobile/src/lib/session.ts",
   "infra/compose/docker-compose.yml",
   "infra/postgres/migrations/003_identity_and_outbox.sql",
+  "infra/postgres/migrations/004_operator_sessions.sql",
 ];
 let failed = false;
 for (const path of required) {

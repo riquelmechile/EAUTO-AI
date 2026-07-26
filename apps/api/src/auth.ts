@@ -10,16 +10,17 @@ const operatorIdentitySchema = z.object({
   accountIds: z.array(z.string().min(1)).min(1),
 });
 
-export type Authenticator = {
-  authenticate(authorizationHeader: string | undefined): ActorIdentity;
+export type EnrollmentAuthenticator = {
+  authenticateEnrollment(authorizationHeader: string | undefined): ActorIdentity;
   readonly mode: "disabled" | "static-token";
+  readonly developmentActor: ActorIdentity | null;
 };
 
 export function createAuthenticator(input: {
   mode: "disabled" | "static-token";
   identitiesJson: string;
   nodeEnv: "development" | "test" | "production";
-}): Authenticator {
+}): EnrollmentAuthenticator {
   if (input.mode === "disabled") {
     if (input.nodeEnv === "production") {
       throw new Error("Authentication cannot be disabled in production.");
@@ -32,7 +33,8 @@ export function createAuthenticator(input: {
     });
     return {
       mode: "disabled",
-      authenticate: () => developmentActor,
+      developmentActor,
+      authenticateEnrollment: () => developmentActor,
     };
   }
 
@@ -41,8 +43,9 @@ export function createAuthenticator(input: {
 
   return {
     mode: "static-token",
-    authenticate: (authorizationHeader) => {
-      const token = parseBearerToken(authorizationHeader);
+    developmentActor: null,
+    authenticateEnrollment: (authorizationHeader) => {
+      const token = readBearerToken(authorizationHeader);
       const presentedHash = Buffer.from(hashToken(token), "hex");
       for (const identity of identities) {
         const expectedHash = Buffer.from(identity.tokenHash, "hex");
@@ -58,7 +61,7 @@ export function createAuthenticator(input: {
           });
         }
       }
-      throw new AuthenticationError("Invalid bearer token.");
+      throw new AuthenticationError("Invalid enrollment token.");
     },
   };
 }
@@ -67,7 +70,7 @@ export function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
 }
 
-function parseBearerToken(authorizationHeader: string | undefined): string {
+export function readBearerToken(authorizationHeader: string | undefined): string {
   if (!authorizationHeader) throw new AuthenticationError();
   const match = /^Bearer\s+(.+)$/i.exec(authorizationHeader.trim());
   if (!match?.[1]) throw new AuthenticationError("A Bearer token is required.");
