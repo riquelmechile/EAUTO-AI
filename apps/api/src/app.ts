@@ -53,8 +53,8 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   const app = Fastify({ logger: config.NODE_ENV !== "test" });
   await app.register(cors, { origin: config.CORS_ORIGIN === "*" ? true : config.CORS_ORIGIN });
 
-  app.get("/health", async () => ({ ok: true, service: "eauto-api" }));
-  app.get("/ready", async () => ({
+  app.get("/health", () => ({ ok: true, service: "eauto-api" }));
+  app.get("/ready", () => ({
     ok: true,
     mode: config.NODE_ENV,
     persistence: runtime.persistenceMode,
