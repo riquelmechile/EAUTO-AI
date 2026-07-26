@@ -10,6 +10,7 @@ import {
   ActionService,
   ContentStudioService,
   OutboxProcessor,
+  SessionService,
   type OutboxEventHandler,
 } from "@eauto/application";
 import { DeterministicContentProvider } from "@eauto/content";
@@ -19,12 +20,15 @@ import {
   InMemoryContentAssetRepository,
   InMemoryOutboxRepository,
   InMemoryReceiptRepository,
+  InMemorySessionRepository,
   PostgresAccountRepository,
   PostgresActionRepository,
   PostgresContentAssetRepository,
   PostgresOutboxRepository,
   PostgresReceiptRepository,
+  PostgresSessionRepository,
 } from "@eauto/infrastructure";
+import { NodeSessionSecrets } from "./sessionSecrets.js";
 import type { AppConfig } from "./config.js";
 
 const developmentAccounts: readonly CommerceAccount[] = [
@@ -95,6 +99,9 @@ export function createRuntime(config: AppConfig) {
   const assetRepository = pool
     ? new PostgresContentAssetRepository(pool)
     : new InMemoryContentAssetRepository();
+  const sessionRepository = pool
+    ? new PostgresSessionRepository(pool)
+    : new InMemorySessionRepository();
   const clock = { now: () => new Date() };
   const ids = { next: (prefix: string) => `${prefix}_${randomUUID()}` };
   const actionService = new ActionService(
@@ -107,6 +114,16 @@ export function createRuntime(config: AppConfig) {
   const contentStudio = new ContentStudioService(
     new DeterministicContentProvider(),
     assetRepository,
+  );
+  const sessionService = new SessionService(
+    sessionRepository,
+    new NodeSessionSecrets(),
+    clock,
+    ids,
+    {
+      accessMs: config.SESSION_ACCESS_TTL_MS,
+      refreshMs: config.SESSION_REFRESH_TTL_MS,
+    },
   );
   const outboxProcessor = new OutboxProcessor(outbox, lifecycleHandlers, {
     workerId: `${config.OUTBOX_WORKER_ID}-${process.pid}`,
@@ -125,6 +142,7 @@ export function createRuntime(config: AppConfig) {
     outbox,
     actionService,
     contentStudio,
+    sessionService,
     outboxProcessor,
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
     close: () => pool?.end() ?? Promise.resolve(),
