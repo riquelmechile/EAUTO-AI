@@ -9,6 +9,7 @@ import {
 import {
   ActionService,
   ContentStudioService,
+  MercadoLibreService,
   OutboxProcessor,
   SessionService,
   SourceImageUploadService,
@@ -19,13 +20,19 @@ import {
   InMemoryAccountRepository,
   InMemoryActionRepository,
   InMemoryContentAssetRepository,
+  InMemoryMercadoLibreConnectionRepository,
+  InMemoryMercadoLibreOAuthStateRepository,
   InMemoryOutboxRepository,
   InMemoryReceiptRepository,
   InMemorySessionRepository,
   InMemorySourceImageUploadRepository,
+  MercadoLibreHttpClient,
+  NodeMercadoLibreSecurity,
   PostgresAccountRepository,
   PostgresActionRepository,
   PostgresContentAssetRepository,
+  PostgresMercadoLibreConnectionRepository,
+  PostgresMercadoLibreOAuthStateRepository,
   PostgresOutboxRepository,
   PostgresReceiptRepository,
   PostgresSessionRepository,
@@ -159,6 +166,7 @@ export function createRuntime(config: AppConfig) {
     maxRetryMs: config.OUTBOX_MAX_RETRY_MS,
     now: () => new Date(),
   });
+  const mercadoLibre = createMercadoLibreRuntime(config, pool, clock);
 
   return {
     accounts: accountRepository,
@@ -171,9 +179,64 @@ export function createRuntime(config: AppConfig) {
     sessionService,
     sourceImageUploads,
     outboxProcessor,
+    mercadoLibre,
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
     close: () => pool?.end() ?? Promise.resolve(),
   };
+}
+
+function createMercadoLibreRuntime(
+  config: AppConfig,
+  pool: Pool | null,
+  clock: { now(): Date },
+): MercadoLibreService | null {
+  if (!config.MELI_ENABLED) return null;
+  const {
+    MELI_CLIENT_ID: clientId,
+    MELI_CLIENT_SECRET: clientSecret,
+    MELI_REDIRECT_URI: redirectUri,
+    MELI_TOKEN_VAULT_KEY_BASE64: vaultKey,
+    MELI_PLASTICOV_SELLER_ID: plasticovSellerId,
+    MELI_MAUSTIAN_SELLER_ID: maustianSellerId,
+  } = config;
+  if (
+    !clientId ||
+    !clientSecret ||
+    !redirectUri ||
+    !vaultKey ||
+    !plasticovSellerId ||
+    !maustianSellerId
+  ) {
+    throw new Error("MercadoLibre Chile runtime is enabled but incomplete.");
+  }
+  const states = pool
+    ? new PostgresMercadoLibreOAuthStateRepository(pool)
+    : new InMemoryMercadoLibreOAuthStateRepository();
+  const connections = pool
+    ? new PostgresMercadoLibreConnectionRepository(pool)
+    : new InMemoryMercadoLibreConnectionRepository();
+  const security = new NodeMercadoLibreSecurity(vaultKey);
+  const client = new MercadoLibreHttpClient({
+    clientId,
+    clientSecret,
+    redirectUri,
+    tokenUrl: config.MELI_TOKEN_URL,
+    apiBaseUrl: config.MELI_API_BASE_URL,
+    timeoutMs: config.MELI_HTTP_TIMEOUT_MS,
+    maximumScanPages: config.MELI_MAXIMUM_SCAN_PAGES,
+  });
+  return new MercadoLibreService(states, connections, security, client, clock, {
+    clientId,
+    redirectUri,
+    authorizationUrl: config.MELI_AUTHORIZATION_URL,
+    expectedSellerIds: Object.freeze({
+      plasticov: plasticovSellerId,
+      maustian: maustianSellerId,
+    }),
+    stateTtlMs: config.MELI_OAUTH_STATE_TTL_MS,
+    refreshWindowMs: config.MELI_REFRESH_WINDOW_MS,
+    refreshLeaseMs: config.MELI_REFRESH_LEASE_MS,
+  });
 }
 
 export type Runtime = ReturnType<typeof createRuntime>;

@@ -12,6 +12,9 @@ export const PERMISSIONS = [
   "receipts.read",
   "operations.read",
   "operations.manage",
+  "integrations.read",
+  "integrations.manage",
+  "integrations.sync",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -34,10 +37,25 @@ const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = Object.f
     "action.propose",
     "action.review",
     "receipts.read",
+    "integrations.read",
+    "integrations.sync",
   ],
-  reviewer: ["dashboard.read", "inbox.read", "action.review", "action.approve", "receipts.read"],
-  viewer: ["dashboard.read", "inbox.read", "receipts.read"],
-  agent: ["dashboard.read", "content.create", "action.propose", "receipts.read"],
+  reviewer: [
+    "dashboard.read",
+    "inbox.read",
+    "action.review",
+    "action.approve",
+    "receipts.read",
+    "integrations.read",
+  ],
+  viewer: ["dashboard.read", "inbox.read", "receipts.read", "integrations.read"],
+  agent: [
+    "dashboard.read",
+    "content.create",
+    "action.propose",
+    "receipts.read",
+    "integrations.read",
+  ],
 });
 
 export class AuthenticationError extends Error {
