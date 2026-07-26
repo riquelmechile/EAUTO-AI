@@ -73,6 +73,47 @@ export type MercadoLibreQuestionSnapshot = Readonly<{
   sourceHash: string;
 }>;
 
+/** Compact commercial snapshot. Buyer, contact, billing and address data are excluded. */
+export type MercadoLibreOrderSnapshot = Readonly<{
+  organizationId: string;
+  accountId: string;
+  sellerId: string;
+  orderId: string;
+  status: string;
+  dateCreated: string;
+  dateClosed?: string;
+  lastUpdated: string;
+  currencyId: string;
+  totalAmountMinor: number;
+  paidAmountMinor?: number;
+  itemCount: number;
+  unitCount: number;
+  itemIds: readonly string[];
+  packId?: string;
+  shippingId?: string;
+  tags: readonly string[];
+  observedAt: string;
+  sourceHash: string;
+}>;
+
+export type MercadoLibreReputationSnapshot = Readonly<{
+  organizationId: string;
+  accountId: string;
+  sellerId: string;
+  siteId: typeof MERCADOLIBRE_CHILE_SITE_ID;
+  levelId?: string;
+  powerSellerStatus?: string;
+  period: string;
+  totalTransactions: number;
+  completedTransactions: number;
+  canceledTransactions: number;
+  positiveRating: number;
+  neutralRating: number;
+  negativeRating: number;
+  observedAt: string;
+  sourceHash: string;
+}>;
+
 export class MercadoLibreIntegrationError extends Error {
   constructor(
     readonly code:
