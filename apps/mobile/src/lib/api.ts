@@ -31,6 +31,34 @@ export type RequestedSourceImageUpload = Readonly<{
   requiredHeaders: Readonly<Record<string, string>>;
 }>;
 
+export type MercadoLibreConnection = Readonly<{
+  accountId: string;
+  sellerId: string;
+  nickname?: string;
+  siteId: "MLC";
+  status: "active" | "refreshing" | "reauthorization-required" | "revoked";
+  expiresAt: string;
+  lastSyncedAt?: string;
+}>;
+
+export type MercadoLibreStatus = Readonly<{
+  enabled: boolean;
+  connected: boolean;
+  connection: MercadoLibreConnection | null;
+}>;
+
+export type MercadoLibreListing = Readonly<{
+  itemId: string;
+  title: string;
+  status: string;
+  priceMinor: number;
+  currencyId: string;
+  availableQuantity: number;
+  soldQuantity: number;
+  permalink?: string;
+  observedAt: string;
+}>;
+
 type RequestOptions = RequestInit & { retryAuthentication?: boolean };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -106,6 +134,32 @@ export const api = {
 
   dashboard: () => request<Dashboard>("/v1/dashboard"),
   inbox: () => request<{ actions: PendingAction[] }>("/v1/inbox"),
+
+  mercadoLibreStatus: (accountId: string) =>
+    request<MercadoLibreStatus>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/status`,
+    ),
+
+  mercadoLibreAuthorize: (accountId: string) =>
+    request<{ authorizationUrl: string; expiresAt: string }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/authorize`,
+      { method: "POST" },
+    ),
+
+  mercadoLibreSync: (accountId: string) =>
+    request<{
+      connection: MercadoLibreConnection;
+      listingCount: number;
+      observedAt?: string;
+      writesPerformed: false;
+    }>(`/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/sync`, {
+      method: "POST",
+    }),
+
+  mercadoLibreListings: (accountId: string) =>
+    request<{ listings: readonly MercadoLibreListing[] }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/listings`,
+    ),
 
   requestSourceImageUpload: (input: {
     id: string;

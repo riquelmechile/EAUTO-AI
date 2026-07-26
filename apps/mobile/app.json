@@ -2,6 +2,7 @@
   "expo": {
     "name": "EAUTO-AI",
     "slug": "eauto-ai",
+    "scheme": "eautoai",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",

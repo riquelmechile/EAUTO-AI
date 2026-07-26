@@ -4,6 +4,8 @@ import { MercadoLibreIntegrationError, type ActorIdentity, type Permission } fro
 import type { MercadoLibreService } from "@eauto/application";
 import type { Runtime } from "./runtime.js";
 
+export const MERCADOLIBRE_MOBILE_RETURN_URI = "eautoai://mercadolibre/oauth-complete";
+
 export type MercadoLibreRouteDependencies = Readonly<{
   runtime: Runtime;
   authenticate(request: FastifyRequest): Promise<ActorIdentity>;
@@ -24,19 +26,12 @@ export function registerMercadoLibreRoutes(
     });
   });
 
-  app.get("/v1/integrations/mercadolibre/oauth/callback", async (request) => {
+  app.get("/v1/integrations/mercadolibre/oauth/callback", async (request, reply) => {
     const query = z
       .object({ state: z.string().min(20), code: z.string().min(1) })
       .parse(request.query);
     const connection = await requireService(dependencies.runtime).completeAuthorization(query);
-    return {
-      connected: true,
-      accountId: connection.accountId,
-      sellerId: connection.sellerId,
-      nickname: connection.nickname,
-      siteId: connection.siteId,
-      status: connection.status,
-    };
+    return reply.redirect(createMercadoLibreMobileReturnUrl(connection));
   });
 
   app.get("/v1/integrations/mercadolibre/:accountId/status", async (request) => {
@@ -77,6 +72,19 @@ export function registerMercadoLibreRoutes(
       }),
     };
   });
+}
+
+export function createMercadoLibreMobileReturnUrl(connection: {
+  accountId: string;
+  siteId: string;
+  status: string;
+}): string {
+  const returnUrl = new URL(MERCADOLIBRE_MOBILE_RETURN_URI);
+  returnUrl.searchParams.set("result", "connected");
+  returnUrl.searchParams.set("accountId", connection.accountId);
+  returnUrl.searchParams.set("siteId", connection.siteId);
+  returnUrl.searchParams.set("status", connection.status);
+  return returnUrl.toString();
 }
 
 function requireService(runtime: Runtime): MercadoLibreService {
