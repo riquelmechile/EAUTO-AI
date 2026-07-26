@@ -55,6 +55,35 @@ export class PostgresSessionRepository implements SessionRepository {
     return result.rows[0]?.payload_json ?? null;
   }
 
+  async rotate(input: {
+    currentRefreshTokenHash: string;
+    replacement: OperatorSession;
+  }): Promise<boolean> {
+    const session = input.replacement;
+    const result = await this.pool.query(
+      `UPDATE operator_sessions
+       SET access_token_hash = $3,
+           refresh_token_hash = $4,
+           access_expires_at = $5,
+           refresh_expires_at = $6,
+           payload_json = $7::jsonb,
+           updated_at = now()
+       WHERE id = $1
+         AND refresh_token_hash = $2
+         AND revoked_at IS NULL`,
+      [
+        session.id,
+        input.currentRefreshTokenHash,
+        session.accessTokenHash,
+        session.refreshTokenHash,
+        session.accessExpiresAt,
+        session.refreshExpiresAt,
+        JSON.stringify(session),
+      ],
+    );
+    return result.rowCount === 1;
+  }
+
   async revoke(input: { sessionId: string; revokedAt: string }): Promise<void> {
     await this.pool.query(
       `UPDATE operator_sessions
