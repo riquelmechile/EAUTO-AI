@@ -114,6 +114,54 @@ export function registerMercadoLibreRoutes(
       }),
     };
   });
+
+  app.post(
+    "/v1/integrations/mercadolibre/:accountId/commercial-operations/sync",
+    async (request) => {
+      const actor = await dependencies.authenticate(request);
+      const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
+      await dependencies.requireAccount(actor, params.accountId, "integrations.sync");
+      const result = await requireService(dependencies.runtime).syncCommercialOperations({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+      });
+      const clpOrders = result.orders.filter((order) => order.currencyId === "CLP");
+      return {
+        orderCount: result.orders.length,
+        paidOrderCount: result.orders.filter((order) => order.status === "paid").length,
+        canceledOrderCount: result.orders.filter((order) => order.status === "cancelled").length,
+        grossTotalMinor: clpOrders.reduce((total, order) => total + order.totalAmountMinor, 0),
+        currencyId: "CLP",
+        reputation: result.reputation,
+        observedAt: result.observedAt,
+        writesPerformed: false,
+      };
+    },
+  );
+
+  app.get("/v1/integrations/mercadolibre/:accountId/orders", async (request) => {
+    const actor = await dependencies.authenticate(request);
+    const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
+    await dependencies.requireAccount(actor, params.accountId, "integrations.read");
+    return {
+      orders: await requireService(dependencies.runtime).listOrderSnapshots({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+      }),
+    };
+  });
+
+  app.get("/v1/integrations/mercadolibre/:accountId/reputation", async (request) => {
+    const actor = await dependencies.authenticate(request);
+    const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
+    await dependencies.requireAccount(actor, params.accountId, "integrations.read");
+    return {
+      reputation: await requireService(dependencies.runtime).getReputationSnapshot({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+      }),
+    };
+  });
 }
 
 export function createMercadoLibreMobileReturnUrl(connection: {

@@ -7,7 +7,9 @@ import type {
 import type {
   MercadoLibreClaimSnapshot,
   MercadoLibreListingSnapshot,
+  MercadoLibreOrderSnapshot,
   MercadoLibreQuestionSnapshot,
+  MercadoLibreReputationSnapshot,
 } from "@eauto/domain";
 
 export class InMemoryMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
@@ -36,6 +38,8 @@ export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreCon
   private readonly listingSnapshots = new Map<string, readonly MercadoLibreListingSnapshot[]>();
   private readonly claimSnapshots = new Map<string, readonly MercadoLibreClaimSnapshot[]>();
   private readonly questionSnapshots = new Map<string, readonly MercadoLibreQuestionSnapshot[]>();
+  private readonly orderSnapshots = new Map<string, readonly MercadoLibreOrderSnapshot[]>();
+  private readonly reputationSnapshots = new Map<string, MercadoLibreReputationSnapshot>();
 
   get(accountId: string): Promise<MercadoLibreCredentialRecord | null> {
     return Promise.resolve(this.records.get(accountId) ?? null);
@@ -143,5 +147,26 @@ export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreCon
 
   listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]> {
     return Promise.resolve(this.questionSnapshots.get(accountId) ?? []);
+  }
+
+  replaceOrderSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreOrderSnapshot[],
+  ): Promise<void> {
+    this.orderSnapshots.set(accountId, Object.freeze([...snapshots]));
+    return Promise.resolve();
+  }
+
+  listOrderSnapshots(accountId: string): Promise<readonly MercadoLibreOrderSnapshot[]> {
+    return Promise.resolve(this.orderSnapshots.get(accountId) ?? []);
+  }
+
+  saveReputationSnapshot(snapshot: MercadoLibreReputationSnapshot): Promise<void> {
+    this.reputationSnapshots.set(snapshot.accountId, snapshot);
+    return Promise.resolve();
+  }
+
+  getReputationSnapshot(accountId: string): Promise<MercadoLibreReputationSnapshot | null> {
+    return Promise.resolve(this.reputationSnapshots.get(accountId) ?? null);
   }
 }

@@ -84,6 +84,39 @@ export type MercadoLibreQuestion = Readonly<{
   observedAt: string;
 }>;
 
+export type MercadoLibreOrder = Readonly<{
+  orderId: string;
+  status: string;
+  dateCreated: string;
+  dateClosed?: string;
+  lastUpdated: string;
+  currencyId: string;
+  totalAmountMinor: number;
+  paidAmountMinor?: number;
+  itemCount: number;
+  unitCount: number;
+  itemIds: readonly string[];
+  packId?: string;
+  shippingId?: string;
+  tags: readonly string[];
+  observedAt: string;
+}>;
+
+export type MercadoLibreReputation = Readonly<{
+  sellerId: string;
+  siteId: "MLC";
+  levelId?: string;
+  powerSellerStatus?: string;
+  period: string;
+  totalTransactions: number;
+  completedTransactions: number;
+  canceledTransactions: number;
+  positiveRating: number;
+  neutralRating: number;
+  negativeRating: number;
+  observedAt: string;
+}>;
+
 type RequestOptions = RequestInit & { retryAuthentication?: boolean };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -206,6 +239,31 @@ export const api = {
   mercadoLibreQuestions: (accountId: string) =>
     request<{ questions: readonly MercadoLibreQuestion[] }>(
       `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/questions`,
+    ),
+
+  mercadoLibreCommercialOperationsSync: (accountId: string) =>
+    request<{
+      orderCount: number;
+      paidOrderCount: number;
+      canceledOrderCount: number;
+      grossTotalMinor: number;
+      currencyId: "CLP";
+      reputation: MercadoLibreReputation;
+      observedAt: string;
+      writesPerformed: false;
+    }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/commercial-operations/sync`,
+      { method: "POST" },
+    ),
+
+  mercadoLibreOrders: (accountId: string) =>
+    request<{ orders: readonly MercadoLibreOrder[] }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/orders`,
+    ),
+
+  mercadoLibreReputation: (accountId: string) =>
+    request<{ reputation: MercadoLibreReputation | null }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/reputation`,
     ),
 
   requestSourceImageUpload: (input: {
