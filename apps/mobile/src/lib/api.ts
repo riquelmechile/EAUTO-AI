@@ -59,6 +59,31 @@ export type MercadoLibreListing = Readonly<{
   observedAt: string;
 }>;
 
+export type MercadoLibreClaim = Readonly<{
+  claimId: string;
+  resourceId: string;
+  resource: string;
+  status: string;
+  type: string;
+  stage: string;
+  reasonId?: string;
+  fulfilled?: boolean;
+  dateCreated: string;
+  lastUpdated: string;
+  observedAt: string;
+}>;
+
+export type MercadoLibreQuestion = Readonly<{
+  questionId: string;
+  itemId: string;
+  status: string;
+  dateCreated: string;
+  hasAnswer: boolean;
+  hold: boolean;
+  suspectedSpam: boolean;
+  observedAt: string;
+}>;
+
 type RequestOptions = RequestInit & { retryAuthentication?: boolean };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -159,6 +184,29 @@ export const api = {
   mercadoLibreListings: (accountId: string) =>
     request<{ listings: readonly MercadoLibreListing[] }>(
       `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/listings`,
+    ),
+
+  mercadoLibreCustomerOperationsSync: (accountId: string) =>
+    request<{
+      claimCount: number;
+      openClaimCount: number;
+      questionCount: number;
+      unansweredQuestionCount: number;
+      observedAt: string;
+      writesPerformed: false;
+    }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/customer-operations/sync`,
+      { method: "POST" },
+    ),
+
+  mercadoLibreClaims: (accountId: string) =>
+    request<{ claims: readonly MercadoLibreClaim[] }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/claims`,
+    ),
+
+  mercadoLibreQuestions: (accountId: string) =>
+    request<{ questions: readonly MercadoLibreQuestion[] }>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/questions`,
     ),
 
   requestSourceImageUpload: (input: {
