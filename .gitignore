@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.expo/
+.env
+.env.*
+!.env.example
+coverage/
+*.log
+.DS_Store
+android/.gradle/
+apps/mobile/.expo/

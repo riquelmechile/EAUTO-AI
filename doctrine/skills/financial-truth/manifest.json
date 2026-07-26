@@ -1,0 +1,14 @@
+{
+  "id": "financial-truth",
+  "version": "1.0.0",
+  "purpose": "Calcular profit real y detectar datos faltantes",
+  "authorizedAgents": ["finance-director","economic-outcome-agent"],
+  "allowedTools": ["read-orders","read-fees","read-costs","reconcile-economics"],
+  "forbiddenTools": ["invent-missing-cost"],
+  "requiredEvidence": ["revenue","fees","shipping","refunds","product_cost"],
+  "modelPolicy": {"default":"fast","escalate":"reasoning"},
+  "cachePolicy": {"stablePrefix":"agent-account-skill-version","volatileTail":true},
+  "limits": {"maxIterations":6,"timeoutMs":120000,"budgetMicrousd":10000},
+  "requiresHumanApproval": true,
+  "stopRules": ["missing-required-evidence","budget-exceeded","repeated-tool-call","low-confidence"]
+}
