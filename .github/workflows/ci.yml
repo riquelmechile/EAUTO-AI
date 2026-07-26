@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -20,27 +20,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
+          cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      - name: Apply bootstrap formatting and lockfile
-        run: npx prettier --write .
-      - name: Commit reproducible generated files
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: npm ci --no-audit --no-fund
+      - run: npm run format:check
+      - run: npm run typecheck
+      - name: Lint
+        id: lint
+        continue-on-error: true
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .
-          if ! git diff --cached --quiet; then
-            git commit -m "style: apply canonical formatting and lockfile"
-            git push origin HEAD:${{ github.head_ref }}
-          fi
-      - run: npm run typecheck
-      - run: npm run lint
+          set -o pipefail
+          npm run lint 2>&1 | tee /tmp/lint.log
+      - name: Upload lint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-diagnostics-${{ github.sha }}
+          path: /tmp/lint.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Enforce lint
+        if: steps.lint.outcome == 'failure'
+        run: exit 1
       - run: npm test
       - run: npm run build
       - name: Doctor
