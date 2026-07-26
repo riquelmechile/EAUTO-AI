@@ -53,7 +53,11 @@ export function LoginScreen(props: { onAuthenticated(session: MobileSession): vo
         onPress={() => void enroll()}
         style={[styles.button, submitting && styles.buttonDisabled]}
       >
-        {submitting ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Ingresar</Text>}
+        {submitting ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text style={styles.buttonText}>Ingresar</Text>
+        )}
       </Pressable>
     </View>
   );

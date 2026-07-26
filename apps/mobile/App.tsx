@@ -120,7 +120,12 @@ const styles = StyleSheet.create({
   brand: { color: "#f8fafc", fontSize: 26, fontWeight: "900", letterSpacing: 1 },
   subtitle: { color: "#7dd3fc", marginTop: 3 },
   actor: { color: "#94a3b8", fontSize: 12, marginTop: 3 },
-  logout: { backgroundColor: "#1e293b", borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 },
+  logout: {
+    backgroundColor: "#1e293b",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
   logoutText: { color: "#e2e8f0", fontWeight: "700" },
   tabs: { flexDirection: "row", gap: 8, padding: 16 },
   tab: { alignItems: "center", backgroundColor: "#182033", borderRadius: 12, flex: 1, padding: 11 },

@@ -14,11 +14,7 @@ import {
   type Permission,
   type ProductLaunchBrief,
 } from "@eauto/domain";
-import {
-  createAuthenticator,
-  readBearerToken,
-  type EnrollmentAuthenticator,
-} from "./auth.js";
+import { createAuthenticator, readBearerToken, type EnrollmentAuthenticator } from "./auth.js";
 import { createRuntime, type Runtime } from "./runtime.js";
 import type { AppConfig } from "./config.js";
 

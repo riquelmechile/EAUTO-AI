@@ -34,7 +34,9 @@ describe("SessionService", () => {
     expect(session.accessToken).toBe("token-1");
     expect(session.refreshToken).toBe("token-2");
     expect(await service.authenticateAccess(session.accessToken)).toEqual(actor);
-    expect(Date.parse(session.refreshExpiresAt)).toBeGreaterThan(Date.parse(session.accessExpiresAt));
+    expect(Date.parse(session.refreshExpiresAt)).toBeGreaterThan(
+      Date.parse(session.accessExpiresAt),
+    );
   });
 
   it("rotates refresh credentials and rejects replay", async () => {
@@ -43,7 +45,9 @@ describe("SessionService", () => {
     const rotated = await service.rotate(session.refreshToken);
     expect(rotated.accessToken).not.toBe(session.accessToken);
     await expect(service.rotate(session.refreshToken)).rejects.toThrow(AuthenticationError);
-    await expect(service.authenticateAccess(session.accessToken)).rejects.toThrow(AuthenticationError);
+    await expect(service.authenticateAccess(session.accessToken)).rejects.toThrow(
+      AuthenticationError,
+    );
     expect(await service.authenticateAccess(rotated.accessToken)).toEqual(actor);
   });
 
@@ -62,7 +66,9 @@ describe("SessionService", () => {
     const { service } = fixture();
     const session = await service.issue(actor);
     await service.revokeAccess(session.accessToken);
-    await expect(service.authenticateAccess(session.accessToken)).rejects.toThrow(SessionRevokedError);
+    await expect(service.authenticateAccess(session.accessToken)).rejects.toThrow(
+      SessionRevokedError,
+    );
     await expect(service.rotate(session.refreshToken)).rejects.toThrow(SessionRevokedError);
   });
 });

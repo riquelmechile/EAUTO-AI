@@ -8,12 +8,7 @@ const configSchema = z.object({
   CORS_ORIGIN: z.string().default("*"),
   AUTH_MODE: z.enum(["disabled", "static-token"]).default("disabled"),
   OPERATOR_TOKENS_JSON: z.string().default("[]"),
-  SESSION_ACCESS_TTL_MS: z.coerce
-    .number()
-    .int()
-    .min(60_000)
-    .max(86_400_000)
-    .default(900_000),
+  SESSION_ACCESS_TTL_MS: z.coerce.number().int().min(60_000).max(86_400_000).default(900_000),
   SESSION_REFRESH_TTL_MS: z.coerce
     .number()
     .int()
