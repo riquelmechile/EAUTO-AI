@@ -72,7 +72,7 @@ Para cada cuenta:
 - `mercadolibre-seller-mismatch`: revisar seller ID y que se haya iniciado sesión en la cuenta correcta.
 - `mercadolibre-site-mismatch`: la cuenta no pertenece a MercadoLibre Chile.
 - `mercadolibre-refresh-in-progress`: reintentar después del lease; no iniciar otro worker manualmente.
-- `mercadolibre-reauthorization-required`: realizar OAuth nuevamente para esa cuenta בלבד.
+- `mercadolibre-reauthorization-required`: realizar OAuth nuevamente solo para esa cuenta.
 
 ## Rollback
 
