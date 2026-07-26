@@ -8,29 +8,24 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { ObjectStoragePort } from "@eauto/application";
 
 export class S3ObjectStorage implements ObjectStoragePort {
-  private readonly client: S3Client;
+  private readonly signingClient: S3Client;
+  private readonly inspectionClient: S3Client;
 
   constructor(
     private readonly config: Readonly<{
       bucket: string;
       region: string;
-      endpoint?: string;
+      publicEndpoint?: string;
+      internalEndpoint?: string;
       accessKeyId?: string;
       secretAccessKey?: string;
       forcePathStyle?: boolean;
     }>,
   ) {
-    const credentials =
-      config.accessKeyId && config.secretAccessKey
-        ? { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey }
-        : undefined;
-    const clientConfig: S3ClientConfig = {
-      region: config.region,
-      ...(config.endpoint ? { endpoint: config.endpoint } : {}),
-      ...(credentials ? { credentials } : {}),
-      ...(config.forcePathStyle === undefined ? {} : { forcePathStyle: config.forcePathStyle }),
-    };
-    this.client = new S3Client(clientConfig);
+    this.signingClient = new S3Client(this.clientConfig(config.publicEndpoint));
+    this.inspectionClient = new S3Client(
+      this.clientConfig(config.internalEndpoint ?? config.publicEndpoint),
+    );
   }
 
   async createPresignedUpload(input: {
@@ -46,7 +41,7 @@ export class S3ObjectStorage implements ObjectStoragePort {
       ChecksumSHA256: input.checksumSha256Base64,
       Metadata: { sha256: input.checksumSha256Base64 },
     });
-    const uploadUrl = await getSignedUrl(this.client, command, {
+    const uploadUrl = await getSignedUrl(this.signingClient, command, {
       expiresIn: input.expiresInSeconds,
       unhoistableHeaders: new Set(["x-amz-checksum-sha256"]),
       signableHeaders: new Set(["content-type"]),
@@ -70,7 +65,7 @@ export class S3ObjectStorage implements ObjectStoragePort {
     }>
   > {
     try {
-      const result = await this.client.send(
+      const result = await this.inspectionClient.send(
         new HeadObjectCommand({
           Bucket: this.config.bucket,
           Key: objectKey,
@@ -100,5 +95,23 @@ export class S3ObjectStorage implements ObjectStoragePort {
       }
       throw error;
     }
+  }
+
+  private clientConfig(endpoint: string | undefined): S3ClientConfig {
+    const credentials =
+      this.config.accessKeyId && this.config.secretAccessKey
+        ? {
+            accessKeyId: this.config.accessKeyId,
+            secretAccessKey: this.config.secretAccessKey,
+          }
+        : undefined;
+    return {
+      region: this.config.region,
+      ...(endpoint ? { endpoint } : {}),
+      ...(credentials ? { credentials } : {}),
+      ...(this.config.forcePathStyle === undefined
+        ? {}
+        : { forcePathStyle: this.config.forcePathStyle }),
+    };
   }
 }
