@@ -49,7 +49,7 @@ const actionSchema = z.object({
 });
 
 export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
-  const runtime = suppliedRuntime ?? (await createRuntime(config));
+  const runtime = suppliedRuntime ?? createRuntime(config);
   const app = Fastify({ logger: config.NODE_ENV !== "test" });
   await app.register(cors, { origin: config.CORS_ORIGIN === "*" ? true : config.CORS_ORIGIN });
 
