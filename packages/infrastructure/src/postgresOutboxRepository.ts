@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 import type {
   ClaimedOutboxEvent,
+  DeadOutboxEvent,
   OutboxEventDraft,
   OutboxRepository,
   OutboxStats,
@@ -19,6 +20,10 @@ type OutboxRow = {
   locked_until: Date | string;
   available_at: Date | string;
   created_at: Date | string;
+};
+
+type DeadOutboxRow = Omit<OutboxRow, "locked_by" | "locked_until"> & {
+  last_error: string | null;
 };
 
 export class PostgresOutboxRepository implements OutboxRepository {
@@ -131,6 +136,45 @@ export class PostgresOutboxRepository implements OutboxRepository {
     const status = result.rows[0]?.status;
     if (!status) throw new Error(`Outbox lease lost for ${input.id}.`);
     return status;
+  }
+
+  async listDead(limit: number): Promise<readonly DeadOutboxEvent[]> {
+    const result = await this.pool.query<DeadOutboxRow>(
+      `SELECT id, idempotency_key, aggregate_type, aggregate_id, account_id,
+         event_type, payload_json, attempts, last_error, available_at, created_at
+       FROM transactional_outbox
+       WHERE status = 'dead'
+       ORDER BY created_at ASC
+       LIMIT $1`,
+      [limit],
+    );
+    return result.rows.map((row) =>
+      Object.freeze({
+        id: row.id,
+        idempotencyKey: row.idempotency_key,
+        aggregateType: row.aggregate_type,
+        aggregateId: row.aggregate_id,
+        ...(row.account_id === null ? {} : { accountId: row.account_id }),
+        eventType: row.event_type,
+        payload: row.payload_json,
+        availableAt: toIso(row.available_at),
+        status: "dead" as const,
+        attempts: row.attempts,
+        lastError: row.last_error,
+        createdAt: toIso(row.created_at),
+      }),
+    );
+  }
+
+  async requeueDead(input: { id: string; availableAt: string }): Promise<void> {
+    const result = await this.pool.query(
+      `UPDATE transactional_outbox
+       SET status = 'pending', attempts = 0, available_at = $2,
+           last_error = NULL, locked_by = NULL, locked_until = NULL, processed_at = NULL
+       WHERE id = $1 AND status = 'dead'`,
+      [input.id, input.availableAt],
+    );
+    if (result.rowCount !== 1) throw new Error(`Dead-letter event ${input.id} not found.`);
   }
 
   async stats(): Promise<OutboxStats> {
