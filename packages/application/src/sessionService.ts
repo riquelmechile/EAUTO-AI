@@ -12,6 +12,10 @@ export type SessionRepository = {
   save(session: OperatorSession): Promise<void>;
   findByAccessTokenHash(hash: string): Promise<OperatorSession | null>;
   findByRefreshTokenHash(hash: string): Promise<OperatorSession | null>;
+  rotate(input: {
+    currentRefreshTokenHash: string;
+    replacement: OperatorSession;
+  }): Promise<boolean>;
   revoke(input: { sessionId: string; revokedAt: string }): Promise<void>;
 };
 
@@ -56,7 +60,8 @@ export class SessionService {
   }
 
   async rotate(refreshToken: string): Promise<IssuedSession> {
-    const current = await this.sessions.findByRefreshTokenHash(this.secrets.hashToken(refreshToken));
+    const currentRefreshTokenHash = this.secrets.hashToken(refreshToken);
+    const current = await this.sessions.findByRefreshTokenHash(currentRefreshTokenHash);
     if (!current) throw new AuthenticationError("Invalid refresh session.");
     const now = this.clock.now();
     assertActiveRefreshSession(current, now);
@@ -71,7 +76,8 @@ export class SessionService {
       refreshExpiresAt: new Date(now.getTime() + this.ttl.refreshMs).toISOString(),
       rotatedAt: now.toISOString(),
     });
-    await this.sessions.save(rotated);
+    const replaced = await this.sessions.rotate({ currentRefreshTokenHash, replacement: rotated });
+    if (!replaced) throw new AuthenticationError("Refresh session was already rotated.");
     return this.toIssued(rotated, nextAccessToken, nextRefreshToken);
   }
 
