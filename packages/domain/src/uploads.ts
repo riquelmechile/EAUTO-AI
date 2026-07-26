@@ -20,6 +20,14 @@ export type SourceImageUpload = Readonly<{
   rejectionReason: string | null;
 }>;
 
+export type VerifiedSourceImageUpload = SourceImageUpload &
+  Readonly<{
+    status: "verified";
+    objectUri: string;
+    verifiedAt: string;
+    rejectionReason: null;
+  }>;
+
 export type UploadSourceImageRequest = Readonly<{
   id: string;
   organizationId: string;
@@ -60,6 +68,17 @@ export function validateSourceImageUploadRequest(
       "Original file name must contain between 1 and 255 characters.",
     );
   }
+}
+
+export function isVerifiedSourceImageUpload(
+  upload: SourceImageUpload,
+): upload is VerifiedSourceImageUpload {
+  return (
+    upload.status === "verified" &&
+    upload.objectUri !== null &&
+    upload.verifiedAt !== null &&
+    upload.rejectionReason === null
+  );
 }
 
 export function sourceImageExtension(contentType: SourceImageContentType): string {
