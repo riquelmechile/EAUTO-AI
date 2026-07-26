@@ -1,6 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const SESSION_KEY = "eauto.operator-session.v1";
+const clearedListeners = new Set<() => void>();
 
 export type MobileSession = Readonly<{
   accessToken: string;
@@ -23,6 +24,7 @@ export const sessionStore = {
       return JSON.parse(raw) as MobileSession;
     } catch {
       await SecureStore.deleteItemAsync(SESSION_KEY);
+      notifyCleared();
       return null;
     }
   },
@@ -33,5 +35,15 @@ export const sessionStore = {
 
   async clear(): Promise<void> {
     await SecureStore.deleteItemAsync(SESSION_KEY);
+    notifyCleared();
+  },
+
+  subscribeCleared(listener: () => void): () => void {
+    clearedListeners.add(listener);
+    return () => clearedListeners.delete(listener);
   },
 };
+
+function notifyCleared(): void {
+  for (const listener of clearedListeners) listener();
+}
