@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { z } from "zod";
 import {
   MercadoLibreRemoteError,
   type MercadoLibreClientPort,
@@ -7,44 +6,6 @@ import {
   type MercadoLibreRemoteUser,
   type MercadoLibreTokenSet,
 } from "@eauto/application";
-
-const tokenSchema = z.object({
-  access_token: z.string().min(1),
-  refresh_token: z.string().min(1),
-  expires_in: z.number().int().positive(),
-  token_type: z.string().min(1),
-  scope: z.string().optional(),
-  user_id: z.union([z.string(), z.number()]).optional(),
-});
-
-const userSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  nickname: z.string().optional(),
-  site_id: z.string().min(1),
-});
-
-const searchSchema = z.object({
-  results: z.array(z.string()),
-  scroll_id: z.string().optional(),
-});
-
-const itemBodySchema = z.object({
-  id: z.string(),
-  title: z.string(),
-  status: z.string(),
-  price: z.number().nonnegative(),
-  currency_id: z.string(),
-  available_quantity: z.number().int().nonnegative(),
-  sold_quantity: z.number().int().nonnegative(),
-  permalink: z.string().url().optional(),
-});
-
-const itemBatchSchema = z.array(
-  z.object({
-    code: z.number().int(),
-    body: itemBodySchema.optional(),
-  }),
-);
 
 export type MercadoLibreHttpClientConfig = Readonly<{
   clientId: string;
@@ -59,7 +20,7 @@ export type MercadoLibreHttpClientConfig = Readonly<{
 export class MercadoLibreHttpClient implements MercadoLibreClientPort {
   constructor(private readonly config: MercadoLibreHttpClientConfig) {}
 
-  async exchangeAuthorizationCode(input: {
+  exchangeAuthorizationCode(input: {
     code: string;
     codeVerifier: string;
   }): Promise<MercadoLibreTokenSet> {
@@ -75,7 +36,7 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
     );
   }
 
-  async refreshAccessToken(refreshToken: string): Promise<MercadoLibreTokenSet> {
+  refreshAccessToken(refreshToken: string): Promise<MercadoLibreTokenSet> {
     return this.requestToken(
       new URLSearchParams({
         grant_type: "refresh_token",
@@ -87,12 +48,11 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
   }
 
   async getCurrentUser(accessToken: string): Promise<MercadoLibreRemoteUser> {
-    const payload = userSchema.parse(await this.getJson("/users/me", accessToken));
-    return Object.freeze({
-      id: String(payload.id),
-      ...(payload.nickname ? { nickname: payload.nickname } : {}),
-      siteId: payload.site_id,
-    });
+    const payload = asRecord(await this.getJson("/users/me", accessToken), "users/me");
+    const id = readStringOrNumber(payload, "id");
+    const siteId = readString(payload, "site_id");
+    const nickname = readOptionalString(payload, "nickname");
+    return Object.freeze({ id, ...(nickname ? { nickname } : {}), siteId });
   }
 
   async listSellerListings(
@@ -108,19 +68,23 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
         attributes:
           "id,title,status,price,currency_id,available_quantity,sold_quantity,permalink",
       });
-      const batch = itemBatchSchema.parse(await this.getJson(`/items?${query}`, accessToken));
-      for (const entry of batch) {
-        if (entry.code !== 200 || !entry.body) continue;
-        const body = entry.body;
+      const batch = await this.getJson(`/items?${query}`, accessToken);
+      if (!Array.isArray(batch)) throw new Error("MercadoLibre item batch must be an array.");
+      for (const rawEntry of batch) {
+        const entry = asRecord(rawEntry, "item batch entry");
+        if (readNumber(entry, "code") !== 200 || entry.body === undefined) continue;
+        const body = asRecord(entry.body, "item body");
         const normalized = {
-          itemId: body.id,
-          title: body.title,
-          status: body.status,
-          priceMinor: toMinorUnits(body.price, body.currency_id),
-          currencyId: body.currency_id,
-          availableQuantity: body.available_quantity,
-          soldQuantity: body.sold_quantity,
-          ...(body.permalink ? { permalink: body.permalink } : {}),
+          itemId: readString(body, "id"),
+          title: readString(body, "title"),
+          status: readString(body, "status"),
+          priceMinor: toMinorUnits(readNumber(body, "price"), readString(body, "currency_id")),
+          currencyId: readString(body, "currency_id"),
+          availableQuantity: readInteger(body, "available_quantity"),
+          soldQuantity: readInteger(body, "sold_quantity"),
+          ...(readOptionalString(body, "permalink")
+            ? { permalink: readOptionalString(body, "permalink") }
+            : {}),
         };
         listings.push(
           Object.freeze({
@@ -141,12 +105,21 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
     for (let page = 0; page < this.config.maximumScanPages; page += 1) {
       const query = new URLSearchParams({ search_type: "scan", limit: "100" });
       if (scrollId) query.set("scroll_id", scrollId);
-      const payload = searchSchema.parse(
-        await this.getJson(`/users/${encodeURIComponent(sellerId)}/items/search?${query}`, accessToken),
+      const payload = asRecord(
+        await this.getJson(
+          `/users/${encodeURIComponent(sellerId)}/items/search?${query}`,
+          accessToken,
+        ),
+        "seller item search",
       );
-      ids.push(...payload.results);
-      if (payload.results.length === 0 || !payload.scroll_id) break;
-      scrollId = payload.scroll_id;
+      const results = payload.results;
+      if (!Array.isArray(results) || !results.every((value) => typeof value === "string")) {
+        throw new Error("MercadoLibre seller item search returned invalid results.");
+      }
+      ids.push(...results);
+      const nextScrollId = readOptionalString(payload, "scroll_id");
+      if (results.length === 0 || !nextScrollId) break;
+      scrollId = nextScrollId;
     }
     return [...new Set(ids)];
   }
@@ -160,21 +133,21 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
     });
     if (!response.ok) {
       const text = (await response.text()).slice(0, 500);
-      const reauthorizationRequired =
-        response.status === 400 && /invalid_grant|invalid refresh token/i.test(text);
       throw new MercadoLibreRemoteError(
         `MercadoLibre token request failed (${response.status}): ${text}`,
-        reauthorizationRequired,
+        response.status === 400 && /invalid_grant|invalid refresh token/i.test(text),
       );
     }
-    const token = tokenSchema.parse(await response.json());
+    const token = asRecord(await response.json(), "token response");
+    const scope = readOptionalString(token, "scope");
+    const userId = readOptionalStringOrNumber(token, "user_id");
     return Object.freeze({
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token,
-      expiresInSeconds: token.expires_in,
-      tokenType: token.token_type,
-      scopes: token.scope?.split(/\s+/).filter(Boolean) ?? [],
-      ...(token.user_id === undefined ? {} : { userId: String(token.user_id) }),
+      accessToken: readString(token, "access_token"),
+      refreshToken: readString(token, "refresh_token"),
+      expiresInSeconds: readPositiveInteger(token, "expires_in"),
+      tokenType: readString(token, "token_type"),
+      scopes: scope?.split(/\s+/).filter(Boolean) ?? [],
+      ...(userId === undefined ? {} : { userId }),
     });
   }
 
@@ -192,6 +165,72 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
     }
     return response.json();
   }
+}
+
+function asRecord(value: unknown, context: string): Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error(`MercadoLibre ${context} must be an object.`);
+  }
+  return value as Record<string, unknown>;
+}
+
+function readString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`MercadoLibre field ${key} must be a non-empty string.`);
+  }
+  return value;
+}
+
+function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  if (value === undefined || value === null || value === "") return undefined;
+  if (typeof value !== "string") throw new Error(`MercadoLibre field ${key} must be a string.`);
+  return value;
+}
+
+function readStringOrNumber(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  if (typeof value !== "string" && typeof value !== "number") {
+    throw new Error(`MercadoLibre field ${key} must be a string or number.`);
+  }
+  return String(value);
+}
+
+function readOptionalStringOrNumber(
+  record: Record<string, unknown>,
+  key: string,
+): string | undefined {
+  const value = record[key];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string" && typeof value !== "number") {
+    throw new Error(`MercadoLibre field ${key} must be a string or number.`);
+  }
+  return String(value);
+}
+
+function readNumber(record: Record<string, unknown>, key: string): number {
+  const value = record[key];
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`MercadoLibre field ${key} must be a finite number.`);
+  }
+  return value;
+}
+
+function readInteger(record: Record<string, unknown>, key: string): number {
+  const value = readNumber(record, key);
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`MercadoLibre field ${key} must be a non-negative integer.`);
+  }
+  return value;
+}
+
+function readPositiveInteger(record: Record<string, unknown>, key: string): number {
+  const value = readNumber(record, key);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`MercadoLibre field ${key} must be a positive integer.`);
+  }
+  return value;
 }
 
 function toMinorUnits(amount: number, currencyId: string): number {
