@@ -11,8 +11,7 @@
     "@eauto/domain": "0.1.0",
     "@eauto/agent-kernel": "0.1.0",
     "@eauto/application": "0.1.0",
-    "pg": "^8.16.3",
-    "zod": "^4.0.14"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "@types/pg": "^8.15.4"
