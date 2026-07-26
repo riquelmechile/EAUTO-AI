@@ -32,24 +32,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
-        id: lint
-        shell: bash
-        run: |
-          set +e
-          npm run lint 2>&1 | tee lint.log
-          code=${PIPESTATUS[0]}
-          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          exit 0
-      - name: Upload lint diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mercadolibre-lint-${{ github.run_id }}
-          path: lint.log
-          retention-days: 1
-      - name: Fail when lint failed
-        if: steps.lint.outputs.exit_code != '0'
-        run: exit 1
+        run: npm run lint
       - name: Test
         run: npm test
       - name: Build
