@@ -13,10 +13,18 @@ import { DashboardScreen } from "./src/features/dashboard/DashboardScreen";
 import { InboxScreen } from "./src/features/inbox/InboxScreen";
 import { ContentStudioScreen } from "./src/features/content-studio/ContentStudioScreen";
 import { LoginScreen } from "./src/features/auth/LoginScreen";
+import { MercadoLibreScreen } from "./src/features/mercadolibre/MercadoLibreScreen";
 import { api } from "./src/lib/api";
 import { sessionStore, type MobileSession } from "./src/lib/session";
 
-type Tab = "dashboard" | "inbox" | "studio";
+type Tab = "dashboard" | "mercadolibre" | "inbox" | "studio";
+
+const TABS: readonly { id: Tab; label: string }[] = [
+  { id: "dashboard", label: "Empresa" },
+  { id: "mercadolibre", label: "MercadoLibre" },
+  { id: "inbox", label: "Decisiones" },
+  { id: "studio", label: "Contenido" },
+];
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -78,21 +86,24 @@ export default function App() {
           <Text style={styles.logoutText}>Salir</Text>
         </Pressable>
       </View>
-      <View style={styles.tabs}>
-        {(["dashboard", "inbox", "studio"] as const).map((item) => (
+      <ScrollView
+        contentContainerStyle={styles.tabs}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        {TABS.map((item) => (
           <Pressable
-            key={item}
-            onPress={() => setTab(item)}
-            style={[styles.tab, tab === item && styles.activeTab]}
+            key={item.id}
+            onPress={() => setTab(item.id)}
+            style={[styles.tab, tab === item.id && styles.activeTab]}
           >
-            <Text style={styles.tabText}>
-              {item === "dashboard" ? "Empresa" : item === "inbox" ? "Decisiones" : "Contenido"}
-            </Text>
+            <Text style={styles.tabText}>{item.label}</Text>
           </Pressable>
         ))}
-      </View>
+      </ScrollView>
       <ScrollView contentContainerStyle={styles.content}>
         {tab === "dashboard" ? <DashboardScreen /> : null}
+        {tab === "mercadolibre" ? <MercadoLibreScreen roles={session.actor.roles} /> : null}
         {tab === "inbox" ? <InboxScreen /> : null}
         {tab === "studio" ? <ContentStudioScreen /> : null}
       </ScrollView>
@@ -127,8 +138,14 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   logoutText: { color: "#e2e8f0", fontWeight: "700" },
-  tabs: { flexDirection: "row", gap: 8, padding: 16 },
-  tab: { alignItems: "center", backgroundColor: "#182033", borderRadius: 12, flex: 1, padding: 11 },
+  tabs: { gap: 8, padding: 16 },
+  tab: {
+    alignItems: "center",
+    backgroundColor: "#182033",
+    borderRadius: 12,
+    minWidth: 105,
+    padding: 11,
+  },
   activeTab: { backgroundColor: "#2563eb" },
   tabText: { color: "white", fontSize: 12, fontWeight: "700" },
   content: { gap: 16, padding: 16, paddingBottom: 36 },
