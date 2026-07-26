@@ -1,0 +1,84 @@
+export const MERCADOLIBRE_CHILE_SITE_ID = "MLC" as const;
+
+export const MERCADOLIBRE_CONNECTION_STATUSES = [
+  "active",
+  "refreshing",
+  "reauthorization-required",
+  "revoked",
+] as const;
+
+export type MercadoLibreConnectionStatus =
+  (typeof MERCADOLIBRE_CONNECTION_STATUSES)[number];
+
+export type MercadoLibreConnection = Readonly<{
+  organizationId: string;
+  accountId: string;
+  sellerId: string;
+  nickname?: string;
+  siteId: typeof MERCADOLIBRE_CHILE_SITE_ID;
+  scopes: readonly string[];
+  status: MercadoLibreConnectionStatus;
+  expiresAt: string;
+  lastSyncedAt?: string;
+  updatedAt: string;
+}>;
+
+export type MercadoLibreListingSnapshot = Readonly<{
+  organizationId: string;
+  accountId: string;
+  sellerId: string;
+  itemId: string;
+  title: string;
+  status: string;
+  priceMinor: number;
+  currencyId: string;
+  availableQuantity: number;
+  soldQuantity: number;
+  permalink?: string;
+  observedAt: string;
+  sourceHash: string;
+}>;
+
+export class MercadoLibreIntegrationError extends Error {
+  constructor(
+    readonly code:
+      | "mercadolibre-disabled"
+      | "mercadolibre-not-connected"
+      | "mercadolibre-invalid-state"
+      | "mercadolibre-site-mismatch"
+      | "mercadolibre-seller-mismatch"
+      | "mercadolibre-refresh-in-progress"
+      | "mercadolibre-reauthorization-required",
+    message: string,
+  ) {
+    super(message);
+    this.name = "MercadoLibreIntegrationError";
+  }
+}
+
+export class MercadoLibreWriteBlockedError extends Error {
+  readonly code = "mercadolibre-write-blocked";
+
+  constructor(
+    readonly operation: string,
+    readonly sellerId?: string,
+  ) {
+    super(
+      `MercadoLibre write operations are blocked. Attempted: ${operation}${
+        sellerId ? ` for seller ${sellerId}` : ""
+      }.`,
+    );
+    this.name = "MercadoLibreWriteBlockedError";
+  }
+}
+
+/**
+ * Fail-closed boundary inherited from MSL. There is intentionally no feature
+ * flag until each mutation has its own policy, receipt and live smoke test.
+ */
+export function assertMercadoLibreWriteDisabled(
+  operation: string,
+  sellerId?: string,
+): never {
+  throw new MercadoLibreWriteBlockedError(operation, sellerId);
+}
