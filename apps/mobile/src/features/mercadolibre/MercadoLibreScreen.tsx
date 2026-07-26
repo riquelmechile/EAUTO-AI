@@ -4,6 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import { Panel } from "../../components/Panel";
 import {
   api,
+  type MercadoLibreConnection,
   type MercadoLibreListing,
   type MercadoLibreStatus,
 } from "../../lib/api";
@@ -200,7 +201,7 @@ function AccountCard({
           <Text style={styles.sectionTitle}>Publicaciones ({listings.length})</Text>
           {listings.slice(0, 20).map((listing) => (
             <Pressable
-              accessibilityRole={listing.permalink ? "link" : undefined}
+              accessibilityRole="link"
               disabled={!listing.permalink}
               key={listing.itemId}
               onPress={() => {
@@ -231,7 +232,7 @@ function AccountCard({
   );
 }
 
-function statusLabel(status: MercadoLibreStatus["connection"] extends infer _T ? string | undefined : never) {
+function statusLabel(status: MercadoLibreConnection["status"] | undefined): string {
   switch (status) {
     case "active":
       return "Conectada";
