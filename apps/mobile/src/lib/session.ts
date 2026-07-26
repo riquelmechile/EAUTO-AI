@@ -40,7 +40,9 @@ export const sessionStore = {
 
   subscribeCleared(listener: () => void): () => void {
     clearedListeners.add(listener);
-    return () => clearedListeners.delete(listener);
+    return () => {
+      clearedListeners.delete(listener);
+    };
   },
 };
 
