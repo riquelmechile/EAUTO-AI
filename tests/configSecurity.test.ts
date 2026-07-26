@@ -34,7 +34,7 @@ describe("production security configuration", () => {
     ).toThrow(/operator identity/);
   });
 
-  it("rejects production without a public signed upload endpoint", () => {
+  it("rejects production without a public HTTPS upload endpoint", () => {
     expect(() =>
       loadConfig({
         NODE_ENV: "production",
@@ -43,6 +43,21 @@ describe("production security configuration", () => {
         OPERATOR_TOKENS_JSON: productionIdentity,
       }),
     ).toThrow(/OBJECT_STORAGE_PUBLIC_ENDPOINT/);
+
+    expect(() =>
+      loadConfig({
+        NODE_ENV: "production",
+        DATABASE_URL: "postgres://eauto:eauto@localhost:5432/eauto",
+        AUTH_MODE: "static-token",
+        OPERATOR_TOKENS_JSON: productionIdentity,
+        OBJECT_STORAGE_PUBLIC_ENDPOINT: "http://uploads.example.com",
+      }),
+    ).toThrow(/must use HTTPS/);
+  });
+
+  it("parses false as false instead of a truthy string", () => {
+    const config = loadConfig({ OBJECT_STORAGE_FORCE_PATH_STYLE: "false" });
+    expect(config.OBJECT_STORAGE_FORCE_PATH_STYLE).toBe(false);
   });
 
   it("accepts a hashed owner identity and HTTPS upload endpoint", () => {
