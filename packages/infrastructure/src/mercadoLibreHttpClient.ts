@@ -73,6 +73,7 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
         const entry = asRecord(rawEntry, "item batch entry");
         if (readNumber(entry, "code") !== 200 || entry.body === undefined) continue;
         const body = asRecord(entry.body, "item body");
+        const permalink = readOptionalString(body, "permalink");
         const normalized = {
           itemId: readString(body, "id"),
           title: readString(body, "title"),
@@ -81,9 +82,7 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
           currencyId: readString(body, "currency_id"),
           availableQuantity: readInteger(body, "available_quantity"),
           soldQuantity: readInteger(body, "sold_quantity"),
-          ...(readOptionalString(body, "permalink")
-            ? { permalink: readOptionalString(body, "permalink") }
-            : {}),
+          ...(permalink ? { permalink } : {}),
         };
         listings.push(
           Object.freeze({
