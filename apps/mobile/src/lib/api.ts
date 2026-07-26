@@ -34,7 +34,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   });
 
   if (response.status === 401 && options.retryAuthentication !== false && session) {
-    const rotated = await refreshSession(session.refreshToken);
+    await refreshSession(session.refreshToken);
     return request<T>(path, { ...options, retryAuthentication: false, headers: options.headers });
   }
   if (!response.ok) throw new Error(`API ${response.status}: ${await response.text()}`);
