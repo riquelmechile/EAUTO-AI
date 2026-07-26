@@ -11,6 +11,7 @@ export const PERMISSIONS = [
   "action.execute",
   "receipts.read",
   "operations.read",
+  "operations.manage",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
