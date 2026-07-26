@@ -4,6 +4,8 @@ import { z } from "zod";
 import {
   AuthenticationError,
   AuthorizationError,
+  MercadoLibreIntegrationError,
+  MercadoLibreWriteBlockedError,
   SOURCE_IMAGE_CONTENT_TYPES,
   SessionExpiredError,
   SessionRevokedError,
@@ -17,6 +19,7 @@ import {
   type ProductLaunchBrief,
 } from "@eauto/domain";
 import { createAuthenticator, readBearerToken, type EnrollmentAuthenticator } from "./auth.js";
+import { registerMercadoLibreRoutes } from "./mercadoLibreRoutes.js";
 import { createRuntime, type Runtime } from "./runtime.js";
 import type { AppConfig } from "./config.js";
 
@@ -107,6 +110,11 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       maximumBytes: config.SOURCE_IMAGE_MAX_BYTES,
       signedUrlTtlSeconds: config.SOURCE_IMAGE_UPLOAD_TTL_SECONDS,
     },
+    mercadoLibreChile: {
+      enabled: runtime.mercadoLibre !== null,
+      siteId: "MLC",
+      mode: "read-only",
+    },
     externalWrites: false,
     contentGeneration: "development-simulator",
   }));
@@ -126,6 +134,14 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     const accessToken = readBearerToken(request.headers.authorization);
     await runtime.sessionService.revokeAccess(accessToken);
     return reply.code(204).send();
+  });
+
+  registerMercadoLibreRoutes(app, {
+    runtime,
+    authenticate: (request) => authenticate(request, runtime, authenticator),
+    requireAccount: async (actor, accountId, permission) => {
+      await requireAccount(runtime, actor, accountId, permission);
+    },
   });
 
   app.get("/v1/me", async (request) => {
@@ -280,6 +296,15 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     }
     if (error instanceof UploadValidationError) {
       void reply.code(400).send({ error: error.code, message: error.message });
+      return;
+    }
+    if (error instanceof MercadoLibreIntegrationError) {
+      const status = error.code === "mercadolibre-invalid-state" ? 400 : 409;
+      void reply.code(status).send({ error: error.code, message: error.message });
+      return;
+    }
+    if (error instanceof MercadoLibreWriteBlockedError) {
+      void reply.code(409).send({ error: error.code, message: error.message });
       return;
     }
     if (
