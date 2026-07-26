@@ -30,25 +30,25 @@ jobs:
       - name: Check formatting
         run: npm run format:check
       - name: Typecheck
-        id: typecheck
+        run: npm run typecheck
+      - name: Lint
+        id: lint
         continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
-          npm run typecheck 2>&1 | tee /tmp/typecheck.log
-      - name: Upload TypeScript diagnostics
+          npm run lint 2>&1 | tee /tmp/lint.log
+      - name: Upload lint diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: secure-upload-typecheck-${{ github.sha }}
-          path: /tmp/typecheck.log
+          name: secure-upload-lint-${{ github.sha }}
+          path: /tmp/lint.log
           if-no-files-found: error
           retention-days: 1
-      - name: Enforce typecheck
-        if: steps.typecheck.outcome == 'failure'
+      - name: Enforce lint
+        if: steps.lint.outcome == 'failure'
         run: exit 1
-      - name: Lint
-        run: npm run lint
       - name: Test
         run: npm test
       - name: Build
