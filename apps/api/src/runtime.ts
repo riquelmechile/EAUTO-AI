@@ -141,9 +141,7 @@ export function createRuntime(config: AppConfig) {
     ...(config.OBJECT_STORAGE_INTERNAL_ENDPOINT
       ? { internalEndpoint: config.OBJECT_STORAGE_INTERNAL_ENDPOINT }
       : {}),
-    ...(config.OBJECT_STORAGE_ACCESS_KEY
-      ? { accessKeyId: config.OBJECT_STORAGE_ACCESS_KEY }
-      : {}),
+    ...(config.OBJECT_STORAGE_ACCESS_KEY ? { accessKeyId: config.OBJECT_STORAGE_ACCESS_KEY } : {}),
     ...(config.OBJECT_STORAGE_SECRET_KEY
       ? { secretAccessKey: config.OBJECT_STORAGE_SECRET_KEY }
       : {}),

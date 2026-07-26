@@ -179,11 +179,7 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     const params = z.object({ id: z.string().min(3) }).parse(request.params);
     const body = z.object({ accountId: z.string().min(3) }).parse(request.body);
     await requireAccount(runtime, actor, body.accountId, "content.create");
-    return runtime.sourceImageUploads.verifyUpload(
-      params.id,
-      actor.organizationId,
-      body.accountId,
-    );
+    return runtime.sourceImageUploads.verifyUpload(params.id, actor.organizationId, body.accountId);
   });
 
   app.post("/v1/content/launches", async (request, reply) => {

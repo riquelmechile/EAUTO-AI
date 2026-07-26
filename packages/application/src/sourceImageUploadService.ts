@@ -143,11 +143,7 @@ export class SourceImageUploadService {
     accountId: string,
   ): Promise<SourceImageUpload> {
     const upload = await this.uploads.get(id);
-    if (
-      !upload ||
-      upload.organizationId !== organizationId ||
-      upload.accountId !== accountId
-    ) {
+    if (!upload || upload.organizationId !== organizationId || upload.accountId !== accountId) {
       throw new UploadValidationError(`Upload ${id} was not found.`);
     }
     return upload;
@@ -159,8 +155,10 @@ function verifyObservedObject(
   observed: Awaited<ReturnType<ObjectStoragePort["inspectObject"]>>,
 ): string | null {
   if (!observed.exists) return "Uploaded object was not found.";
-  if (observed.sizeBytes !== expected.sizeBytes) return "Uploaded object size does not match the request.";
-  if (observed.contentType !== expected.contentType) return "Uploaded object content type does not match.";
+  if (observed.sizeBytes !== expected.sizeBytes)
+    return "Uploaded object size does not match the request.";
+  if (observed.contentType !== expected.contentType)
+    return "Uploaded object content type does not match.";
   if (observed.checksumSha256Base64 !== expected.checksumSha256Base64) {
     return "Uploaded object checksum does not match.";
   }

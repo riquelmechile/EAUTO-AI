@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { UploadValidationError } from "@eauto/domain";
-import {
-  SourceImageUploadService,
-  type ObjectStoragePort,
-} from "@eauto/application";
+import { SourceImageUploadService, type ObjectStoragePort } from "@eauto/application";
 import { InMemorySourceImageUploadRepository } from "@eauto/infrastructure";
 
 const checksum = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
@@ -30,10 +27,15 @@ function fixture(observed?: Partial<Awaited<ReturnType<ObjectStoragePort["inspec
         ...observed,
       }),
   };
-  const service = new SourceImageUploadService(repository, storage, { now: () => now }, {
-    maximumBytes: 10_000_000,
-    uploadExpiresInSeconds: 300,
-  });
+  const service = new SourceImageUploadService(
+    repository,
+    storage,
+    { now: () => now },
+    {
+      maximumBytes: 10_000_000,
+      uploadExpiresInSeconds: 300,
+    },
+  );
   return { service, setNow: (value: string) => (now = new Date(value)) };
 }
 
@@ -61,7 +63,9 @@ describe("SourceImageUploadService", () => {
   });
 
   it("rejects checksum mismatches instead of trusting a successful PUT", async () => {
-    const { service } = fixture({ checksumSha256Base64: "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=" });
+    const { service } = fixture({
+      checksumSha256Base64: "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=",
+    });
     await service.requestUpload(request);
     await expect(service.verifyUpload("source-1", "maustian", "plasticov")).rejects.toThrow(
       /checksum does not match/,

@@ -32,7 +32,12 @@ const configSchema = z.object({
   OBJECT_STORAGE_ACCESS_KEY: optionalString,
   OBJECT_STORAGE_SECRET_KEY: optionalString,
   OBJECT_STORAGE_FORCE_PATH_STYLE: z.coerce.boolean().default(true),
-  SOURCE_IMAGE_MAX_BYTES: z.coerce.number().int().min(1_048_576).max(50_000_000).default(10_000_000),
+  SOURCE_IMAGE_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_048_576)
+    .max(50_000_000)
+    .default(10_000_000),
   SOURCE_IMAGE_UPLOAD_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(300),
   OUTBOX_WORKER_ID: z.string().min(1).default("eauto-outbox"),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),

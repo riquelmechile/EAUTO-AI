@@ -48,7 +48,10 @@ export async function uploadVerifiedSourceImage(input: {
   }
 
   input.onStatus?.("Verificando tamaño, tipo y checksum…");
-  const verified = await api.completeSourceImageUpload({ id: uploadId, accountId: input.accountId });
+  const verified = await api.completeSourceImageUpload({
+    id: uploadId,
+    accountId: input.accountId,
+  });
   return Object.freeze({ uploadId, objectUri: verified.objectUri });
 }
 

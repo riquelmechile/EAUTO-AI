@@ -56,7 +56,9 @@ export function validateSourceImageUploadRequest(
     throw new UploadValidationError("Checksum must be a base64-encoded SHA-256 digest.");
   }
   if (request.originalFileName.length < 1 || request.originalFileName.length > 255) {
-    throw new UploadValidationError("Original file name must contain between 1 and 255 characters.");
+    throw new UploadValidationError(
+      "Original file name must contain between 1 and 255 characters.",
+    );
   }
 }
 

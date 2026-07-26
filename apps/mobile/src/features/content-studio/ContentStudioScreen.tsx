@@ -3,10 +3,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Panel } from "../../components/Panel";
 import { api } from "../../lib/api";
-import {
-  uploadVerifiedSourceImage,
-  type LocalSourceImage,
-} from "../../lib/sourceImageUpload";
+import { uploadVerifiedSourceImage, type LocalSourceImage } from "../../lib/sourceImageUpload";
 
 export function ContentStudioScreen() {
   const [image, setImage] = useState<LocalSourceImage | null>(null);
@@ -123,7 +120,7 @@ function normalizeImageMimeType(
 }
 
 function extensionFor(mimeType: LocalSourceImage["mimeType"]): string {
-  return mimeType === "image/jpeg" ? "jpg" : mimeType.split("/")[1] ?? "img";
+  return mimeType === "image/jpeg" ? "jpg" : (mimeType.split("/")[1] ?? "img");
 }
 
 const styles = StyleSheet.create({
