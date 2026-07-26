@@ -1,9 +1,11 @@
 import {
   UploadValidationError,
+  isVerifiedSourceImageUpload,
   sourceImageExtension,
   validateSourceImageUploadRequest,
   type SourceImageUpload,
   type UploadSourceImageRequest,
+  type VerifiedSourceImageUpload,
 } from "@eauto/domain";
 import type { Clock } from "./ports.js";
 
@@ -88,9 +90,9 @@ export class SourceImageUploadService {
     id: string,
     organizationId: string,
     accountId: string,
-  ): Promise<SourceImageUpload> {
+  ): Promise<VerifiedSourceImageUpload> {
     const upload = await this.requireOwnedUpload(id, organizationId, accountId);
-    if (upload.status === "verified") return upload;
+    if (isVerifiedSourceImageUpload(upload)) return upload;
     const now = this.clock.now();
     if (Date.parse(upload.expiresAt) <= now.getTime()) {
       const expired = Object.freeze({
@@ -114,9 +116,9 @@ export class SourceImageUploadService {
       throw new UploadValidationError(mismatch);
     }
 
-    const verified = Object.freeze({
+    const verified: VerifiedSourceImageUpload = Object.freeze({
       ...upload,
-      status: "verified" as const,
+      status: "verified",
       objectUri: observed.objectUri,
       verifiedAt: now.toISOString(),
       rejectionReason: null,
@@ -129,9 +131,9 @@ export class SourceImageUploadService {
     id: string,
     organizationId: string,
     accountId: string,
-  ): Promise<SourceImageUpload> {
+  ): Promise<VerifiedSourceImageUpload> {
     const upload = await this.requireOwnedUpload(id, organizationId, accountId);
-    if (upload.status !== "verified" || upload.objectUri === null) {
+    if (!isVerifiedSourceImageUpload(upload)) {
       throw new UploadValidationError("A verified source image for this account is required.");
     }
     return upload;
