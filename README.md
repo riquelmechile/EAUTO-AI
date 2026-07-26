@@ -12,24 +12,26 @@ La arquitectura y el proceso de desarrollo siguen el libro completo:
 
 El libro se utiliza como doctrina de ingeniería, no como un bloque gigante reenviado al LLM. Sus principios se convierten en contratos, skills, gates, pruebas y recibos verificables.
 
-## Estado de esta entrega
+## Estado actual
 
-Esta rama implementa la **fundación vertical ejecutable**:
+La plataforma implementa una **fundación vertical, segura y ejecutable**:
 
 - Monorepo npm/TypeScript estricto.
 - Dominio puro: cuentas, dinero, evidencia, acciones, autonomía, objetivos y contenido.
-- Máquina de estados de acciones.
+- RBAC con identidad del operador, organización y alcance explícito por cuenta.
+- Máquina de estados de acciones fail-closed.
 - Cadena append-only de recibos verificables mediante SHA-256.
 - Compilador de prompts con prefijo estable para KV/prompt cache.
 - Wake policy por señales y utilidad esperada.
 - Costeo explícito de cache hit, cache miss y output en microUSD.
 - API Fastify con health/readiness, dashboard, inbox, Content Studio y flujo propuesta → review → aprobación → ejecución → verificación.
 - App Android Expo/React Native con panel de empresa, bandeja del CEO y captura de producto para Content Studio.
-- Migraciones Postgres y outbox transaccional.
-- Compose para Postgres, Redis, MinIO y API.
+- Postgres y transactional outbox con idempotencia, leases, retry, dead-letter y replay administrativo.
+- Worker 24/7 no solapado y recuperable después de reinicios.
+- Compose para Postgres, Redis, MinIO, API y worker.
 - Skills versionadas para lanzamiento, contenido, pricing y verdad financiera.
-- Tests de dominio, arquitectura, caché, wake policy, recibos y acción completa.
-- CI con formato, typecheck, lint, tests y build.
+- Tests de dominio, seguridad, arquitectura, caché, wake policy, outbox, recibos y acción completa.
+- CI con formato, typecheck, lint, tests, build y doctor.
 
 > Los adaptadores de MercadoLibre, LLM, imagen y video permanecen fail-closed. El proveedor de contenido incluido es un simulador trazable de desarrollo y declara que no realizó generación externa ni publicaciones.
 
@@ -43,14 +45,15 @@ Esta rama implementa la **fundación vertical ejecutable**:
 ## Inicio rápido
 
 ```bash
-npm install
+npm ci
 npm run check
 npm run dev:api
 ```
 
-En otra terminal:
+En terminales separadas:
 
 ```bash
+npm run dev:worker
 npm run dev:mobile
 ```
 
@@ -60,10 +63,12 @@ Android Emulator usa por defecto `http://10.0.2.2:3000`. Para un teléfono físi
 EXPO_PUBLIC_API_URL=http://IP_DE_TU_PC:3000 npm run dev:mobile
 ```
 
+En desarrollo `AUTH_MODE=disabled` crea un owner local. En producción se exige `AUTH_MODE=static-token`, Postgres y al menos una identidad hashada. Consulte [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md).
+
 ## Infraestructura local
 
 ```bash
-docker compose -f infra/compose/docker-compose.yml up -d postgres redis minio
+docker compose -f infra/compose/docker-compose.yml up -d
 npm run doctor
 ```
 
@@ -71,6 +76,7 @@ npm run doctor
 
 - `GET /health`
 - `GET /ready`
+- `GET /v1/me`
 - `GET /v1/dashboard`
 - `GET /v1/inbox`
 - `POST /v1/content/launches`
@@ -79,6 +85,9 @@ npm run doctor
 - `POST /v1/actions/:id/approve`
 - `POST /v1/actions/:id/execute`
 - `GET /v1/actions/:id/receipts`
+- `GET /v1/operations/outbox`
+- `GET /v1/operations/outbox/dead`
+- `POST /v1/operations/outbox/dead/:id/requeue`
 
 ## Principios no negociables
 
@@ -99,5 +108,7 @@ npm run doctor
 - [Arquitectura objetivo](docs/TARGET_ARCHITECTURE.md)
 - [Política de autonomía](docs/AUTONOMY_POLICY.md)
 - [Confianza verificable](docs/VERIFIABLE_TRUST.md)
+- [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md)
+- [Runbook del outbox worker](docs/runbooks/OUTBOX_WORKER.md)
 - [Roadmap](docs/ROADMAP.md)
 - [ADR del repositorio canónico](docs/adr/0001-canonical-platform.md)
