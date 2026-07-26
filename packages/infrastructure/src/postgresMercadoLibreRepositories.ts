@@ -8,7 +8,9 @@ import type {
 import type {
   MercadoLibreClaimSnapshot,
   MercadoLibreListingSnapshot,
+  MercadoLibreOrderSnapshot,
   MercadoLibreQuestionSnapshot,
+  MercadoLibreReputationSnapshot,
 } from "@eauto/domain";
 
 type OAuthStateRow = { payload_json: MercadoLibreOAuthStateRecord };
@@ -16,8 +18,12 @@ type CredentialRow = { payload_json: MercadoLibreCredentialRecord };
 type ListingSnapshotRow = { payload_json: MercadoLibreListingSnapshot };
 type ClaimSnapshotRow = { payload_json: MercadoLibreClaimSnapshot };
 type QuestionSnapshotRow = { payload_json: MercadoLibreQuestionSnapshot };
+type OrderSnapshotRow = { payload_json: MercadoLibreOrderSnapshot };
+type ReputationSnapshotRow = { payload_json: MercadoLibreReputationSnapshot };
 
-export class PostgresMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
+export class PostgresMercadoLibreOAuthStateRepository
+  implements MercadoLibreOAuthStateRepository
+{
   constructor(private readonly pool: Pool) {}
 
   async create(record: MercadoLibreOAuthStateRecord): Promise<void> {
@@ -46,7 +52,9 @@ export class PostgresMercadoLibreOAuthStateRepository implements MercadoLibreOAu
   }
 }
 
-export class PostgresMercadoLibreConnectionRepository implements MercadoLibreConnectionRepository {
+export class PostgresMercadoLibreConnectionRepository
+  implements MercadoLibreConnectionRepository
+{
   constructor(private readonly pool: Pool) {}
 
   async get(accountId: string): Promise<MercadoLibreCredentialRecord | null> {
@@ -208,7 +216,9 @@ export class PostgresMercadoLibreConnectionRepository implements MercadoLibreCon
     });
   }
 
-  async listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]> {
+  async listQuestionSnapshots(
+    accountId: string,
+  ): Promise<readonly MercadoLibreQuestionSnapshot[]> {
     const result = await this.pool.query<QuestionSnapshotRow>(
       `SELECT payload_json
        FROM mercadolibre_question_snapshots
@@ -217,6 +227,69 @@ export class PostgresMercadoLibreConnectionRepository implements MercadoLibreCon
       [accountId],
     );
     return result.rows.map((row) => row.payload_json);
+  }
+
+  async replaceOrderSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreOrderSnapshot[],
+  ): Promise<void> {
+    await replaceInTransaction(this.pool, async (client) => {
+      await client.query(`DELETE FROM mercadolibre_order_snapshots WHERE account_id = $1`, [
+        accountId,
+      ]);
+      for (const snapshot of snapshots) await insertOrderSnapshot(client, snapshot);
+    });
+  }
+
+  async listOrderSnapshots(accountId: string): Promise<readonly MercadoLibreOrderSnapshot[]> {
+    const result = await this.pool.query<OrderSnapshotRow>(
+      `SELECT payload_json
+       FROM mercadolibre_order_snapshots
+       WHERE account_id = $1
+       ORDER BY date_created DESC, order_id DESC`,
+      [accountId],
+    );
+    return result.rows.map((row) => row.payload_json);
+  }
+
+  async saveReputationSnapshot(snapshot: MercadoLibreReputationSnapshot): Promise<void> {
+    const result = await this.pool.query(
+      `INSERT INTO mercadolibre_reputation_snapshots
+        (account_id, organization_id, seller_id, site_id, observed_at, payload_json)
+       VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+       ON CONFLICT (account_id) DO UPDATE SET
+         observed_at = EXCLUDED.observed_at,
+         payload_json = EXCLUDED.payload_json
+       WHERE mercadolibre_reputation_snapshots.organization_id = EXCLUDED.organization_id
+         AND mercadolibre_reputation_snapshots.seller_id = EXCLUDED.seller_id
+         AND mercadolibre_reputation_snapshots.site_id = EXCLUDED.site_id`,
+      [
+        snapshot.accountId,
+        snapshot.organizationId,
+        snapshot.sellerId,
+        snapshot.siteId,
+        snapshot.observedAt,
+        JSON.stringify(snapshot),
+      ],
+    );
+    if (result.rowCount !== 1) {
+      throw new Error(
+        `MercadoLibre reputation binding cannot change for ${snapshot.accountId}.`,
+      );
+    }
+  }
+
+  async getReputationSnapshot(
+    accountId: string,
+  ): Promise<MercadoLibreReputationSnapshot | null> {
+    const result = await this.pool.query<ReputationSnapshotRow>(
+      `SELECT payload_json
+       FROM mercadolibre_reputation_snapshots
+       WHERE account_id = $1
+       LIMIT 1`,
+      [accountId],
+    );
+    return result.rows[0]?.payload_json ?? null;
   }
 }
 
@@ -295,6 +368,29 @@ async function insertQuestionSnapshot(
       snapshot.itemId,
       snapshot.status,
       snapshot.dateCreated,
+      snapshot.observedAt,
+      JSON.stringify(snapshot),
+    ],
+  );
+}
+
+async function insertOrderSnapshot(
+  client: PoolClient,
+  snapshot: MercadoLibreOrderSnapshot,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO mercadolibre_order_snapshots
+      (account_id, organization_id, seller_id, order_id, status, date_created, last_updated,
+       observed_at, payload_json)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
+    [
+      snapshot.accountId,
+      snapshot.organizationId,
+      snapshot.sellerId,
+      snapshot.orderId,
+      snapshot.status,
+      snapshot.dateCreated,
+      snapshot.lastUpdated,
       snapshot.observedAt,
       JSON.stringify(snapshot),
     ],
