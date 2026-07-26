@@ -1,5 +1,25 @@
 import { z } from "zod";
 
+const optionalUrl = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().url().optional(),
+);
+
+const optionalString = z.preprocess(
+  (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+  z.string().min(1).optional(),
+);
+
+const environmentBoolean = z.preprocess((value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+  }
+  return value;
+}, z.boolean());
+
 const configSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
@@ -15,6 +35,20 @@ const configSchema = z.object({
     .min(3_600_000)
     .max(90 * 86_400_000)
     .default(30 * 86_400_000),
+  OBJECT_STORAGE_BUCKET: z.string().min(3).default("eauto-content"),
+  OBJECT_STORAGE_REGION: z.string().min(1).default("us-east-1"),
+  OBJECT_STORAGE_PUBLIC_ENDPOINT: optionalUrl,
+  OBJECT_STORAGE_INTERNAL_ENDPOINT: optionalUrl,
+  OBJECT_STORAGE_ACCESS_KEY: optionalString,
+  OBJECT_STORAGE_SECRET_KEY: optionalString,
+  OBJECT_STORAGE_FORCE_PATH_STYLE: environmentBoolean.default(true),
+  SOURCE_IMAGE_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_048_576)
+    .max(50_000_000)
+    .default(10_000_000),
+  SOURCE_IMAGE_UPLOAD_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(300),
   OUTBOX_WORKER_ID: z.string().min(1).default("eauto-outbox"),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(20),
@@ -40,6 +74,12 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     throw new Error("OPERATOR_TOKENS_JSON must contain a JSON array.");
   }
 
+  const hasAccessKey = parsed.data.OBJECT_STORAGE_ACCESS_KEY !== undefined;
+  const hasSecretKey = parsed.data.OBJECT_STORAGE_SECRET_KEY !== undefined;
+  if (hasAccessKey !== hasSecretKey) {
+    throw new Error("Object storage access and secret keys must be configured together.");
+  }
+
   if (parsed.data.NODE_ENV === "production") {
     if (!parsed.data.DATABASE_URL) throw new Error("DATABASE_URL is mandatory in production.");
     if (parsed.data.AUTH_MODE !== "static-token") {
@@ -47,6 +87,12 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     }
     if (operatorIdentities.length === 0) {
       throw new Error("At least one operator identity is mandatory in production.");
+    }
+    if (!parsed.data.OBJECT_STORAGE_PUBLIC_ENDPOINT) {
+      throw new Error("OBJECT_STORAGE_PUBLIC_ENDPOINT is mandatory in production.");
+    }
+    if (new URL(parsed.data.OBJECT_STORAGE_PUBLIC_ENDPOINT).protocol !== "https:") {
+      throw new Error("OBJECT_STORAGE_PUBLIC_ENDPOINT must use HTTPS in production.");
     }
   }
 

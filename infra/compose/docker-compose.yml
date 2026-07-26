@@ -37,6 +37,17 @@ services:
       - "127.0.0.1:9001:9001"
     volumes: ["minio_data:/data"]
 
+  minio-init:
+    image: minio/mc:latest
+    depends_on: [minio]
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until mc alias set local http://minio:9000 eauto change-me-now; do sleep 2; done;
+        mc mb --ignore-existing local/eauto-content;
+        mc anonymous set none local/eauto-content
+
   api:
     image: node:22-bookworm-slim
     working_dir: /workspace
@@ -48,6 +59,13 @@ services:
       REDIS_URL: redis://redis:6379
       AUTH_MODE: disabled
       OPERATOR_TOKENS_JSON: "[]"
+      OBJECT_STORAGE_BUCKET: eauto-content
+      OBJECT_STORAGE_REGION: us-east-1
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: ${OBJECT_STORAGE_PUBLIC_ENDPOINT:-http://10.0.2.2:9000}
+      OBJECT_STORAGE_INTERNAL_ENDPOINT: http://minio:9000
+      OBJECT_STORAGE_ACCESS_KEY: eauto
+      OBJECT_STORAGE_SECRET_KEY: change-me-now
+      OBJECT_STORAGE_FORCE_PATH_STYLE: "true"
       OUTBOX_WORKER_ID: compose-outbox
     ports: ["127.0.0.1:3000:3000"]
     volumes:
@@ -55,6 +73,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
 
   outbox-worker:
     image: node:22-bookworm-slim
@@ -65,6 +84,7 @@ services:
       - ../../:/workspace
     depends_on:
       postgres: { condition: service_healthy }
+      minio-init: { condition: service_completed_successfully }
 
 volumes:
   postgres_data:

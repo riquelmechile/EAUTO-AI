@@ -16,7 +16,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,5 +37,11 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Start MinIO
+        run: |
+          docker compose -f infra/compose/docker-compose.yml up -d minio
+          docker compose -f infra/compose/docker-compose.yml run --rm minio-init
+      - name: Object storage smoke
+        run: npm run smoke:object-storage
       - name: Doctor
         run: npm run doctor

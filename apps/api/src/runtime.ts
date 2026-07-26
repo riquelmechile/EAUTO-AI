@@ -11,6 +11,7 @@ import {
   ContentStudioService,
   OutboxProcessor,
   SessionService,
+  SourceImageUploadService,
   type OutboxEventHandler,
 } from "@eauto/application";
 import { DeterministicContentProvider } from "@eauto/content";
@@ -21,12 +22,15 @@ import {
   InMemoryOutboxRepository,
   InMemoryReceiptRepository,
   InMemorySessionRepository,
+  InMemorySourceImageUploadRepository,
   PostgresAccountRepository,
   PostgresActionRepository,
   PostgresContentAssetRepository,
   PostgresOutboxRepository,
   PostgresReceiptRepository,
   PostgresSessionRepository,
+  PostgresSourceImageUploadRepository,
+  S3ObjectStorage,
 } from "@eauto/infrastructure";
 import { NodeSessionSecrets } from "./sessionSecrets.js";
 import type { AppConfig } from "./config.js";
@@ -102,6 +106,9 @@ export function createRuntime(config: AppConfig) {
   const sessionRepository = pool
     ? new PostgresSessionRepository(pool)
     : new InMemorySessionRepository();
+  const uploadRepository = pool
+    ? new PostgresSourceImageUploadRepository(pool)
+    : new InMemorySourceImageUploadRepository();
   const clock = { now: () => new Date() };
   const ids = { next: (prefix: string) => `${prefix}_${randomUUID()}` };
   const actionService = new ActionService(
@@ -125,6 +132,25 @@ export function createRuntime(config: AppConfig) {
       refreshMs: config.SESSION_REFRESH_TTL_MS,
     },
   );
+  const objectStorage = new S3ObjectStorage({
+    bucket: config.OBJECT_STORAGE_BUCKET,
+    region: config.OBJECT_STORAGE_REGION,
+    ...(config.OBJECT_STORAGE_PUBLIC_ENDPOINT
+      ? { publicEndpoint: config.OBJECT_STORAGE_PUBLIC_ENDPOINT }
+      : {}),
+    ...(config.OBJECT_STORAGE_INTERNAL_ENDPOINT
+      ? { internalEndpoint: config.OBJECT_STORAGE_INTERNAL_ENDPOINT }
+      : {}),
+    ...(config.OBJECT_STORAGE_ACCESS_KEY ? { accessKeyId: config.OBJECT_STORAGE_ACCESS_KEY } : {}),
+    ...(config.OBJECT_STORAGE_SECRET_KEY
+      ? { secretAccessKey: config.OBJECT_STORAGE_SECRET_KEY }
+      : {}),
+    forcePathStyle: config.OBJECT_STORAGE_FORCE_PATH_STYLE,
+  });
+  const sourceImageUploads = new SourceImageUploadService(uploadRepository, objectStorage, clock, {
+    maximumBytes: config.SOURCE_IMAGE_MAX_BYTES,
+    uploadExpiresInSeconds: config.SOURCE_IMAGE_UPLOAD_TTL_SECONDS,
+  });
   const outboxProcessor = new OutboxProcessor(outbox, lifecycleHandlers, {
     workerId: `${config.OUTBOX_WORKER_ID}-${process.pid}`,
     leaseMs: config.OUTBOX_LEASE_MS,
@@ -143,6 +169,7 @@ export function createRuntime(config: AppConfig) {
     actionService,
     contentStudio,
     sessionService,
+    sourceImageUploads,
     outboxProcessor,
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
     close: () => pool?.end() ?? Promise.resolve(),

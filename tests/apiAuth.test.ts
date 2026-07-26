@@ -119,7 +119,7 @@ describe("API authentication", () => {
         payload: {
           id: "launch-1",
           accountId: "plasticov",
-          sourceImageUri: "file://product.jpg",
+          sourceImageUploadId: "source-1",
           requestedChannels: ["mercadolibre"],
         },
       });

@@ -9,9 +9,12 @@ const required = [
   "apps/api/src/worker.ts",
   "apps/mobile/app.json",
   "apps/mobile/src/lib/session.ts",
+  "apps/mobile/src/lib/sourceImageUpload.ts",
   "infra/compose/docker-compose.yml",
   "infra/postgres/migrations/003_identity_and_outbox.sql",
   "infra/postgres/migrations/004_operator_sessions.sql",
+  "infra/postgres/migrations/005_source_image_uploads.sql",
+  "scripts/smoke-object-storage.mjs",
 ];
 let failed = false;
 for (const path of required) {

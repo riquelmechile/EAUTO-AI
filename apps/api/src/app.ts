@@ -4,8 +4,10 @@ import { z } from "zod";
 import {
   AuthenticationError,
   AuthorizationError,
+  SOURCE_IMAGE_CONTENT_TYPES,
   SessionExpiredError,
   SessionRevokedError,
+  UploadValidationError,
   assertAuthorized,
   canAccessAccount,
   type ActorIdentity,
@@ -18,10 +20,19 @@ import { createAuthenticator, readBearerToken, type EnrollmentAuthenticator } fr
 import { createRuntime, type Runtime } from "./runtime.js";
 import type { AppConfig } from "./config.js";
 
+const sourceImageUploadSchema = z.object({
+  id: z.string().min(3).max(128),
+  accountId: z.string().min(3),
+  originalFileName: z.string().min(1).max(255),
+  contentType: z.enum(SOURCE_IMAGE_CONTENT_TYPES),
+  sizeBytes: z.number().int().positive(),
+  checksumSha256Base64: z.string().regex(/^[A-Za-z0-9+/]{43}=$/),
+});
+
 const launchSchema = z.object({
   id: z.string().min(3),
   accountId: z.string().min(3),
-  sourceImageUri: z.string().min(1),
+  sourceImageUploadId: z.string().min(3),
   knownCostMinor: z.number().int().nonnegative().optional(),
   stock: z.number().int().nonnegative().optional(),
   instructions: z.string().max(2000).optional(),
@@ -92,6 +103,10 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     authentication: authenticator.mode === "disabled" ? "development-owner" : "rotating-session",
     persistence: runtime.persistenceMode,
     outbox: await runtime.outbox.stats(),
+    sourceImageUploads: {
+      maximumBytes: config.SOURCE_IMAGE_MAX_BYTES,
+      signedUrlTtlSeconds: config.SOURCE_IMAGE_UPLOAD_TTL_SECONDS,
+    },
     externalWrites: false,
     contentGeneration: "development-simulator",
   }));
@@ -148,13 +163,47 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     return { actions };
   });
 
+  app.post("/v1/uploads/source-images", async (request, reply) => {
+    const actor = await authenticate(request, runtime, authenticator);
+    const body = sourceImageUploadSchema.parse(request.body);
+    await requireAccount(runtime, actor, body.accountId, "content.create");
+    const requested = await runtime.sourceImageUploads.requestUpload({
+      ...body,
+      organizationId: actor.organizationId,
+    });
+    return reply.code(201).send(requested);
+  });
+
+  app.post("/v1/uploads/source-images/:id/complete", async (request) => {
+    const actor = await authenticate(request, runtime, authenticator);
+    const params = z.object({ id: z.string().min(3) }).parse(request.params);
+    const body = z.object({ accountId: z.string().min(3) }).parse(request.body);
+    await requireAccount(runtime, actor, body.accountId, "content.create");
+    return runtime.sourceImageUploads.verifyUpload(params.id, actor.organizationId, body.accountId);
+  });
+
   app.post("/v1/content/launches", async (request, reply) => {
     const actor = await authenticate(request, runtime, authenticator);
-    const brief = launchSchema.parse(request.body) as ProductLaunchBrief;
-    await requireAccount(runtime, actor, brief.accountId, "content.create");
+    const body = launchSchema.parse(request.body);
+    await requireAccount(runtime, actor, body.accountId, "content.create");
+    const sourceImage = await runtime.sourceImageUploads.requireVerified(
+      body.sourceImageUploadId,
+      actor.organizationId,
+      body.accountId,
+    );
+    const brief: ProductLaunchBrief = Object.freeze({
+      id: body.id,
+      accountId: body.accountId,
+      sourceImageUri: sourceImage.objectUri,
+      ...(body.knownCostMinor === undefined ? {} : { knownCostMinor: body.knownCostMinor }),
+      ...(body.stock === undefined ? {} : { stock: body.stock }),
+      ...(body.instructions === undefined ? {} : { instructions: body.instructions }),
+      requestedChannels: body.requestedChannels,
+    });
     const assets = await runtime.contentStudio.createLaunch(brief);
     return reply.code(201).send({
       brief,
+      sourceImageUpload: sourceImage,
       assets,
       requestedBy: actor.id,
       externalGenerationPerformed: false,
@@ -227,6 +276,10 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof z.ZodError) {
       void reply.code(400).send({ error: "validation-error", issues: error.issues });
+      return;
+    }
+    if (error instanceof UploadValidationError) {
+      void reply.code(400).send({ error: error.code, message: error.message });
       return;
     }
     if (
