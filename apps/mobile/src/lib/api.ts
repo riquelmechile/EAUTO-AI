@@ -23,19 +23,20 @@ export type PendingAction = {
 type RequestOptions = RequestInit & { retryAuthentication?: boolean };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  const { retryAuthentication = true, ...requestInit } = options;
   const session = await sessionStore.load();
   const response = await fetch(`${API_URL}${path}`, {
-    ...options,
+    ...requestInit,
     headers: {
       "content-type": "application/json",
       ...(session ? { authorization: `Bearer ${session.accessToken}` } : {}),
-      ...options.headers,
+      ...requestInit.headers,
     },
   });
 
-  if (response.status === 401 && options.retryAuthentication !== false && session) {
+  if (response.status === 401 && retryAuthentication && session) {
     await refreshSession(session.refreshToken);
-    return request<T>(path, { ...options, retryAuthentication: false, headers: options.headers });
+    return request<T>(path, { ...requestInit, retryAuthentication: false });
   }
   if (!response.ok) throw new Error(`API ${response.status}: ${await response.text()}`);
   if (response.status === 204) return undefined as T;
