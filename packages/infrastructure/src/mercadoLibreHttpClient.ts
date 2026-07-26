@@ -220,6 +220,8 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
 
 function normalizeClaim(value: unknown): MercadoLibreRemoteClaim {
   const claim = asRecord(value, "claim");
+  const reasonId = readOptionalStringOrNumber(claim, "reason_id");
+  const fulfilled = readOptionalBoolean(claim, "fulfilled");
   const normalized = {
     claimId: readStringOrNumber(claim, "id"),
     resourceId: readStringOrNumber(claim, "resource_id"),
@@ -227,12 +229,8 @@ function normalizeClaim(value: unknown): MercadoLibreRemoteClaim {
     status: readString(claim, "status"),
     type: readString(claim, "type"),
     stage: readString(claim, "stage"),
-    ...(readOptionalStringOrNumber(claim, "reason_id")
-      ? { reasonId: readOptionalStringOrNumber(claim, "reason_id") }
-      : {}),
-    ...(readOptionalBoolean(claim, "fulfilled") === undefined
-      ? {}
-      : { fulfilled: readOptionalBoolean(claim, "fulfilled") }),
+    ...(reasonId ? { reasonId } : {}),
+    ...(fulfilled === undefined ? {} : { fulfilled }),
     dateCreated: readIsoDate(claim, "date_created"),
     lastUpdated: readIsoDate(claim, "last_updated"),
   };
