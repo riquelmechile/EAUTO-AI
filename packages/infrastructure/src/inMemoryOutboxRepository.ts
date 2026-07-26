@@ -1,5 +1,6 @@
 import type {
   ClaimedOutboxEvent,
+  DeadOutboxEvent,
   OutboxEventDraft,
   OutboxRepository,
   OutboxStats,
@@ -101,6 +102,35 @@ export class InMemoryOutboxRepository implements OutboxRepository {
     stored.status = "pending";
     stored.event = Object.freeze({ ...stored.event, availableAt: input.retryAt });
     return Promise.resolve("pending");
+  }
+
+  listDead(limit: number): Promise<readonly DeadOutboxEvent[]> {
+    const dead = [...this.events.values()]
+      .filter((stored) => stored.status === "dead")
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      .slice(0, limit)
+      .map((stored) =>
+        Object.freeze({
+          ...stored.event,
+          status: "dead" as const,
+          attempts: stored.attempts,
+          lastError: stored.lastError,
+          createdAt: stored.createdAt,
+        }),
+      );
+    return Promise.resolve(dead);
+  }
+
+  requeueDead(input: { id: string; availableAt: string }): Promise<void> {
+    const stored = this.events.get(input.id);
+    if (!stored || stored.status !== "dead") {
+      throw new Error(`Dead-letter event ${input.id} not found.`);
+    }
+    stored.status = "pending";
+    stored.attempts = 0;
+    stored.lastError = null;
+    stored.event = Object.freeze({ ...stored.event, availableAt: input.availableAt });
+    return Promise.resolve();
   }
 
   stats(): Promise<OutboxStats> {
