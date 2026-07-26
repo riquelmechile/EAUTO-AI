@@ -13,9 +13,7 @@ describe("MercadoLibre Android OAuth return", () => {
     });
     const url = new URL(result);
 
-    expect(MERCADOLIBRE_MOBILE_RETURN_URI).toBe(
-      "eautoai://mercadolibre/oauth-complete",
-    );
+    expect(MERCADOLIBRE_MOBILE_RETURN_URI).toBe("eautoai://mercadolibre/oauth-complete");
     expect(url.protocol).toBe("eautoai:");
     expect(url.hostname).toBe("mercadolibre");
     expect(url.pathname).toBe("/oauth-complete");

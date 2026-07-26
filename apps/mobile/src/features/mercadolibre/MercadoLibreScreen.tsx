@@ -19,9 +19,7 @@ type Props = Readonly<{ roles: readonly string[] }>;
 
 export function MercadoLibreScreen({ roles }: Props) {
   const canManage = roles.some((role) => role === "owner" || role === "admin");
-  const canSync = roles.some(
-    (role) => role === "owner" || role === "admin" || role === "operator",
-  );
+  const canSync = roles.some((role) => role === "owner" || role === "admin" || role === "operator");
 
   return (
     <View style={styles.stack}>
@@ -188,7 +186,9 @@ function AccountCard({
               styles.disabled,
           ]}
         >
-          <Text style={styles.buttonText}>{busy === "sync" ? "Sincronizando…" : "Sincronizar"}</Text>
+          <Text style={styles.buttonText}>
+            {busy === "sync" ? "Sincronizando…" : "Sincronizar"}
+          </Text>
         </Pressable>
       </View>
 
@@ -213,10 +213,12 @@ function AccountCard({
                 <Text numberOfLines={2} style={styles.listingTitle}>
                   {listing.title}
                 </Text>
-                <Text style={styles.price}>{formatMoney(listing.priceMinor, listing.currencyId)}</Text>
+                <Text style={styles.price}>
+                  {formatMoney(listing.priceMinor, listing.currencyId)}
+                </Text>
               </View>
               <Text style={styles.meta}>
-                {listing.itemId} · {listing.status} · stock {listing.availableQuantity} · vendidas {" "}
+                {listing.itemId} · {listing.status} · stock {listing.availableQuantity} · vendidas{" "}
                 {listing.soldQuantity}
               </Text>
             </Pressable>
