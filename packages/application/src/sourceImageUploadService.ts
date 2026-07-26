@@ -84,8 +84,12 @@ export class SourceImageUploadService {
     return Object.freeze({ upload, ...signed });
   }
 
-  async verifyUpload(id: string): Promise<SourceImageUpload> {
-    const upload = await this.requireUpload(id);
+  async verifyUpload(
+    id: string,
+    organizationId: string,
+    accountId: string,
+  ): Promise<SourceImageUpload> {
+    const upload = await this.requireOwnedUpload(id, organizationId, accountId);
     if (upload.status === "verified") return upload;
     const now = this.clock.now();
     if (Date.parse(upload.expiresAt) <= now.getTime()) {
@@ -121,22 +125,31 @@ export class SourceImageUploadService {
     return verified;
   }
 
-  async requireVerified(id: string, organizationId: string, accountId: string): Promise<SourceImageUpload> {
-    const upload = await this.requireUpload(id);
-    if (
-      upload.organizationId !== organizationId ||
-      upload.accountId !== accountId ||
-      upload.status !== "verified" ||
-      upload.objectUri === null
-    ) {
+  async requireVerified(
+    id: string,
+    organizationId: string,
+    accountId: string,
+  ): Promise<SourceImageUpload> {
+    const upload = await this.requireOwnedUpload(id, organizationId, accountId);
+    if (upload.status !== "verified" || upload.objectUri === null) {
       throw new UploadValidationError("A verified source image for this account is required.");
     }
     return upload;
   }
 
-  private async requireUpload(id: string): Promise<SourceImageUpload> {
+  private async requireOwnedUpload(
+    id: string,
+    organizationId: string,
+    accountId: string,
+  ): Promise<SourceImageUpload> {
     const upload = await this.uploads.get(id);
-    if (!upload) throw new UploadValidationError(`Upload ${id} was not found.`);
+    if (
+      !upload ||
+      upload.organizationId !== organizationId ||
+      upload.accountId !== accountId
+    ) {
+      throw new UploadValidationError(`Upload ${id} was not found.`);
+    }
     return upload;
   }
 }
