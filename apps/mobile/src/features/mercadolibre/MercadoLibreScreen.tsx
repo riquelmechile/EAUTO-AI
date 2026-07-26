@@ -222,7 +222,11 @@ function AccountCard({
       {status?.connected ? (
         <View style={styles.metrics}>
           <Metric label="Publicaciones" value={listings.length} />
-          <Metric label="Reclamos abiertos" urgent={openClaims.length > 0} value={openClaims.length} />
+          <Metric
+            label="Reclamos abiertos"
+            urgent={openClaims.length > 0}
+            value={openClaims.length}
+          />
           <Metric
             label="Preguntas pendientes"
             urgent={unansweredQuestions.length > 0}

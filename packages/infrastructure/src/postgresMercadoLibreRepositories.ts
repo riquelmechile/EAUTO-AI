@@ -208,9 +208,7 @@ export class PostgresMercadoLibreConnectionRepository implements MercadoLibreCon
     });
   }
 
-  async listQuestionSnapshots(
-    accountId: string,
-  ): Promise<readonly MercadoLibreQuestionSnapshot[]> {
+  async listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]> {
     const result = await this.pool.query<QuestionSnapshotRow>(
       `SELECT payload_json
        FROM mercadolibre_question_snapshots
