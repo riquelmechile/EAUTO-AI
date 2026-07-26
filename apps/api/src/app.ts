@@ -184,6 +184,25 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     return { stats: await runtime.outbox.stats() };
   });
 
+  app.get("/v1/operations/outbox/dead", async (request) => {
+    authorize(request, authenticator, "operations.read");
+    const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(20) }).parse(
+      request.query,
+    );
+    return { events: await runtime.outbox.listDead(query.limit) };
+  });
+
+  app.post("/v1/operations/outbox/dead/:id/requeue", async (request) => {
+    const actor = authorize(request, authenticator, "operations.manage");
+    const params = z.object({ id: z.string().min(1) }).parse(request.params);
+    try {
+      await runtime.outbox.requeueDead({ id: params.id, availableAt: new Date().toISOString() });
+    } catch {
+      throw new NotFoundError("Dead-letter event");
+    }
+    return { requeued: true, eventId: params.id, requeuedBy: actor.id };
+  });
+
   app.addHook("onClose", async () => runtime.close());
 
   app.setErrorHandler((error, _request, reply) => {
