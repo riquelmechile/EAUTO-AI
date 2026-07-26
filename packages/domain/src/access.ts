@@ -35,13 +35,7 @@ const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = Object.f
     "action.review",
     "receipts.read",
   ],
-  reviewer: [
-    "dashboard.read",
-    "inbox.read",
-    "action.review",
-    "action.approve",
-    "receipts.read",
-  ],
+  reviewer: ["dashboard.read", "inbox.read", "action.review", "action.approve", "receipts.read"],
   viewer: ["dashboard.read", "inbox.read", "receipts.read"],
   agent: ["dashboard.read", "content.create", "action.propose", "receipts.read"],
 });

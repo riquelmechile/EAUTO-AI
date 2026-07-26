@@ -1,10 +1,6 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import {
-  AuthenticationError,
-  ROLES,
-  type ActorIdentity,
-} from "@eauto/domain";
+import { AuthenticationError, ROLES, type ActorIdentity } from "@eauto/domain";
 
 const operatorIdentitySchema = z.object({
   id: z.string().min(1),

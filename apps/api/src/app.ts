@@ -186,9 +186,9 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
 
   app.get("/v1/operations/outbox/dead", async (request) => {
     authorize(request, authenticator, "operations.read");
-    const query = z.object({ limit: z.coerce.number().int().min(1).max(100).default(20) }).parse(
-      request.query,
-    );
+    const query = z
+      .object({ limit: z.coerce.number().int().min(1).max(100).default(20) })
+      .parse(request.query);
     return { events: await runtime.outbox.listDead(query.limit) };
   });
 

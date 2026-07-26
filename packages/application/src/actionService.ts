@@ -52,7 +52,8 @@ export class ActionService {
   async approve(actionId: string, approvedBy: string): Promise<Approval> {
     const action = await this.requireAction(actionId);
     if (action.status !== "reviewed") throw new Error("Action must be reviewed before approval.");
-    if (Date.parse(action.expiresAt) <= this.clock.now().getTime()) throw new Error("Action expired.");
+    if (Date.parse(action.expiresAt) <= this.clock.now().getTime())
+      throw new Error("Action expired.");
     const actionHash = hashAction(action);
     const approval: Approval = Object.freeze({
       id: this.ids.next("approval"),

@@ -101,11 +101,7 @@ export class PostgresOutboxRepository implements OutboxRepository {
     );
   }
 
-  async markProcessed(input: {
-    id: string;
-    workerId: string;
-    processedAt: string;
-  }): Promise<void> {
+  async markProcessed(input: { id: string; workerId: string; processedAt: string }): Promise<void> {
     const result = await this.pool.query(
       `UPDATE transactional_outbox
        SET status = 'processed', processed_at = $3, locked_by = NULL, locked_until = NULL

@@ -24,9 +24,7 @@ export class InMemoryActionRepository implements ActionRepository {
   private readonly actions = new Map<string, BusinessAction>();
   private readonly approvals = new Map<string, Approval>();
 
-  constructor(
-    private readonly outbox: OutboxRepository = new InMemoryOutboxRepository(),
-  ) {}
+  constructor(private readonly outbox: OutboxRepository = new InMemoryOutboxRepository()) {}
 
   async save(action: BusinessAction, event?: OutboxEventDraft): Promise<void> {
     this.actions.set(action.id, action);
