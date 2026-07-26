@@ -27,8 +27,8 @@ export function createAuthenticator(input: {
     const developmentActor: ActorIdentity = Object.freeze({
       id: "development-owner",
       organizationId: "maustian",
-      roles: ["owner"],
-      accountIds: ["*"],
+      roles: ["owner"] as const,
+      accountIds: ["*"] as const,
     });
     return {
       mode: "disabled",
