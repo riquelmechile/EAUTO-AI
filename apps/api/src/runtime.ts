@@ -62,7 +62,7 @@ class VerifiedDevelopmentExecutor {
   }
 }
 
-export async function createRuntime(config: AppConfig) {
+export function createRuntime(config: AppConfig) {
   const pool = config.DATABASE_URL ? new Pool({ connectionString: config.DATABASE_URL }) : null;
   const accountRepository = pool
     ? new PostgresAccountRepository(pool)
@@ -98,8 +98,8 @@ export async function createRuntime(config: AppConfig) {
     actionService,
     contentStudio,
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
-    close: async () => pool?.end(),
+    close: () => pool?.end() ?? Promise.resolve(),
   };
 }
 
-export type Runtime = Awaited<ReturnType<typeof createRuntime>>;
+export type Runtime = ReturnType<typeof createRuntime>;
