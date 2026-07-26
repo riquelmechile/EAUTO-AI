@@ -5,11 +5,17 @@ import type {
   MercadoLibreOAuthStateRecord,
   MercadoLibreOAuthStateRepository,
 } from "@eauto/application";
-import type { MercadoLibreListingSnapshot } from "@eauto/domain";
+import type {
+  MercadoLibreClaimSnapshot,
+  MercadoLibreListingSnapshot,
+  MercadoLibreQuestionSnapshot,
+} from "@eauto/domain";
 
 type OAuthStateRow = { payload_json: MercadoLibreOAuthStateRecord };
 type CredentialRow = { payload_json: MercadoLibreCredentialRecord };
-type SnapshotRow = { payload_json: MercadoLibreListingSnapshot };
+type ListingSnapshotRow = { payload_json: MercadoLibreListingSnapshot };
+type ClaimSnapshotRow = { payload_json: MercadoLibreClaimSnapshot };
+type QuestionSnapshotRow = { payload_json: MercadoLibreQuestionSnapshot };
 
 export class PostgresMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
   constructor(private readonly pool: Pool) {}
@@ -148,26 +154,16 @@ export class PostgresMercadoLibreConnectionRepository implements MercadoLibreCon
     accountId: string,
     snapshots: readonly MercadoLibreListingSnapshot[],
   ): Promise<void> {
-    const client = await this.pool.connect();
-    try {
-      await client.query("BEGIN");
+    await replaceInTransaction(this.pool, async (client) => {
       await client.query(`DELETE FROM mercadolibre_listing_snapshots WHERE account_id = $1`, [
         accountId,
       ]);
-      for (const snapshot of snapshots) {
-        await insertSnapshot(client, snapshot);
-      }
-      await client.query("COMMIT");
-    } catch (error) {
-      await client.query("ROLLBACK");
-      throw error;
-    } finally {
-      client.release();
-    }
+      for (const snapshot of snapshots) await insertListingSnapshot(client, snapshot);
+    });
   }
 
   async listListingSnapshots(accountId: string): Promise<readonly MercadoLibreListingSnapshot[]> {
-    const result = await this.pool.query<SnapshotRow>(
+    const result = await this.pool.query<ListingSnapshotRow>(
       `SELECT payload_json
        FROM mercadolibre_listing_snapshots
        WHERE account_id = $1
@@ -176,9 +172,74 @@ export class PostgresMercadoLibreConnectionRepository implements MercadoLibreCon
     );
     return result.rows.map((row) => row.payload_json);
   }
+
+  async replaceClaimSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreClaimSnapshot[],
+  ): Promise<void> {
+    await replaceInTransaction(this.pool, async (client) => {
+      await client.query(`DELETE FROM mercadolibre_claim_snapshots WHERE account_id = $1`, [
+        accountId,
+      ]);
+      for (const snapshot of snapshots) await insertClaimSnapshot(client, snapshot);
+    });
+  }
+
+  async listClaimSnapshots(accountId: string): Promise<readonly MercadoLibreClaimSnapshot[]> {
+    const result = await this.pool.query<ClaimSnapshotRow>(
+      `SELECT payload_json
+       FROM mercadolibre_claim_snapshots
+       WHERE account_id = $1
+       ORDER BY last_updated DESC, claim_id ASC`,
+      [accountId],
+    );
+    return result.rows.map((row) => row.payload_json);
+  }
+
+  async replaceQuestionSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreQuestionSnapshot[],
+  ): Promise<void> {
+    await replaceInTransaction(this.pool, async (client) => {
+      await client.query(`DELETE FROM mercadolibre_question_snapshots WHERE account_id = $1`, [
+        accountId,
+      ]);
+      for (const snapshot of snapshots) await insertQuestionSnapshot(client, snapshot);
+    });
+  }
+
+  async listQuestionSnapshots(
+    accountId: string,
+  ): Promise<readonly MercadoLibreQuestionSnapshot[]> {
+    const result = await this.pool.query<QuestionSnapshotRow>(
+      `SELECT payload_json
+       FROM mercadolibre_question_snapshots
+       WHERE account_id = $1
+       ORDER BY date_created DESC, question_id ASC`,
+      [accountId],
+    );
+    return result.rows.map((row) => row.payload_json);
+  }
 }
 
-async function insertSnapshot(
+async function replaceInTransaction(
+  pool: Pool,
+  operation: (client: PoolClient) => Promise<void>,
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await operation(client);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function insertListingSnapshot(
   client: PoolClient,
   snapshot: MercadoLibreListingSnapshot,
 ): Promise<void> {
@@ -191,6 +252,51 @@ async function insertSnapshot(
       snapshot.organizationId,
       snapshot.sellerId,
       snapshot.itemId,
+      snapshot.observedAt,
+      JSON.stringify(snapshot),
+    ],
+  );
+}
+
+async function insertClaimSnapshot(
+  client: PoolClient,
+  snapshot: MercadoLibreClaimSnapshot,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO mercadolibre_claim_snapshots
+      (account_id, organization_id, seller_id, claim_id, status, last_updated, observed_at,
+       payload_json)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+    [
+      snapshot.accountId,
+      snapshot.organizationId,
+      snapshot.sellerId,
+      snapshot.claimId,
+      snapshot.status,
+      snapshot.lastUpdated,
+      snapshot.observedAt,
+      JSON.stringify(snapshot),
+    ],
+  );
+}
+
+async function insertQuestionSnapshot(
+  client: PoolClient,
+  snapshot: MercadoLibreQuestionSnapshot,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO mercadolibre_question_snapshots
+      (account_id, organization_id, seller_id, question_id, item_id, status, date_created,
+       observed_at, payload_json)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)`,
+    [
+      snapshot.accountId,
+      snapshot.organizationId,
+      snapshot.sellerId,
+      snapshot.questionId,
+      snapshot.itemId,
+      snapshot.status,
+      snapshot.dateCreated,
       snapshot.observedAt,
       JSON.stringify(snapshot),
     ],
