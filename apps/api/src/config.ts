@@ -61,6 +61,7 @@ const configSchema = z.object({
   MELI_CLIENT_ID: optionalString,
   MELI_CLIENT_SECRET: optionalString,
   MELI_REDIRECT_URI: optionalUrl,
+  MELI_MOBILE_RETURN_URI: z.string().default("eautoai://mercadolibre/oauth-complete"),
   MELI_AUTHORIZATION_URL: z.string().url().default("https://auth.mercadolibre.cl/authorization"),
   MELI_TOKEN_URL: z.string().url().default("https://api.mercadolibre.com/oauth/token"),
   MELI_API_BASE_URL: z.string().url().default("https://api.mercadolibre.com"),
@@ -118,6 +119,21 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
 }
 
 function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {
+  const mobileReturn = new URL(config.MELI_MOBILE_RETURN_URI);
+  if (
+    mobileReturn.protocol !== "eautoai:" ||
+    mobileReturn.hostname !== "mercadolibre" ||
+    mobileReturn.pathname !== "/oauth-complete" ||
+    mobileReturn.username ||
+    mobileReturn.password ||
+    mobileReturn.search ||
+    mobileReturn.hash
+  ) {
+    throw new Error(
+      "MELI_MOBILE_RETURN_URI must be exactly an eautoai://mercadolibre/oauth-complete deep link without credentials, query or fragment.",
+    );
+  }
+
   if (!config.MELI_ENABLED) return;
   if (
     !config.MELI_CLIENT_ID ||
