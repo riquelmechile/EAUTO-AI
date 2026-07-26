@@ -2,7 +2,9 @@ import { createHash } from "node:crypto";
 import {
   MercadoLibreRemoteError,
   type MercadoLibreClientPort,
+  type MercadoLibreRemoteClaim,
   type MercadoLibreRemoteListing,
+  type MercadoLibreRemoteQuestion,
   type MercadoLibreRemoteUser,
   type MercadoLibreTokenSet,
 } from "@eauto/application";
@@ -84,17 +86,68 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
           soldQuantity: readInteger(body, "sold_quantity"),
           ...(permalink ? { permalink } : {}),
         };
-        listings.push(
-          Object.freeze({
-            ...normalized,
-            sourceHash: createHash("sha256")
-              .update(JSON.stringify(normalized), "utf8")
-              .digest("hex"),
-          }),
-        );
+        listings.push(Object.freeze({ ...normalized, sourceHash: hashPayload(normalized) }));
       }
     }
     return Object.freeze(listings);
+  }
+
+  async searchSellerClaims(
+    sellerId: string,
+    accessToken: string,
+  ): Promise<readonly MercadoLibreRemoteClaim[]> {
+    const claims: MercadoLibreRemoteClaim[] = [];
+    const limit = 30;
+    for (let page = 0; page < this.config.maximumScanPages; page += 1) {
+      const offset = page * limit;
+      const query = new URLSearchParams({
+        "players.user_id": sellerId,
+        "players.role": "respondent",
+        limit: String(limit),
+        offset: String(offset),
+      });
+      const payload = asRecord(
+        await this.getJson(`/post-purchase/v1/claims/search?${query}`, accessToken),
+        "claim search",
+      );
+      const data = payload.data;
+      if (!Array.isArray(data)) throw new Error("MercadoLibre claim search data must be an array.");
+      for (const rawClaim of data) claims.push(normalizeClaim(rawClaim));
+      const total = readPagingTotal(payload);
+      if (data.length < limit || offset + data.length >= total) break;
+    }
+    return Object.freeze(claims);
+  }
+
+  async searchSellerQuestions(
+    sellerId: string,
+    accessToken: string,
+  ): Promise<readonly MercadoLibreRemoteQuestion[]> {
+    const questions: MercadoLibreRemoteQuestion[] = [];
+    const limit = 50;
+    for (let page = 0; page < this.config.maximumScanPages; page += 1) {
+      const offset = page * limit;
+      const query = new URLSearchParams({
+        seller_id: sellerId,
+        api_version: "4",
+        limit: String(limit),
+        offset: String(offset),
+        sort_fields: "date_created",
+        sort_types: "DESC",
+      });
+      const payload = asRecord(
+        await this.getJson(`/questions/search?${query}`, accessToken),
+        "question search",
+      );
+      const data = payload.questions;
+      if (!Array.isArray(data)) {
+        throw new Error("MercadoLibre question search questions must be an array.");
+      }
+      for (const rawQuestion of data) questions.push(normalizeQuestion(rawQuestion));
+      const total = readOptionalNonNegativeInteger(payload, "total") ?? offset + data.length;
+      if (data.length < limit || offset + data.length >= total) break;
+    }
+    return Object.freeze(questions);
   }
 
   private async scanItemIds(sellerId: string, accessToken: string): Promise<string[]> {
@@ -165,6 +218,49 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
   }
 }
 
+function normalizeClaim(value: unknown): MercadoLibreRemoteClaim {
+  const claim = asRecord(value, "claim");
+  const reasonId = readOptionalStringOrNumber(claim, "reason_id");
+  const fulfilled = readOptionalBoolean(claim, "fulfilled");
+  const normalized = {
+    claimId: readStringOrNumber(claim, "id"),
+    resourceId: readStringOrNumber(claim, "resource_id"),
+    resource: readString(claim, "resource"),
+    status: readString(claim, "status"),
+    type: readString(claim, "type"),
+    stage: readString(claim, "stage"),
+    ...(reasonId ? { reasonId } : {}),
+    ...(fulfilled === undefined ? {} : { fulfilled }),
+    dateCreated: readIsoDate(claim, "date_created"),
+    lastUpdated: readIsoDate(claim, "last_updated"),
+  };
+  return Object.freeze({ ...normalized, sourceHash: hashPayload(normalized) });
+}
+
+function normalizeQuestion(value: unknown): MercadoLibreRemoteQuestion {
+  const question = asRecord(value, "question");
+  const answer = question.answer;
+  const normalized = {
+    questionId: readStringOrNumber(question, "id"),
+    itemId: readString(question, "item_id"),
+    status: readString(question, "status"),
+    dateCreated: readIsoDate(question, "date_created"),
+    hasAnswer: answer !== undefined && answer !== null,
+    hold: readOptionalBoolean(question, "hold") ?? false,
+    suspectedSpam: readOptionalBoolean(question, "suspected_spam") ?? false,
+  };
+  return Object.freeze({ ...normalized, sourceHash: hashPayload(normalized) });
+}
+
+function readPagingTotal(payload: Record<string, unknown>): number {
+  const paging = asRecord(payload.paging, "claim paging");
+  return readNonNegativeInteger(paging, "total");
+}
+
+function hashPayload(value: object): string {
+  return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
+}
+
 function asRecord(value: unknown, context: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new Error(`MercadoLibre ${context} must be an object.`);
@@ -207,6 +303,19 @@ function readOptionalStringOrNumber(
   return String(value);
 }
 
+function readOptionalBoolean(record: Record<string, unknown>, key: string): boolean | undefined {
+  const value = record[key];
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "boolean") throw new Error(`MercadoLibre field ${key} must be boolean.`);
+  return value;
+}
+
+function readIsoDate(record: Record<string, unknown>, key: string): string {
+  const value = readString(record, key);
+  if (Number.isNaN(Date.parse(value))) throw new Error(`MercadoLibre field ${key} must be a date.`);
+  return value;
+}
+
 function readNumber(record: Record<string, unknown>, key: string): number {
   const value = record[key];
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -221,6 +330,19 @@ function readInteger(record: Record<string, unknown>, key: string): number {
     throw new Error(`MercadoLibre field ${key} must be a non-negative integer.`);
   }
   return value;
+}
+
+function readNonNegativeInteger(record: Record<string, unknown>, key: string): number {
+  return readInteger(record, key);
+}
+
+function readOptionalNonNegativeInteger(
+  record: Record<string, unknown>,
+  key: string,
+): number | undefined {
+  const value = record[key];
+  if (value === undefined || value === null) return undefined;
+  return readNonNegativeInteger(record, key);
 }
 
 function readPositiveInteger(record: Record<string, unknown>, key: string): number {

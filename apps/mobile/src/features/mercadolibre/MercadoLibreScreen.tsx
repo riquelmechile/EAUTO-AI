@@ -4,8 +4,10 @@ import * as WebBrowser from "expo-web-browser";
 import { Panel } from "../../components/Panel";
 import {
   api,
+  type MercadoLibreClaim,
   type MercadoLibreConnection,
   type MercadoLibreListing,
+  type MercadoLibreQuestion,
   type MercadoLibreStatus,
 } from "../../lib/api";
 
@@ -25,8 +27,8 @@ export function MercadoLibreScreen({ roles }: Props) {
     <View style={styles.stack}>
       <Panel title="MercadoLibre Chile">
         <Text style={styles.intro}>
-          Conexiones MLC aisladas por cuenta. Esta versión solo lee datos; no publica ni modifica
-          precios, stock o anuncios.
+          Conexiones MLC aisladas por cuenta. Se leen publicaciones, reclamos y preguntas; no se
+          responde, publica ni modifica precios, stock o anuncios.
         </Text>
         <View style={styles.readOnlyBadge}>
           <Text style={styles.readOnlyText}>SOLO LECTURA</Text>
@@ -58,6 +60,8 @@ function AccountCard({
 }>) {
   const [status, setStatus] = useState<MercadoLibreStatus | null>(null);
   const [listings, setListings] = useState<readonly MercadoLibreListing[]>([]);
+  const [claims, setClaims] = useState<readonly MercadoLibreClaim[]>([]);
+  const [questions, setQuestions] = useState<readonly MercadoLibreQuestion[]>([]);
   const [busy, setBusy] = useState<"connect" | "sync" | "load" | null>("load");
   const [message, setMessage] = useState("Consultando conexión…");
 
@@ -67,8 +71,14 @@ function AccountCard({
       const current = await api.mercadoLibreStatus(accountId);
       setStatus(current);
       if (current.connected) {
-        const result = await api.mercadoLibreListings(accountId);
-        setListings(result.listings);
+        const [listingResult, claimResult, questionResult] = await Promise.all([
+          api.mercadoLibreListings(accountId),
+          api.mercadoLibreClaims(accountId),
+          api.mercadoLibreQuestions(accountId),
+        ]);
+        setListings(listingResult.listings);
+        setClaims(claimResult.claims);
+        setQuestions(questionResult.questions);
         setMessage(
           current.connection?.lastSyncedAt
             ? `Última sincronización: ${formatDate(current.connection.lastSyncedAt)}`
@@ -76,6 +86,8 @@ function AccountCard({
         );
       } else {
         setListings([]);
+        setClaims([]);
+        setQuestions([]);
         setMessage("Cuenta todavía no conectada.");
       }
     } catch (error) {
@@ -124,17 +136,26 @@ function AccountCard({
 
   async function sync(): Promise<void> {
     setBusy("sync");
-    setMessage("Sincronizando publicaciones privadas…");
+    setMessage("Sincronizando publicaciones, reclamos y preguntas…");
     try {
-      const result = await api.mercadoLibreSync(accountId);
-      if (result.writesPerformed !== false) {
+      const [commerce, attention] = await Promise.all([
+        api.mercadoLibreSync(accountId),
+        api.mercadoLibreCustomerOperationsSync(accountId),
+      ]);
+      if (commerce.writesPerformed !== false || attention.writesPerformed !== false) {
         throw new Error("El servidor informó una operación de escritura inesperada.");
       }
-      const currentListings = await api.mercadoLibreListings(accountId);
-      setListings(currentListings.listings);
-      setStatus({ enabled: true, connected: true, connection: result.connection });
+      const [listingResult, claimResult, questionResult] = await Promise.all([
+        api.mercadoLibreListings(accountId),
+        api.mercadoLibreClaims(accountId),
+        api.mercadoLibreQuestions(accountId),
+      ]);
+      setListings(listingResult.listings);
+      setClaims(claimResult.claims);
+      setQuestions(questionResult.questions);
+      setStatus({ enabled: true, connected: true, connection: commerce.connection });
       setMessage(
-        `Sincronización verificada: ${result.listingCount} publicaciones, sin escrituras.`,
+        `${commerce.listingCount} publicaciones · ${attention.openClaimCount} reclamos abiertos · ${attention.unansweredQuestionCount} preguntas sin responder. Sin escrituras.`,
       );
     } catch (error) {
       setMessage(readError(error));
@@ -145,6 +166,8 @@ function AccountCard({
 
   const connection = status?.connection ?? null;
   const requiresAuthorization = connection?.status === "reauthorization-required";
+  const openClaims = claims.filter((claim) => claim.status === "opened");
+  const unansweredQuestions = questions.filter((question) => !question.hasAnswer);
 
   return (
     <Panel title={name}>
@@ -196,8 +219,54 @@ function AccountCard({
         <Text style={styles.permission}>Su rol puede consultar, pero no conectar cuentas.</Text>
       ) : null}
 
+      {status?.connected ? (
+        <View style={styles.metrics}>
+          <Metric label="Publicaciones" value={listings.length} />
+          <Metric
+            label="Reclamos abiertos"
+            urgent={openClaims.length > 0}
+            value={openClaims.length}
+          />
+          <Metric
+            label="Preguntas pendientes"
+            urgent={unansweredQuestions.length > 0}
+            value={unansweredQuestions.length}
+          />
+        </View>
+      ) : null}
+
+      {openClaims.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Reclamos que requieren atención</Text>
+          {openClaims.slice(0, 5).map((claim) => (
+            <View key={claim.claimId} style={styles.attentionItem}>
+              <Text style={styles.attentionTitle}>Reclamo {claim.claimId}</Text>
+              <Text style={styles.meta}>
+                {claim.type} · {claim.stage} · actualizado {formatDate(claim.lastUpdated)}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {unansweredQuestions.length > 0 ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Preguntas sin responder</Text>
+          {unansweredQuestions.slice(0, 5).map((question) => (
+            <View key={question.questionId} style={styles.attentionItem}>
+              <Text style={styles.attentionTitle}>Pregunta {question.questionId}</Text>
+              <Text style={styles.meta}>
+                {question.itemId} · recibida {formatDate(question.dateCreated)}
+                {question.hold ? " · retenida" : ""}
+                {question.suspectedSpam ? " · posible spam" : ""}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {listings.length > 0 ? (
-        <View style={styles.listings}>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Publicaciones ({listings.length})</Text>
           {listings.slice(0, 20).map((listing) => (
             <Pressable
@@ -223,14 +292,22 @@ function AccountCard({
               </Text>
             </Pressable>
           ))}
-          {listings.length > 20 ? (
-            <Text style={styles.permission}>
-              Se muestran 20 publicaciones; el snapshot conserva {listings.length}.
-            </Text>
-          ) : null}
         </View>
       ) : null}
     </Panel>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  urgent = false,
+}: Readonly<{ label: string; value: number; urgent?: boolean }>) {
+  return (
+    <View style={[styles.metric, urgent && styles.metricUrgent]}>
+      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
   );
 }
 
@@ -309,8 +386,29 @@ const styles = StyleSheet.create({
   disabled: { opacity: 0.4 },
   buttonText: { color: "white", fontWeight: "800" },
   permission: { color: "#94a3b8", fontSize: 12 },
-  listings: { borderTopColor: "#334155", borderTopWidth: 1, gap: 8, paddingTop: 12 },
+  metrics: { flexDirection: "row", gap: 8 },
+  metric: {
+    backgroundColor: "#0f172a",
+    borderColor: "#334155",
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    padding: 10,
+  },
+  metricUrgent: { borderColor: "#f97316" },
+  metricValue: { color: "#f8fafc", fontSize: 20, fontWeight: "900" },
+  metricLabel: { color: "#94a3b8", fontSize: 10, marginTop: 3 },
+  section: { borderTopColor: "#334155", borderTopWidth: 1, gap: 8, paddingTop: 12 },
   sectionTitle: { color: "#f8fafc", fontSize: 15, fontWeight: "800" },
+  attentionItem: {
+    backgroundColor: "#27170d",
+    borderColor: "#9a3412",
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 4,
+    padding: 10,
+  },
+  attentionTitle: { color: "#fed7aa", fontWeight: "800" },
   listing: {
     backgroundColor: "#0f172a",
     borderColor: "#334155",

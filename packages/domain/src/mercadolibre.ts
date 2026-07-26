@@ -38,6 +38,41 @@ export type MercadoLibreListingSnapshot = Readonly<{
   sourceHash: string;
 }>;
 
+/** Compact operational snapshot. Full messages and attachments are deliberately excluded. */
+export type MercadoLibreClaimSnapshot = Readonly<{
+  organizationId: string;
+  accountId: string;
+  sellerId: string;
+  claimId: string;
+  resourceId: string;
+  resource: string;
+  status: string;
+  type: string;
+  stage: string;
+  reasonId?: string;
+  fulfilled?: boolean;
+  dateCreated: string;
+  lastUpdated: string;
+  observedAt: string;
+  sourceHash: string;
+}>;
+
+/** Compact question snapshot. Buyer text and identity are deliberately excluded. */
+export type MercadoLibreQuestionSnapshot = Readonly<{
+  organizationId: string;
+  accountId: string;
+  sellerId: string;
+  questionId: string;
+  itemId: string;
+  status: string;
+  dateCreated: string;
+  hasAnswer: boolean;
+  hold: boolean;
+  suspectedSpam: boolean;
+  observedAt: string;
+  sourceHash: string;
+}>;
+
 export class MercadoLibreIntegrationError extends Error {
   constructor(
     readonly code:

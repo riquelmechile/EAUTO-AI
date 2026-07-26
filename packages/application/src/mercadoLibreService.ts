@@ -1,8 +1,10 @@
 import {
   MERCADOLIBRE_CHILE_SITE_ID,
   MercadoLibreIntegrationError,
+  type MercadoLibreClaimSnapshot,
   type MercadoLibreConnection,
   type MercadoLibreListingSnapshot,
+  type MercadoLibreQuestionSnapshot,
 } from "@eauto/domain";
 
 export type MercadoLibreOAuthStateRecord = Readonly<{
@@ -50,6 +52,31 @@ export type MercadoLibreRemoteListing = Readonly<{
   sourceHash: string;
 }>;
 
+export type MercadoLibreRemoteClaim = Readonly<{
+  claimId: string;
+  resourceId: string;
+  resource: string;
+  status: string;
+  type: string;
+  stage: string;
+  reasonId?: string;
+  fulfilled?: boolean;
+  dateCreated: string;
+  lastUpdated: string;
+  sourceHash: string;
+}>;
+
+export type MercadoLibreRemoteQuestion = Readonly<{
+  questionId: string;
+  itemId: string;
+  status: string;
+  dateCreated: string;
+  hasAnswer: boolean;
+  hold: boolean;
+  suspectedSpam: boolean;
+  sourceHash: string;
+}>;
+
 export interface MercadoLibreOAuthStateRepository {
   create(record: MercadoLibreOAuthStateRecord): Promise<void>;
   consume(stateHash: string, now: Date): Promise<MercadoLibreOAuthStateRecord | null>;
@@ -71,6 +98,16 @@ export interface MercadoLibreConnectionRepository {
     snapshots: readonly MercadoLibreListingSnapshot[],
   ): Promise<void>;
   listListingSnapshots(accountId: string): Promise<readonly MercadoLibreListingSnapshot[]>;
+  replaceClaimSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreClaimSnapshot[],
+  ): Promise<void>;
+  listClaimSnapshots(accountId: string): Promise<readonly MercadoLibreClaimSnapshot[]>;
+  replaceQuestionSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreQuestionSnapshot[],
+  ): Promise<void>;
+  listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]>;
 }
 
 export interface MercadoLibreSecurityPort {
@@ -97,6 +134,14 @@ export interface MercadoLibreClientPort {
     sellerId: string,
     accessToken: string,
   ): Promise<readonly MercadoLibreRemoteListing[]>;
+  searchSellerClaims(
+    sellerId: string,
+    accessToken: string,
+  ): Promise<readonly MercadoLibreRemoteClaim[]>;
+  searchSellerQuestions(
+    sellerId: string,
+    accessToken: string,
+  ): Promise<readonly MercadoLibreRemoteQuestion[]>;
 }
 
 export class MercadoLibreRemoteError extends Error {
@@ -239,12 +284,65 @@ export class MercadoLibreService {
     return { connection: updatedConnection, listings };
   }
 
+  async syncCustomerOperations(input: { organizationId: string; accountId: string }): Promise<{
+    claims: readonly MercadoLibreClaimSnapshot[];
+    questions: readonly MercadoLibreQuestionSnapshot[];
+    observedAt: string;
+  }> {
+    const accessToken = await this.ensureAccessToken(input);
+    const stored = await this.requireConnection(input);
+    const observedAt = this.clock.now().toISOString();
+    const [remoteClaims, remoteQuestions] = await Promise.all([
+      this.client.searchSellerClaims(stored.connection.sellerId, accessToken),
+      this.client.searchSellerQuestions(stored.connection.sellerId, accessToken),
+    ]);
+    const claims = remoteClaims.map((claim) =>
+      Object.freeze({
+        organizationId: input.organizationId,
+        accountId: input.accountId,
+        sellerId: stored.connection.sellerId,
+        ...claim,
+        observedAt,
+      }),
+    );
+    const questions = remoteQuestions.map((question) =>
+      Object.freeze({
+        organizationId: input.organizationId,
+        accountId: input.accountId,
+        sellerId: stored.connection.sellerId,
+        ...question,
+        observedAt,
+      }),
+    );
+    await Promise.all([
+      this.connections.replaceClaimSnapshots(input.accountId, claims),
+      this.connections.replaceQuestionSnapshots(input.accountId, questions),
+    ]);
+    return { claims, questions, observedAt };
+  }
+
   async listListingSnapshots(input: {
     organizationId: string;
     accountId: string;
   }): Promise<readonly MercadoLibreListingSnapshot[]> {
     await this.requireConnection(input);
     return this.connections.listListingSnapshots(input.accountId);
+  }
+
+  async listClaimSnapshots(input: {
+    organizationId: string;
+    accountId: string;
+  }): Promise<readonly MercadoLibreClaimSnapshot[]> {
+    await this.requireConnection(input);
+    return this.connections.listClaimSnapshots(input.accountId);
+  }
+
+  async listQuestionSnapshots(input: {
+    organizationId: string;
+    accountId: string;
+  }): Promise<readonly MercadoLibreQuestionSnapshot[]> {
+    await this.requireConnection(input);
+    return this.connections.listQuestionSnapshots(input.accountId);
   }
 
   private async ensureAccessToken(input: {

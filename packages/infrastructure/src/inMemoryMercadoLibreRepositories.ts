@@ -4,7 +4,11 @@ import type {
   MercadoLibreOAuthStateRecord,
   MercadoLibreOAuthStateRepository,
 } from "@eauto/application";
-import type { MercadoLibreListingSnapshot } from "@eauto/domain";
+import type {
+  MercadoLibreClaimSnapshot,
+  MercadoLibreListingSnapshot,
+  MercadoLibreQuestionSnapshot,
+} from "@eauto/domain";
 
 export class InMemoryMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
   private readonly records = new Map<string, MercadoLibreOAuthStateRecord>();
@@ -29,7 +33,9 @@ export class InMemoryMercadoLibreOAuthStateRepository implements MercadoLibreOAu
 
 export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreConnectionRepository {
   private readonly records = new Map<string, MercadoLibreCredentialRecord>();
-  private readonly snapshots = new Map<string, readonly MercadoLibreListingSnapshot[]>();
+  private readonly listingSnapshots = new Map<string, readonly MercadoLibreListingSnapshot[]>();
+  private readonly claimSnapshots = new Map<string, readonly MercadoLibreClaimSnapshot[]>();
+  private readonly questionSnapshots = new Map<string, readonly MercadoLibreQuestionSnapshot[]>();
 
   get(accountId: string): Promise<MercadoLibreCredentialRecord | null> {
     return Promise.resolve(this.records.get(accountId) ?? null);
@@ -107,11 +113,35 @@ export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreCon
     accountId: string,
     snapshots: readonly MercadoLibreListingSnapshot[],
   ): Promise<void> {
-    this.snapshots.set(accountId, Object.freeze([...snapshots]));
+    this.listingSnapshots.set(accountId, Object.freeze([...snapshots]));
     return Promise.resolve();
   }
 
   listListingSnapshots(accountId: string): Promise<readonly MercadoLibreListingSnapshot[]> {
-    return Promise.resolve(this.snapshots.get(accountId) ?? []);
+    return Promise.resolve(this.listingSnapshots.get(accountId) ?? []);
+  }
+
+  replaceClaimSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreClaimSnapshot[],
+  ): Promise<void> {
+    this.claimSnapshots.set(accountId, Object.freeze([...snapshots]));
+    return Promise.resolve();
+  }
+
+  listClaimSnapshots(accountId: string): Promise<readonly MercadoLibreClaimSnapshot[]> {
+    return Promise.resolve(this.claimSnapshots.get(accountId) ?? []);
+  }
+
+  replaceQuestionSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreQuestionSnapshot[],
+  ): Promise<void> {
+    this.questionSnapshots.set(accountId, Object.freeze([...snapshots]));
+    return Promise.resolve();
+  }
+
+  listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]> {
+    return Promise.resolve(this.questionSnapshots.get(accountId) ?? []);
   }
 }
