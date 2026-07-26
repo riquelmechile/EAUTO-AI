@@ -40,18 +40,31 @@ services:
   api:
     image: node:22-bookworm-slim
     working_dir: /workspace
-    command: sh -c "npm install && npm run build && npm run start -w @eauto/api"
-    environment:
-      NODE_ENV: production
+    command: sh -c "npm ci && npm run build:server && npm run start -w @eauto/api"
+    environment: &runtime-environment
+      NODE_ENV: development
       PORT: 3000
       DATABASE_URL: postgres://eauto:eauto@postgres:5432/eauto
       REDIS_URL: redis://redis:6379
+      AUTH_MODE: disabled
+      OPERATOR_TOKENS_JSON: "[]"
+      OUTBOX_WORKER_ID: compose-outbox
     ports: ["127.0.0.1:3000:3000"]
     volumes:
       - ../../:/workspace
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+
+  outbox-worker:
+    image: node:22-bookworm-slim
+    working_dir: /workspace
+    command: sh -c "npm ci && npm run build:server && npm run start:worker -w @eauto/api"
+    environment: *runtime-environment
+    volumes:
+      - ../../:/workspace
+    depends_on:
+      postgres: { condition: service_healthy }
 
 volumes:
   postgres_data:
