@@ -20,6 +20,17 @@ export type PendingAction = {
   status: string;
 };
 
+export type RequestedSourceImageUpload = Readonly<{
+  upload: Readonly<{
+    id: string;
+    accountId: string;
+    status: "requested";
+    expiresAt: string;
+  }>;
+  uploadUrl: string;
+  requiredHeaders: Readonly<Record<string, string>>;
+}>;
+
 type RequestOptions = RequestInit & { retryAuthentication?: boolean };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -95,10 +106,30 @@ export const api = {
 
   dashboard: () => request<Dashboard>("/v1/dashboard"),
   inbox: () => request<{ actions: PendingAction[] }>("/v1/inbox"),
+
+  requestSourceImageUpload: (input: {
+    id: string;
+    accountId: string;
+    originalFileName: string;
+    contentType: "image/jpeg" | "image/png" | "image/webp";
+    sizeBytes: number;
+    checksumSha256Base64: string;
+  }) =>
+    request<RequestedSourceImageUpload>("/v1/uploads/source-images", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  completeSourceImageUpload: (input: { id: string; accountId: string }) =>
+    request<Readonly<{ id: string; status: "verified"; objectUri: string }>>(
+      `/v1/uploads/source-images/${encodeURIComponent(input.id)}/complete`,
+      { method: "POST", body: JSON.stringify({ accountId: input.accountId }) },
+    ),
+
   createLaunch: (input: {
     id: string;
     accountId: string;
-    sourceImageUri: string;
+    sourceImageUploadId: string;
     instructions?: string;
   }) =>
     request<{ assets: readonly { id: string; kind: string; uri: string }[] }>(
