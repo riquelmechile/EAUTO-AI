@@ -4,7 +4,9 @@ import {
   type MercadoLibreClaimSnapshot,
   type MercadoLibreConnection,
   type MercadoLibreListingSnapshot,
+  type MercadoLibreOrderSnapshot,
   type MercadoLibreQuestionSnapshot,
+  type MercadoLibreReputationSnapshot,
 } from "@eauto/domain";
 
 export type MercadoLibreOAuthStateRecord = Readonly<{
@@ -77,6 +79,39 @@ export type MercadoLibreRemoteQuestion = Readonly<{
   sourceHash: string;
 }>;
 
+export type MercadoLibreRemoteOrder = Readonly<{
+  orderId: string;
+  status: string;
+  dateCreated: string;
+  dateClosed?: string;
+  lastUpdated: string;
+  currencyId: string;
+  totalAmountMinor: number;
+  paidAmountMinor?: number;
+  itemCount: number;
+  unitCount: number;
+  itemIds: readonly string[];
+  packId?: string;
+  shippingId?: string;
+  tags: readonly string[];
+  sourceHash: string;
+}>;
+
+export type MercadoLibreRemoteReputation = Readonly<{
+  sellerId: string;
+  siteId: string;
+  levelId?: string;
+  powerSellerStatus?: string;
+  period: string;
+  totalTransactions: number;
+  completedTransactions: number;
+  canceledTransactions: number;
+  positiveRating: number;
+  neutralRating: number;
+  negativeRating: number;
+  sourceHash: string;
+}>;
+
 export interface MercadoLibreOAuthStateRepository {
   create(record: MercadoLibreOAuthStateRecord): Promise<void>;
   consume(stateHash: string, now: Date): Promise<MercadoLibreOAuthStateRecord | null>;
@@ -108,6 +143,13 @@ export interface MercadoLibreConnectionRepository {
     snapshots: readonly MercadoLibreQuestionSnapshot[],
   ): Promise<void>;
   listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]>;
+  replaceOrderSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreOrderSnapshot[],
+  ): Promise<void>;
+  listOrderSnapshots(accountId: string): Promise<readonly MercadoLibreOrderSnapshot[]>;
+  saveReputationSnapshot(snapshot: MercadoLibreReputationSnapshot): Promise<void>;
+  getReputationSnapshot(accountId: string): Promise<MercadoLibreReputationSnapshot | null>;
 }
 
 export interface MercadoLibreSecurityPort {
@@ -142,6 +184,11 @@ export interface MercadoLibreClientPort {
     sellerId: string,
     accessToken: string,
   ): Promise<readonly MercadoLibreRemoteQuestion[]>;
+  searchSellerOrders(
+    sellerId: string,
+    accessToken: string,
+  ): Promise<readonly MercadoLibreRemoteOrder[]>;
+  getSellerReputation(sellerId: string, accessToken: string): Promise<MercadoLibreRemoteReputation>;
 }
 
 export class MercadoLibreRemoteError extends Error {
@@ -321,6 +368,50 @@ export class MercadoLibreService {
     return { claims, questions, observedAt };
   }
 
+  async syncCommercialOperations(input: { organizationId: string; accountId: string }): Promise<{
+    orders: readonly MercadoLibreOrderSnapshot[];
+    reputation: MercadoLibreReputationSnapshot;
+    observedAt: string;
+  }> {
+    const accessToken = await this.ensureAccessToken(input);
+    const stored = await this.requireConnection(input);
+    const observedAt = this.clock.now().toISOString();
+    const [remoteOrders, remoteReputation] = await Promise.all([
+      this.client.searchSellerOrders(stored.connection.sellerId, accessToken),
+      this.client.getSellerReputation(stored.connection.sellerId, accessToken),
+    ]);
+    if (
+      remoteReputation.sellerId !== stored.connection.sellerId ||
+      remoteReputation.siteId !== MERCADOLIBRE_CHILE_SITE_ID
+    ) {
+      throw new MercadoLibreIntegrationError(
+        "mercadolibre-seller-mismatch",
+        "MercadoLibre reputation identity does not match the connected Chile seller.",
+      );
+    }
+    const orders = remoteOrders.map((order) =>
+      Object.freeze({
+        organizationId: input.organizationId,
+        accountId: input.accountId,
+        sellerId: stored.connection.sellerId,
+        ...order,
+        observedAt,
+      }),
+    );
+    const reputation = Object.freeze({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      ...remoteReputation,
+      siteId: MERCADOLIBRE_CHILE_SITE_ID,
+      observedAt,
+    });
+    await Promise.all([
+      this.connections.replaceOrderSnapshots(input.accountId, orders),
+      this.connections.saveReputationSnapshot(reputation),
+    ]);
+    return { orders, reputation, observedAt };
+  }
+
   async listListingSnapshots(input: {
     organizationId: string;
     accountId: string;
@@ -343,6 +434,22 @@ export class MercadoLibreService {
   }): Promise<readonly MercadoLibreQuestionSnapshot[]> {
     await this.requireConnection(input);
     return this.connections.listQuestionSnapshots(input.accountId);
+  }
+
+  async listOrderSnapshots(input: {
+    organizationId: string;
+    accountId: string;
+  }): Promise<readonly MercadoLibreOrderSnapshot[]> {
+    await this.requireConnection(input);
+    return this.connections.listOrderSnapshots(input.accountId);
+  }
+
+  async getReputationSnapshot(input: {
+    organizationId: string;
+    accountId: string;
+  }): Promise<MercadoLibreReputationSnapshot | null> {
+    await this.requireConnection(input);
+    return this.connections.getReputationSnapshot(input.accountId);
   }
 
   private async ensureAccessToken(input: {
