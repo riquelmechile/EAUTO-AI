@@ -31,16 +31,27 @@ jobs:
           npx prettier --write .
           git diff --binary > /tmp/prettier.patch
           cp package-lock.json /tmp/package-lock.json
-      - name: Upload generated files
+      - name: Typecheck
+        id: typecheck
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee /tmp/typecheck.log
+      - name: Upload generated files and diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-generated-${{ github.sha }}
           path: |
             /tmp/prettier.patch
             /tmp/package-lock.json
+            /tmp/typecheck.log
           if-no-files-found: error
           retention-days: 1
-      - run: npm run typecheck
+      - name: Enforce typecheck
+        if: steps.typecheck.outcome == 'failure'
+        run: exit 1
       - run: npm run lint
       - run: npm test
       - run: npm run build
