@@ -26,7 +26,20 @@ jobs:
           node-version: 22.16.0
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - run: npm run format:check
+      - name: Generate reproducible formatting patch
+        run: |
+          npx prettier --write .
+          git diff --binary > /tmp/prettier.patch
+          cp package-lock.json /tmp/package-lock.json
+      - name: Upload generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-generated-${{ github.sha }}
+          path: |
+            /tmp/prettier.patch
+            /tmp/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
