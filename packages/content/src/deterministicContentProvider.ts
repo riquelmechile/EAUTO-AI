@@ -7,7 +7,7 @@ import type { ContentGenerationPort } from "@eauto/application";
  * that an external image/video model ran. Replace through the ContentGenerationPort.
  */
 export class DeterministicContentProvider implements ContentGenerationPort {
-  async generateLaunchAssets(brief: ProductLaunchBrief): Promise<readonly ContentAsset[]> {
+  generateLaunchAssets(brief: ProductLaunchBrief): Promise<readonly ContentAsset[]> {
     const createdAt = new Date().toISOString();
     const base = `${brief.id}|${brief.accountId}|${brief.sourceImageUri}|${brief.instructions ?? ""}`;
     const copy = [
@@ -16,7 +16,7 @@ export class DeterministicContentProvider implements ContentGenerationPort {
       `Canales solicitados: ${brief.requestedChannels.join(", ")}.`,
     ].join("\n");
 
-    return [
+    return Promise.resolve([
       this.asset({
         brief,
         kind: "image",
@@ -31,7 +31,7 @@ export class DeterministicContentProvider implements ContentGenerationPort {
         material: `${base}|${copy}`,
         createdAt,
       }),
-    ];
+    ]);
   }
 
   private asset(input: {
