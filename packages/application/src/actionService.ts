@@ -1,7 +1,18 @@
 import { createHash } from "node:crypto";
-import { assertCompleteEvidence, transitionAction, type Approval, type BusinessAction } from "@eauto/domain";
+import {
+  assertCompleteEvidence,
+  transitionAction,
+  type Approval,
+  type BusinessAction,
+} from "@eauto/domain";
 import { createReceipt } from "@eauto/agent-kernel";
-import type { ActionExecutor, ActionRepository, Clock, IdGenerator, ReceiptRepository } from "./ports.js";
+import type {
+  ActionExecutor,
+  ActionRepository,
+  Clock,
+  IdGenerator,
+  ReceiptRepository,
+} from "./ports.js";
 
 export class ActionService {
   constructor(
@@ -31,7 +42,8 @@ export class ActionService {
   async approve(actionId: string, approvedBy: string): Promise<Approval> {
     const action = await this.requireAction(actionId);
     if (action.status !== "reviewed") throw new Error("Action must be reviewed before approval.");
-    if (Date.parse(action.expiresAt) <= this.clock.now().getTime()) throw new Error("Action expired.");
+    if (Date.parse(action.expiresAt) <= this.clock.now().getTime())
+      throw new Error("Action expired.");
     const actionHash = hashAction(action);
     const approval: Approval = Object.freeze({
       id: this.ids.next("approval"),
@@ -52,8 +64,10 @@ export class ActionService {
     const action = await this.requireAction(actionId);
     const approval = await this.actions.getApproval(actionId);
     if (!approval) throw new Error("Approval required.");
-    if (approval.actionHash !== hashAction(action)) throw new Error("Approval no longer matches action content.");
-    if (Date.parse(approval.expiresAt) <= this.clock.now().getTime()) throw new Error("Approval expired.");
+    if (approval.actionHash !== hashAction(action))
+      throw new Error("Approval no longer matches action content.");
+    if (Date.parse(approval.expiresAt) <= this.clock.now().getTime())
+      throw new Error("Approval expired.");
 
     const executing = transitionAction(action, "executing");
     await this.actions.save(executing);

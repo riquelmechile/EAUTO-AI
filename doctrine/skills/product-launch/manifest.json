@@ -2,13 +2,29 @@
   "id": "product-launch",
   "version": "1.0.0",
   "purpose": "Orquestar foto a publicación verificada",
-  "authorizedAgents": ["product-launch-director","vision-agent","market-research-agent","listing-agent"],
-  "allowedTools": ["read-catalog","read-marketplace","generate-content","prepare-listing"],
+  "authorizedAgents": [
+    "product-launch-director",
+    "vision-agent",
+    "market-research-agent",
+    "listing-agent"
+  ],
+  "allowedTools": ["read-catalog", "read-marketplace", "generate-content", "prepare-listing"],
   "forbiddenTools": ["execute-listing-without-approval"],
-  "requiredEvidence": ["product_identity","category","required_attributes","unit_economics","stock"],
-  "modelPolicy": {"default":"fast","escalate":"reasoning"},
-  "cachePolicy": {"stablePrefix":"agent-account-skill-version","volatileTail":true},
-  "limits": {"maxIterations":6,"timeoutMs":120000,"budgetMicrousd":10000},
+  "requiredEvidence": [
+    "product_identity",
+    "category",
+    "required_attributes",
+    "unit_economics",
+    "stock"
+  ],
+  "modelPolicy": { "default": "fast", "escalate": "reasoning" },
+  "cachePolicy": { "stablePrefix": "agent-account-skill-version", "volatileTail": true },
+  "limits": { "maxIterations": 6, "timeoutMs": 120000, "budgetMicrousd": 10000 },
   "requiresHumanApproval": true,
-  "stopRules": ["missing-required-evidence","budget-exceeded","repeated-tool-call","low-confidence"]
+  "stopRules": [
+    "missing-required-evidence",
+    "budget-exceeded",
+    "repeated-tool-call",
+    "low-confidence"
+  ]
 }

@@ -11,10 +11,19 @@ function files(root: string): string[] {
 
 describe("architecture", () => {
   it("keeps domain independent from infrastructure and frameworks", () => {
-    const forbidden = ["fastify", "react", "pg", "redis", "openai", "expo", "@eauto/infrastructure"];
+    const forbidden = [
+      "fastify",
+      "react",
+      "pg",
+      "redis",
+      "openai",
+      "expo",
+      "@eauto/infrastructure",
+    ];
     for (const file of files("packages/domain/src").filter((path) => path.endsWith(".ts"))) {
       const source = readFileSync(file, "utf8");
-      for (const dependency of forbidden) expect(source, `${file} imports ${dependency}`).not.toContain(dependency);
+      for (const dependency of forbidden)
+        expect(source, `${file} imports ${dependency}`).not.toContain(dependency);
     }
   });
 });

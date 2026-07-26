@@ -16,7 +16,5 @@
       "path": "../application"
     }
   ],
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }

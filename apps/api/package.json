@@ -20,5 +20,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/server.js"
   },
-  "devDependencies": {"tsx":"^4.20.3"}
+  "devDependencies": {
+    "tsx": "^4.20.3"
+  }
 }

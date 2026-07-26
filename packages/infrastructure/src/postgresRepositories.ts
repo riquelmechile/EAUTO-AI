@@ -1,7 +1,11 @@
 import type { Pool } from "pg";
 import type { CommerceAccount, ContentAsset } from "@eauto/domain";
 import type { VerifiableReceipt } from "@eauto/agent-kernel";
-import type { AccountRepository, ContentAssetRepository, ReceiptRepository } from "@eauto/application";
+import type {
+  AccountRepository,
+  ContentAssetRepository,
+  ReceiptRepository,
+} from "@eauto/application";
 
 export class PostgresAccountRepository implements AccountRepository {
   constructor(private readonly pool: Pool) {}
@@ -29,8 +33,11 @@ export class PostgresAccountRepository implements AccountRepository {
       market: string;
       minimum_margin_bps: number;
       autonomy_level: CommerceAccount["autonomyLevel"];
-    }>(`SELECT id, organization_id, name, channel, market, minimum_margin_bps, autonomy_level
-        FROM commerce_accounts WHERE id = $1`, [id]);
+    }>(
+      `SELECT id, organization_id, name, channel, market, minimum_margin_bps, autonomy_level
+        FROM commerce_accounts WHERE id = $1`,
+      [id],
+    );
     const row = result.rows[0];
     return row ? toAccount(row) : null;
   }
@@ -129,21 +136,26 @@ export class PostgresContentAssetRepository implements ContentAssetRepository {
       prompt_version: string;
       moderation_status: ContentAsset["moderationStatus"];
       created_at: Date | string;
-    }>(`SELECT id, account_id, product_id, kind, uri, content_hash, provider, model,
+    }>(
+      `SELECT id, account_id, product_id, kind, uri, content_hash, provider, model,
         prompt_version, moderation_status, created_at
-        FROM content_assets WHERE product_id = $1 ORDER BY created_at ASC`, [productId]);
-    return result.rows.map((row) => Object.freeze({
-      id: row.id,
-      accountId: row.account_id,
-      productId: row.product_id,
-      kind: row.kind,
-      uri: row.uri,
-      contentHash: row.content_hash,
-      provider: row.provider,
-      model: row.model,
-      promptVersion: row.prompt_version,
-      moderationStatus: row.moderation_status,
-      createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
-    }));
+        FROM content_assets WHERE product_id = $1 ORDER BY created_at ASC`,
+      [productId],
+    );
+    return result.rows.map((row) =>
+      Object.freeze({
+        id: row.id,
+        accountId: row.account_id,
+        productId: row.product_id,
+        kind: row.kind,
+        uri: row.uri,
+        contentHash: row.content_hash,
+        provider: row.provider,
+        model: row.model,
+        promptVersion: row.prompt_version,
+        moderationStatus: row.moderation_status,
+        createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : row.created_at,
+      }),
+    );
   }
 }

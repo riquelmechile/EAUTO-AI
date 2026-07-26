@@ -10,7 +10,13 @@ const action: BusinessAction = {
   rationale: "test",
   risk: "low",
   status: "draft",
-  evidenceBundle: { id: "e1", accountId: "plasticov", references: [], complete: false, missingInputs: ["cost"] },
+  evidenceBundle: {
+    id: "e1",
+    accountId: "plasticov",
+    references: [],
+    complete: false,
+    missingInputs: ["cost"],
+  },
   policyVersion: "v1",
   expiresAt: "2030-01-01T00:00:00.000Z",
 };

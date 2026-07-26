@@ -18,8 +18,14 @@ export default function App() {
       </View>
       <View style={styles.tabs}>
         {(["dashboard", "inbox", "studio"] as const).map((item) => (
-          <Pressable key={item} onPress={() => setTab(item)} style={[styles.tab, tab === item && styles.activeTab]}>
-            <Text style={styles.tabText}>{item === "dashboard" ? "Empresa" : item === "inbox" ? "Decisiones" : "Contenido"}</Text>
+          <Pressable
+            key={item}
+            onPress={() => setTab(item)}
+            style={[styles.tab, tab === item && styles.activeTab]}
+          >
+            <Text style={styles.tabText}>
+              {item === "dashboard" ? "Empresa" : item === "inbox" ? "Decisiones" : "Contenido"}
+            </Text>
           </Pressable>
         ))}
       </View>

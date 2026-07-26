@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
 import { request } from "node:http";
 
-const required = ["package.json", "apps/api/package.json", "apps/mobile/app.json", "infra/compose/docker-compose.yml"];
+const required = [
+  "package.json",
+  "apps/api/package.json",
+  "apps/mobile/app.json",
+  "infra/compose/docker-compose.yml",
+];
 let failed = false;
 for (const path of required) {
   const ok = existsSync(new URL(`../${path}`, import.meta.url));

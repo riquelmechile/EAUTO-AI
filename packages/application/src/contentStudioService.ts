@@ -12,7 +12,8 @@ export class ContentStudioService {
     const generated = await this.generator.generateLaunchAssets(brief);
     const requiredKinds = new Set(generated.map((asset) => asset.kind));
     for (const kind of ["image", "copy"] as const) {
-      if (!requiredKinds.has(kind)) throw new Error(`Content provider omitted required ${kind} asset.`);
+      if (!requiredKinds.has(kind))
+        throw new Error(`Content provider omitted required ${kind} asset.`);
     }
     for (const asset of generated) await this.assets.save(asset);
     return generated;

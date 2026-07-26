@@ -1,12 +1,7 @@
 import { createHash } from "node:crypto";
 
 export type ReceiptType =
-  | "proposal"
-  | "review"
-  | "approval"
-  | "execution"
-  | "verification"
-  | "outcome";
+  "proposal" | "review" | "approval" | "execution" | "verification" | "outcome";
 
 export type VerifiableReceipt = Readonly<{
   id: string;
@@ -22,9 +17,11 @@ export type VerifiableReceipt = Readonly<{
   recordedAt: string;
 }>;
 
-export function createReceipt(input: Omit<VerifiableReceipt, "payloadHash" | "chainHash"> & {
-  payload: unknown;
-}): VerifiableReceipt {
+export function createReceipt(
+  input: Omit<VerifiableReceipt, "payloadHash" | "chainHash"> & {
+    payload: unknown;
+  },
+): VerifiableReceipt {
   const payloadHash = digest(canonicalize(input.payload));
   const chainHash = digest(
     [
@@ -58,7 +55,9 @@ export function createReceipt(input: Omit<VerifiableReceipt, "payloadHash" | "ch
 function canonicalize(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
-  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b));
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a.localeCompare(b),
+  );
   return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalize(item)}`).join(",")}}`;
 }
 

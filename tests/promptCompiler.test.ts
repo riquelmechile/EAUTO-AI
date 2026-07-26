@@ -15,7 +15,11 @@ const base = {
 describe("prompt compiler", () => {
   it("keeps cache prefix stable when volatile evidence changes", () => {
     const first = compilePrompt(base);
-    const second = compilePrompt({ ...base, volatileInput: "stock changed", recoveredContext: "lesson two" });
+    const second = compilePrompt({
+      ...base,
+      volatileInput: "stock changed",
+      recoveredContext: "lesson two",
+    });
     expect(first.stableHash).toBe(second.stableHash);
     expect(first.fullHash).not.toBe(second.fullHash);
   });

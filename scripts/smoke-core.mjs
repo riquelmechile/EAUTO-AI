@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import { money, addMoney } from "../packages/domain/dist/index.js";
 import { compilePrompt, decideWake, createReceipt } from "../packages/agent-kernel/dist/index.js";
 import { ActionService } from "../packages/application/dist/index.js";
-import { InMemoryActionRepository, InMemoryReceiptRepository } from "../packages/infrastructure/dist/index.js";
+import {
+  InMemoryActionRepository,
+  InMemoryReceiptRepository,
+} from "../packages/infrastructure/dist/index.js";
 
-assert.deepEqual(addMoney(money(1000, "CLP"), money(500, "CLP")), { amountMinor: 1500, currency: "CLP" });
+assert.deepEqual(addMoney(money(1000, "CLP"), money(500, "CLP")), {
+  amountMinor: 1500,
+  currency: "CLP",
+});
 
 const stable = {
   constitution: "constitution-v1",
@@ -20,7 +26,17 @@ assert.equal(p1.stableHash, p2.stableHash);
 assert.notEqual(p1.fullHash, p2.fullHash);
 
 const wake = decideWake({
-  signals: [{ kind: "stock.low", entityId: "sku-1", observedAt: new Date().toISOString(), materialValue: 2, urgency: 1, expectedImpact: 100, confidence: 0.9 }],
+  signals: [
+    {
+      kind: "stock.low",
+      entityId: "sku-1",
+      observedAt: new Date().toISOString(),
+      materialValue: 2,
+      urgency: 1,
+      expectedImpact: 100,
+      confidence: 0.9,
+    },
+  ],
   now: new Date().toISOString(),
   estimatedCost: 1,
 });
@@ -65,7 +81,17 @@ const action = {
   evidenceBundle: {
     id: "evidence-hash",
     accountId: "plasticov",
-    references: [{ id: "e1", source: "smoke", sourceRecordId: "MLC1", observedAt: "2026-07-26T00:00:00.000Z", freshness: "fresh", confidence: "high", contentHash: "abc" }],
+    references: [
+      {
+        id: "e1",
+        source: "smoke",
+        sourceRecordId: "MLC1",
+        observedAt: "2026-07-26T00:00:00.000Z",
+        freshness: "fresh",
+        confidence: "high",
+        contentHash: "abc",
+      },
+    ],
     complete: true,
     missingInputs: [],
   },
@@ -77,6 +103,9 @@ await service.markReviewed(action.id);
 await service.approve(action.id, "sebastian");
 const completed = await service.execute(action.id);
 assert.equal(completed.status, "verified");
-assert.deepEqual((await receipts.listForAction(action.id)).map((r) => r.type), ["proposal", "review", "approval", "execution", "verification"]);
+assert.deepEqual(
+  (await receipts.listForAction(action.id)).map((r) => r.type),
+  ["proposal", "review", "approval", "execution", "verification"],
+);
 
 console.log("Core smoke passed: money, cache, wake policy, receipts, approval and verification.");

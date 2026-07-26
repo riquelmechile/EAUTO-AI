@@ -3,7 +3,8 @@ export type Currency = "CLP" | "USD";
 export type Money = Readonly<{ amountMinor: number; currency: Currency }>;
 
 export function money(amountMinor: number, currency: Currency): Money {
-  if (!Number.isSafeInteger(amountMinor)) throw new Error("Money must use safe integer minor units.");
+  if (!Number.isSafeInteger(amountMinor))
+    throw new Error("Money must use safe integer minor units.");
   return Object.freeze({ amountMinor, currency });
 }
 

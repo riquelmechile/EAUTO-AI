@@ -35,10 +35,11 @@ export function decideWake(input: {
     )
     .digest("hex");
 
-  const expectedUtility = input.signals.reduce(
-    (total, signal) => total + signal.urgency * signal.expectedImpact * signal.confidence,
-    0,
-  ) - input.estimatedCost;
+  const expectedUtility =
+    input.signals.reduce(
+      (total, signal) => total + signal.urgency * signal.expectedImpact * signal.confidence,
+      0,
+    ) - input.estimatedCost;
 
   if (input.manual) return { shouldWake: true, reason: "manual", signalsHash, expectedUtility };
   if (input.cooldownUntil && Date.parse(input.cooldownUntil) > Date.parse(input.now)) {

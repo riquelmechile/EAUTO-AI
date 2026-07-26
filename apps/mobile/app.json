@@ -9,7 +9,7 @@
     "android": {
       "package": "cl.maustian.eautoai",
       "versionCode": 1,
-      "adaptiveIcon": {"backgroundColor":"#111827"},
+      "adaptiveIcon": { "backgroundColor": "#111827" },
       "permissions": ["CAMERA"]
     },
     "plugins": [
@@ -20,8 +20,8 @@
           "cameraPermission": "EAUTO-AI necesita la cámara para identificar y lanzar productos."
         }
       ],
-      ["expo-status-bar", {"style":"light"}]
+      ["expo-status-bar", { "style": "light" }]
     ],
-    "extra": {"apiUrl":"http://10.0.2.2:3000"}
+    "extra": { "apiUrl": "http://10.0.2.2:3000" }
   }
 }

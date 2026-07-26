@@ -13,7 +13,5 @@
       "path": "../agent-kernel"
     }
   ],
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }

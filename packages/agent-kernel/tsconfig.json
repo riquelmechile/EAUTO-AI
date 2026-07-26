@@ -10,7 +10,5 @@
       "path": "../domain"
     }
   ],
-  "include": [
-    "src/**/*.ts"
-  ]
+  "include": ["src/**/*.ts"]
 }

@@ -35,5 +35,7 @@ export function canExecuteWithoutApproval(input: {
   if (input.verifiedHistoryCount < policy.minimumVerifiedActions) return false;
   if (input.spentToday.currency !== policy.dailyBudget.currency) return false;
   if (input.estimatedCost.currency !== policy.dailyBudget.currency) return false;
-  return input.spentToday.amountMinor + input.estimatedCost.amountMinor <= policy.dailyBudget.amountMinor;
+  return (
+    input.spentToday.amountMinor + input.estimatedCost.amountMinor <= policy.dailyBudget.amountMinor
+  );
 }

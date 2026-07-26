@@ -11,7 +11,9 @@ export function InboxScreen() {
       setError(null);
       setActions((await api.inbox()).actions);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "No fue posible cargar la bandeja.");
+      setError(
+        loadError instanceof Error ? loadError.message : "No fue posible cargar la bandeja.",
+      );
     }
   }, []);
   useEffect(() => void load(), [load]);
@@ -26,7 +28,9 @@ export function InboxScreen() {
             <View key={action.id} style={styles.action}>
               <Text style={styles.title}>{action.kind}</Text>
               <Text style={styles.copy}>{action.rationale}</Text>
-              <Text style={styles.meta}>{action.accountId} · {action.risk} · {action.status}</Text>
+              <Text style={styles.meta}>
+                {action.accountId} · {action.risk} · {action.status}
+              </Text>
             </View>
           ))
         )}

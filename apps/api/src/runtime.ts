@@ -67,7 +67,9 @@ export async function createRuntime(config: AppConfig) {
   const accountRepository = pool
     ? new PostgresAccountRepository(pool)
     : new InMemoryAccountRepository(developmentAccounts);
-  const actionRepository = pool ? new PostgresActionRepository(pool) : new InMemoryActionRepository();
+  const actionRepository = pool
+    ? new PostgresActionRepository(pool)
+    : new InMemoryActionRepository();
   const receiptRepository = pool
     ? new PostgresReceiptRepository(pool)
     : new InMemoryReceiptRepository();

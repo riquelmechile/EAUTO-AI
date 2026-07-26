@@ -15,7 +15,17 @@ const action: BusinessAction = {
   evidenceBundle: {
     id: "evidence-hash",
     accountId: "plasticov",
-    references: [{ id: "e1", source: "test", sourceRecordId: "MLC1", observedAt: "2026-07-26T00:00:00.000Z", freshness: "fresh", confidence: "high", contentHash: "abc" }],
+    references: [
+      {
+        id: "e1",
+        source: "test",
+        sourceRecordId: "MLC1",
+        observedAt: "2026-07-26T00:00:00.000Z",
+        freshness: "fresh",
+        confidence: "high",
+        contentHash: "abc",
+      },
+    ],
     complete: true,
     missingInputs: [],
   },
@@ -45,12 +55,32 @@ describe("ActionService", () => {
     const result = await service.execute(action.id);
     expect(result.status).toBe("verified");
     const chain = await receipts.listForAction(action.id);
-    expect(chain.map((receipt) => receipt.type)).toEqual(["proposal", "review", "approval", "execution", "verification"]);
+    expect(chain.map((receipt) => receipt.type)).toEqual([
+      "proposal",
+      "review",
+      "approval",
+      "execution",
+      "verification",
+    ]);
     expect(chain[1]?.previousReceiptHash).toBe(chain[0]?.chainHash);
   });
 
   it("refuses incomplete evidence", async () => {
-    const service = new ActionService(new InMemoryActionRepository(), new InMemoryReceiptRepository(), { execute: () => Promise.resolve({ providerReceipt: {} }), verify: () => Promise.resolve({ verified: true, observedState: {} }) }, { now: () => new Date() }, { next: (prefix) => prefix });
-    await expect(service.propose({ ...action, evidenceBundle: { ...action.evidenceBundle, complete: false, missingInputs: ["cost"] } })).rejects.toThrow(/Evidence incomplete/);
+    const service = new ActionService(
+      new InMemoryActionRepository(),
+      new InMemoryReceiptRepository(),
+      {
+        execute: () => Promise.resolve({ providerReceipt: {} }),
+        verify: () => Promise.resolve({ verified: true, observedState: {} }),
+      },
+      { now: () => new Date() },
+      { next: (prefix) => prefix },
+    );
+    await expect(
+      service.propose({
+        ...action,
+        evidenceBundle: { ...action.evidenceBundle, complete: false, missingInputs: ["cost"] },
+      }),
+    ).rejects.toThrow(/Evidence incomplete/);
   });
 });

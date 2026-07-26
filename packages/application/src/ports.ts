@@ -1,4 +1,10 @@
-import type { Approval, BusinessAction, CommerceAccount, ContentAsset, ProductLaunchBrief } from "@eauto/domain";
+import type {
+  Approval,
+  BusinessAction,
+  CommerceAccount,
+  ContentAsset,
+  ProductLaunchBrief,
+} from "@eauto/domain";
 import type { VerifiableReceipt } from "@eauto/agent-kernel";
 
 export type AccountRepository = {

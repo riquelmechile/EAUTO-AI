@@ -2,13 +2,24 @@
   "id": "content-studio",
   "version": "1.0.0",
   "purpose": "Crear activos comerciales trazables y moderados",
-  "authorizedAgents": ["growth-director","image-agent","video-agent","copy-agent"],
-  "allowedTools": ["read-brand-kit","generate-image","generate-video","generate-copy","moderate-asset"],
+  "authorizedAgents": ["growth-director", "image-agent", "video-agent", "copy-agent"],
+  "allowedTools": [
+    "read-brand-kit",
+    "generate-image",
+    "generate-video",
+    "generate-copy",
+    "moderate-asset"
+  ],
   "forbiddenTools": ["publish-unmoderated-asset"],
-  "requiredEvidence": ["product_identity","brand_policy","channel_policy"],
-  "modelPolicy": {"default":"fast","escalate":"reasoning"},
-  "cachePolicy": {"stablePrefix":"agent-account-skill-version","volatileTail":true},
-  "limits": {"maxIterations":6,"timeoutMs":120000,"budgetMicrousd":10000},
+  "requiredEvidence": ["product_identity", "brand_policy", "channel_policy"],
+  "modelPolicy": { "default": "fast", "escalate": "reasoning" },
+  "cachePolicy": { "stablePrefix": "agent-account-skill-version", "volatileTail": true },
+  "limits": { "maxIterations": 6, "timeoutMs": 120000, "budgetMicrousd": 10000 },
   "requiresHumanApproval": true,
-  "stopRules": ["missing-required-evidence","budget-exceeded","repeated-tool-call","low-confidence"]
+  "stopRules": [
+    "missing-required-evidence",
+    "budget-exceeded",
+    "repeated-tool-call",
+    "low-confidence"
+  ]
 }
