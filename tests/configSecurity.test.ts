@@ -116,9 +116,7 @@ describe("production security configuration", () => {
   it("accepts a complete fail-closed MercadoLibre Chile production configuration", () => {
     const config = loadConfig({ ...baseProduction, ...mercadoLibreChile });
     expect(config.MELI_ENABLED).toBe(true);
-    expect(config.MELI_AUTHORIZATION_URL).toBe(
-      "https://auth.mercadolibre.cl/authorization",
-    );
+    expect(config.MELI_AUTHORIZATION_URL).toBe("https://auth.mercadolibre.cl/authorization");
     expect(config.MELI_PLASTICOV_SELLER_ID).toBe("111");
     expect(config.MELI_MAUSTIAN_SELLER_ID).toBe("222");
   });

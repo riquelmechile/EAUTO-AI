@@ -61,10 +61,7 @@ const configSchema = z.object({
   MELI_CLIENT_ID: optionalString,
   MELI_CLIENT_SECRET: optionalString,
   MELI_REDIRECT_URI: optionalUrl,
-  MELI_AUTHORIZATION_URL: z
-    .string()
-    .url()
-    .default("https://auth.mercadolibre.cl/authorization"),
+  MELI_AUTHORIZATION_URL: z.string().url().default("https://auth.mercadolibre.cl/authorization"),
   MELI_TOKEN_URL: z.string().url().default("https://api.mercadolibre.com/oauth/token"),
   MELI_API_BASE_URL: z.string().url().default("https://api.mercadolibre.com"),
   MELI_TOKEN_VAULT_KEY_BASE64: optionalString,
@@ -144,10 +141,7 @@ function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void 
   if (authorizationUrl.hostname !== "auth.mercadolibre.cl") {
     throw new Error("MELI_AUTHORIZATION_URL must use the MercadoLibre Chile authorization host.");
   }
-  if (
-    config.NODE_ENV === "production" &&
-    new URL(config.MELI_REDIRECT_URI).protocol !== "https:"
-  ) {
+  if (config.NODE_ENV === "production" && new URL(config.MELI_REDIRECT_URI).protocol !== "https:") {
     throw new Error("MELI_REDIRECT_URI must use HTTPS in production.");
   }
 }

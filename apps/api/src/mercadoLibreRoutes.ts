@@ -1,21 +1,13 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import {
-  MercadoLibreIntegrationError,
-  type ActorIdentity,
-  type Permission,
-} from "@eauto/domain";
+import { MercadoLibreIntegrationError, type ActorIdentity, type Permission } from "@eauto/domain";
 import type { MercadoLibreService } from "@eauto/application";
 import type { Runtime } from "./runtime.js";
 
 export type MercadoLibreRouteDependencies = Readonly<{
   runtime: Runtime;
   authenticate(request: FastifyRequest): Promise<ActorIdentity>;
-  requireAccount(
-    actor: ActorIdentity,
-    accountId: string,
-    permission: Permission,
-  ): Promise<void>;
+  requireAccount(actor: ActorIdentity, accountId: string, permission: Permission): Promise<void>;
 }>;
 
 export function registerMercadoLibreRoutes(

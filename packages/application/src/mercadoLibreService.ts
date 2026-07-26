@@ -212,20 +212,14 @@ export class MercadoLibreService {
     return record.connection;
   }
 
-  async syncReadModel(input: {
-    organizationId: string;
-    accountId: string;
-  }): Promise<{
+  async syncReadModel(input: { organizationId: string; accountId: string }): Promise<{
     connection: MercadoLibreConnection;
     listings: readonly MercadoLibreListingSnapshot[];
   }> {
     const accessToken = await this.ensureAccessToken(input);
     const stored = await this.requireConnection(input);
     const observedAt = this.clock.now();
-    const remote = await this.client.listSellerListings(
-      stored.connection.sellerId,
-      accessToken,
-    );
+    const remote = await this.client.listSellerListings(stored.connection.sellerId, accessToken);
     const listings = remote.map((item) =>
       Object.freeze({
         organizationId: input.organizationId,
@@ -265,7 +259,10 @@ export class MercadoLibreService {
       );
     }
     const now = this.clock.now();
-    if (new Date(stored.connection.expiresAt).getTime() > now.getTime() + this.config.refreshWindowMs) {
+    if (
+      new Date(stored.connection.expiresAt).getTime() >
+      now.getTime() + this.config.refreshWindowMs
+    ) {
       return this.revealAccessToken(stored);
     }
 
@@ -305,9 +302,7 @@ export class MercadoLibreService {
         ...stored.connection,
         scopes: tokens.scopes,
         status: "active" as const,
-        expiresAt: new Date(
-          currentTime.getTime() + tokens.expiresInSeconds * 1000,
-        ).toISOString(),
+        expiresAt: new Date(currentTime.getTime() + tokens.expiresInSeconds * 1000).toISOString(),
         updatedAt: currentTime.toISOString(),
       });
       const refreshed = this.protectCredential(
@@ -411,9 +406,7 @@ function connectionFrom(input: {
     siteId: MERCADOLIBRE_CHILE_SITE_ID,
     scopes: input.tokens.scopes,
     status: "active",
-    expiresAt: new Date(
-      input.now.getTime() + input.tokens.expiresInSeconds * 1000,
-    ).toISOString(),
+    expiresAt: new Date(input.now.getTime() + input.tokens.expiresInSeconds * 1000).toISOString(),
     updatedAt: input.now.toISOString(),
   });
 }

@@ -7,8 +7,7 @@ export const MERCADOLIBRE_CONNECTION_STATUSES = [
   "revoked",
 ] as const;
 
-export type MercadoLibreConnectionStatus =
-  (typeof MERCADOLIBRE_CONNECTION_STATUSES)[number];
+export type MercadoLibreConnectionStatus = (typeof MERCADOLIBRE_CONNECTION_STATUSES)[number];
 
 export type MercadoLibreConnection = Readonly<{
   organizationId: string;
@@ -76,9 +75,6 @@ export class MercadoLibreWriteBlockedError extends Error {
  * Fail-closed boundary inherited from MSL. There is intentionally no feature
  * flag until each mutation has its own policy, receipt and live smoke test.
  */
-export function assertMercadoLibreWriteDisabled(
-  operation: string,
-  sellerId?: string,
-): never {
+export function assertMercadoLibreWriteDisabled(operation: string, sellerId?: string): never {
   throw new MercadoLibreWriteBlockedError(operation, sellerId);
 }

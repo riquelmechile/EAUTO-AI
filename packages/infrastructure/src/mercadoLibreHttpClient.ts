@@ -65,8 +65,7 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
       const ids = itemIds.slice(index, index + 20);
       const query = new URLSearchParams({
         ids: ids.join(","),
-        attributes:
-          "id,title,status,price,currency_id,available_quantity,sold_quantity,permalink",
+        attributes: "id,title,status,price,currency_id,available_quantity,sold_quantity,permalink",
       });
       const batch = await this.getJson(`/items?${query}`, accessToken);
       if (!Array.isArray(batch)) throw new Error("MercadoLibre item batch must be an array.");

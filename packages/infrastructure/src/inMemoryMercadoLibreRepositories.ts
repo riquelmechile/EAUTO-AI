@@ -6,9 +6,7 @@ import type {
 } from "@eauto/application";
 import type { MercadoLibreListingSnapshot } from "@eauto/domain";
 
-export class InMemoryMercadoLibreOAuthStateRepository
-  implements MercadoLibreOAuthStateRepository
-{
+export class InMemoryMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
   private readonly records = new Map<string, MercadoLibreOAuthStateRecord>();
 
   create(record: MercadoLibreOAuthStateRecord): Promise<void> {
@@ -29,9 +27,7 @@ export class InMemoryMercadoLibreOAuthStateRepository
   }
 }
 
-export class InMemoryMercadoLibreConnectionRepository
-  implements MercadoLibreConnectionRepository
-{
+export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreConnectionRepository {
   private readonly records = new Map<string, MercadoLibreCredentialRecord>();
   private readonly snapshots = new Map<string, readonly MercadoLibreListingSnapshot[]>();
 
@@ -41,10 +37,7 @@ export class InMemoryMercadoLibreConnectionRepository
 
   save(record: MercadoLibreCredentialRecord): Promise<void> {
     const current = this.records.get(record.connection.accountId);
-    if (
-      current !== undefined &&
-      current.connection.sellerId !== record.connection.sellerId
-    ) {
+    if (current !== undefined && current.connection.sellerId !== record.connection.sellerId) {
       throw new Error(
         `MercadoLibre seller binding cannot change for ${record.connection.accountId}.`,
       );

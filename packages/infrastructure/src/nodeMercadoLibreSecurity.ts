@@ -44,7 +44,12 @@ export class NodeMercadoLibreSecurity implements MercadoLibreSecurityPort {
     cipher.setAAD(Buffer.from(context, "utf8"));
     const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
     const tag = cipher.getAuthTag();
-    return ["v1", iv.toString("base64url"), tag.toString("base64url"), ciphertext.toString("base64url")].join(".");
+    return [
+      "v1",
+      iv.toString("base64url"),
+      tag.toString("base64url"),
+      ciphertext.toString("base64url"),
+    ].join(".");
   }
 
   reveal(protectedValue: string, context: string): string {

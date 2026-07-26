@@ -11,9 +11,7 @@ type OAuthStateRow = { payload_json: MercadoLibreOAuthStateRecord };
 type CredentialRow = { payload_json: MercadoLibreCredentialRecord };
 type SnapshotRow = { payload_json: MercadoLibreListingSnapshot };
 
-export class PostgresMercadoLibreOAuthStateRepository
-  implements MercadoLibreOAuthStateRepository
-{
+export class PostgresMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
   constructor(private readonly pool: Pool) {}
 
   async create(record: MercadoLibreOAuthStateRecord): Promise<void> {
@@ -42,9 +40,7 @@ export class PostgresMercadoLibreOAuthStateRepository
   }
 }
 
-export class PostgresMercadoLibreConnectionRepository
-  implements MercadoLibreConnectionRepository
-{
+export class PostgresMercadoLibreConnectionRepository implements MercadoLibreConnectionRepository {
   constructor(private readonly pool: Pool) {}
 
   async get(accountId: string): Promise<MercadoLibreCredentialRecord | null> {
@@ -170,9 +166,7 @@ export class PostgresMercadoLibreConnectionRepository
     }
   }
 
-  async listListingSnapshots(
-    accountId: string,
-  ): Promise<readonly MercadoLibreListingSnapshot[]> {
+  async listListingSnapshots(accountId: string): Promise<readonly MercadoLibreListingSnapshot[]> {
     const result = await this.pool.query<SnapshotRow>(
       `SELECT payload_json
        FROM mercadolibre_listing_snapshots
