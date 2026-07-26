@@ -4,7 +4,9 @@ import {
   type MercadoLibreClientPort,
   type MercadoLibreRemoteClaim,
   type MercadoLibreRemoteListing,
+  type MercadoLibreRemoteOrder,
   type MercadoLibreRemoteQuestion,
+  type MercadoLibreRemoteReputation,
   type MercadoLibreRemoteUser,
   type MercadoLibreTokenSet,
 } from "@eauto/application";
@@ -150,6 +152,64 @@ export class MercadoLibreHttpClient implements MercadoLibreClientPort {
     return Object.freeze(questions);
   }
 
+  async searchSellerOrders(
+    sellerId: string,
+    accessToken: string,
+  ): Promise<readonly MercadoLibreRemoteOrder[]> {
+    const orders: MercadoLibreRemoteOrder[] = [];
+    const limit = 50;
+    for (let page = 0; page < this.config.maximumScanPages; page += 1) {
+      const offset = page * limit;
+      const query = new URLSearchParams({
+        seller: sellerId,
+        sort: "date_desc",
+        limit: String(limit),
+        offset: String(offset),
+      });
+      const payload = asRecord(
+        await this.getJson(`/orders/search?${query}`, accessToken),
+        "order search",
+      );
+      const results = payload.results;
+      if (!Array.isArray(results)) {
+        throw new Error("MercadoLibre order search results must be an array.");
+      }
+      for (const rawOrder of results) orders.push(normalizeOrder(rawOrder));
+      const total = readPagingTotal(payload);
+      if (results.length < limit || offset + results.length >= total) break;
+    }
+    return Object.freeze(orders);
+  }
+
+  async getSellerReputation(
+    sellerId: string,
+    accessToken: string,
+  ): Promise<MercadoLibreRemoteReputation> {
+    const user = asRecord(
+      await this.getJson(`/users/${encodeURIComponent(sellerId)}`, accessToken),
+      "seller reputation",
+    );
+    const reputation = asRecord(user.seller_reputation, "seller_reputation");
+    const transactions = asRecord(reputation.transactions, "seller reputation transactions");
+    const ratings = asRecord(transactions.ratings, "seller reputation ratings");
+    const levelId = readOptionalString(reputation, "level_id");
+    const powerSellerStatus = readOptionalString(reputation, "power_seller_status");
+    const normalized = {
+      sellerId: readStringOrNumber(user, "id"),
+      siteId: readString(user, "site_id"),
+      ...(levelId ? { levelId } : {}),
+      ...(powerSellerStatus ? { powerSellerStatus } : {}),
+      period: readString(transactions, "period"),
+      totalTransactions: readNonNegativeInteger(transactions, "total"),
+      completedTransactions: readNonNegativeInteger(transactions, "completed"),
+      canceledTransactions: readNonNegativeInteger(transactions, "canceled"),
+      positiveRating: readNonNegativeNumber(ratings, "positive"),
+      neutralRating: readNonNegativeNumber(ratings, "neutral"),
+      negativeRating: readNonNegativeNumber(ratings, "negative"),
+    };
+    return Object.freeze({ ...normalized, sourceHash: hashPayload(normalized) });
+  }
+
   private async scanItemIds(sellerId: string, accessToken: string): Promise<string[]> {
     const ids: string[] = [];
     let scrollId: string | undefined;
@@ -252,8 +312,49 @@ function normalizeQuestion(value: unknown): MercadoLibreRemoteQuestion {
   return Object.freeze({ ...normalized, sourceHash: hashPayload(normalized) });
 }
 
+function normalizeOrder(value: unknown): MercadoLibreRemoteOrder {
+  const order = asRecord(value, "order");
+  const currencyId = readString(order, "currency_id");
+  const dateClosed = readOptionalIsoDate(order, "date_closed");
+  const paidAmount = readOptionalNumber(order, "paid_amount");
+  const packId = readOptionalStringOrNumber(order, "pack_id");
+  const shipping = readOptionalRecord(order, "shipping");
+  const shippingId = shipping ? readOptionalStringOrNumber(shipping, "id") : undefined;
+  const rawItems = order.order_items;
+  if (!Array.isArray(rawItems)) throw new Error("MercadoLibre order_items must be an array.");
+  const itemIds: string[] = [];
+  let unitCount = 0;
+  for (const rawItem of rawItems) {
+    const orderItem = asRecord(rawItem, "order item");
+    const item = asRecord(orderItem.item, "order item product");
+    itemIds.push(readString(item, "id"));
+    unitCount += readPositiveInteger(orderItem, "quantity");
+  }
+  const rawTags = order.tags;
+  const tags = Array.isArray(rawTags)
+    ? rawTags.filter((value): value is string => typeof value === "string")
+    : [];
+  const normalized = {
+    orderId: readStringOrNumber(order, "id"),
+    status: readString(order, "status"),
+    dateCreated: readIsoDate(order, "date_created"),
+    ...(dateClosed ? { dateClosed } : {}),
+    lastUpdated: readIsoDate(order, "date_last_updated"),
+    currencyId,
+    totalAmountMinor: toMinorUnits(readNumber(order, "total_amount"), currencyId),
+    ...(paidAmount === undefined ? {} : { paidAmountMinor: toMinorUnits(paidAmount, currencyId) }),
+    itemCount: rawItems.length,
+    unitCount,
+    itemIds: Object.freeze([...new Set(itemIds)]),
+    ...(packId ? { packId } : {}),
+    ...(shippingId ? { shippingId } : {}),
+    tags: Object.freeze([...new Set(tags)]),
+  };
+  return Object.freeze({ ...normalized, sourceHash: hashPayload(normalized) });
+}
+
 function readPagingTotal(payload: Record<string, unknown>): number {
-  const paging = asRecord(payload.paging, "claim paging");
+  const paging = asRecord(payload.paging, "paging");
   return readNonNegativeInteger(paging, "total");
 }
 
@@ -266,6 +367,15 @@ function asRecord(value: unknown, context: string): Record<string, unknown> {
     throw new Error(`MercadoLibre ${context} must be an object.`);
   }
   return value as Record<string, unknown>;
+}
+
+function readOptionalRecord(
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined {
+  const value = record[key];
+  if (value === undefined || value === null) return undefined;
+  return asRecord(value, key);
 }
 
 function readString(record: Record<string, unknown>, key: string): string {
@@ -316,11 +426,30 @@ function readIsoDate(record: Record<string, unknown>, key: string): string {
   return value;
 }
 
+function readOptionalIsoDate(record: Record<string, unknown>, key: string): string | undefined {
+  const value = readOptionalString(record, key);
+  if (value === undefined) return undefined;
+  if (Number.isNaN(Date.parse(value))) throw new Error(`MercadoLibre field ${key} must be a date.`);
+  return value;
+}
+
 function readNumber(record: Record<string, unknown>, key: string): number {
   const value = record[key];
   if (typeof value !== "number" || !Number.isFinite(value)) {
     throw new Error(`MercadoLibre field ${key} must be a finite number.`);
   }
+  return value;
+}
+
+function readOptionalNumber(record: Record<string, unknown>, key: string): number | undefined {
+  const value = record[key];
+  if (value === undefined || value === null) return undefined;
+  return readNumber(record, key);
+}
+
+function readNonNegativeNumber(record: Record<string, unknown>, key: string): number {
+  const value = readNumber(record, key);
+  if (value < 0) throw new Error(`MercadoLibre field ${key} must be non-negative.`);
   return value;
 }
 
