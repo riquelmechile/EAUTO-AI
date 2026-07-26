@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { BusinessAction } from "@eauto/domain";
-import { InMemoryActionRepository, InMemoryReceiptRepository } from "@eauto/infrastructure";
+import {
+  InMemoryActionRepository,
+  InMemoryOutboxRepository,
+  InMemoryReceiptRepository,
+} from "@eauto/infrastructure";
 import { ActionService } from "../packages/application/src/actionService.js";
 
 const action: BusinessAction = {
@@ -34,8 +38,9 @@ const action: BusinessAction = {
 };
 
 describe("ActionService", () => {
-  it("requires review and approval, executes, verifies, and chains receipts", async () => {
-    const actions = new InMemoryActionRepository();
+  it("requires approval, verifies execution and emits durable lifecycle events", async () => {
+    const outbox = new InMemoryOutboxRepository();
+    const actions = new InMemoryActionRepository(outbox);
     const receipts = new InMemoryReceiptRepository();
     let now = 0;
     const service = new ActionService(
@@ -49,11 +54,12 @@ describe("ActionService", () => {
       { next: (prefix) => `${prefix}-${now}` },
     );
 
-    await service.propose(action);
-    await service.markReviewed(action.id);
+    await service.propose(action, "agent-pricing");
+    await service.markReviewed(action.id, "reviewer-1");
     await service.approve(action.id, "sebastian");
-    const result = await service.execute(action.id);
+    const result = await service.execute(action.id, "sebastian");
     expect(result.status).toBe("verified");
+
     const chain = await receipts.listForAction(action.id);
     expect(chain.map((receipt) => receipt.type)).toEqual([
       "proposal",
@@ -63,6 +69,21 @@ describe("ActionService", () => {
       "verification",
     ]);
     expect(chain[1]?.previousReceiptHash).toBe(chain[0]?.chainHash);
+
+    const lifecycleEvents = await outbox.claimBatch({
+      workerId: "test-worker",
+      limit: 20,
+      now: "2031-01-01T00:00:00.000Z",
+      lockedUntil: "2031-01-01T00:01:00.000Z",
+    });
+    expect(lifecycleEvents.map((event) => event.eventType)).toEqual([
+      "action.proposed",
+      "action.reviewed",
+      "action.approved",
+      "action.execution.started",
+      "action.executed",
+      "action.verified",
+    ]);
   });
 
   it("refuses incomplete evidence", async () => {
