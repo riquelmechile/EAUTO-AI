@@ -21,6 +21,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ["eslint.config.mjs", "scripts/*.mjs"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+  },
+  {
     files: ["apps/mobile/**/*.{ts,tsx}"],
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",
