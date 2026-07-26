@@ -7,10 +7,14 @@ import type {
 import type {
   MercadoLibreClaimSnapshot,
   MercadoLibreListingSnapshot,
+  MercadoLibreOrderSnapshot,
   MercadoLibreQuestionSnapshot,
+  MercadoLibreReputationSnapshot,
 } from "@eauto/domain";
 
-export class InMemoryMercadoLibreOAuthStateRepository implements MercadoLibreOAuthStateRepository {
+export class InMemoryMercadoLibreOAuthStateRepository
+  implements MercadoLibreOAuthStateRepository
+{
   private readonly records = new Map<string, MercadoLibreOAuthStateRecord>();
 
   create(record: MercadoLibreOAuthStateRecord): Promise<void> {
@@ -31,11 +35,21 @@ export class InMemoryMercadoLibreOAuthStateRepository implements MercadoLibreOAu
   }
 }
 
-export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreConnectionRepository {
+export class InMemoryMercadoLibreConnectionRepository
+  implements MercadoLibreConnectionRepository
+{
   private readonly records = new Map<string, MercadoLibreCredentialRecord>();
-  private readonly listingSnapshots = new Map<string, readonly MercadoLibreListingSnapshot[]>();
+  private readonly listingSnapshots = new Map<
+    string,
+    readonly MercadoLibreListingSnapshot[]
+  >();
   private readonly claimSnapshots = new Map<string, readonly MercadoLibreClaimSnapshot[]>();
-  private readonly questionSnapshots = new Map<string, readonly MercadoLibreQuestionSnapshot[]>();
+  private readonly questionSnapshots = new Map<
+    string,
+    readonly MercadoLibreQuestionSnapshot[]
+  >();
+  private readonly orderSnapshots = new Map<string, readonly MercadoLibreOrderSnapshot[]>();
+  private readonly reputationSnapshots = new Map<string, MercadoLibreReputationSnapshot>();
 
   get(accountId: string): Promise<MercadoLibreCredentialRecord | null> {
     return Promise.resolve(this.records.get(accountId) ?? null);
@@ -43,7 +57,10 @@ export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreCon
 
   save(record: MercadoLibreCredentialRecord): Promise<void> {
     const current = this.records.get(record.connection.accountId);
-    if (current !== undefined && current.connection.sellerId !== record.connection.sellerId) {
+    if (
+      current !== undefined &&
+      current.connection.sellerId !== record.connection.sellerId
+    ) {
       throw new Error(
         `MercadoLibre seller binding cannot change for ${record.connection.accountId}.`,
       );
@@ -143,5 +160,26 @@ export class InMemoryMercadoLibreConnectionRepository implements MercadoLibreCon
 
   listQuestionSnapshots(accountId: string): Promise<readonly MercadoLibreQuestionSnapshot[]> {
     return Promise.resolve(this.questionSnapshots.get(accountId) ?? []);
+  }
+
+  replaceOrderSnapshots(
+    accountId: string,
+    snapshots: readonly MercadoLibreOrderSnapshot[],
+  ): Promise<void> {
+    this.orderSnapshots.set(accountId, Object.freeze([...snapshots]));
+    return Promise.resolve();
+  }
+
+  listOrderSnapshots(accountId: string): Promise<readonly MercadoLibreOrderSnapshot[]> {
+    return Promise.resolve(this.orderSnapshots.get(accountId) ?? []);
+  }
+
+  saveReputationSnapshot(snapshot: MercadoLibreReputationSnapshot): Promise<void> {
+    this.reputationSnapshots.set(snapshot.accountId, snapshot);
+    return Promise.resolve();
+  }
+
+  getReputationSnapshot(accountId: string): Promise<MercadoLibreReputationSnapshot | null> {
+    return Promise.resolve(this.reputationSnapshots.get(accountId) ?? null);
   }
 }
