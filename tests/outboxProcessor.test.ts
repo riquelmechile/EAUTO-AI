@@ -58,7 +58,7 @@ describe("OutboxProcessor", () => {
     });
   });
 
-  it("retries with backoff and sends poison events to dead letter", async () => {
+  it("retries, dead-letters poison events and allows explicit replay", async () => {
     const repository = new InMemoryOutboxRepository();
     await repository.enqueue(event);
     let now = new Date("2026-07-26T00:00:01.000Z");
@@ -78,11 +78,21 @@ describe("OutboxProcessor", () => {
     expect((await processor.runOnce(1)).retried).toBe(1);
     now = new Date("2026-07-26T00:00:03.000Z");
     expect((await processor.runOnce(1)).dead).toBe(1);
+    expect((await repository.listDead(10))[0]).toMatchObject({
+      id: "event-1",
+      attempts: 2,
+      lastError: "poison-event",
+    });
+
+    await repository.requeueDead({
+      id: "event-1",
+      availableAt: "2026-07-26T00:00:04.000Z",
+    });
     expect(await repository.stats()).toEqual({
-      pending: 0,
+      pending: 1,
       processing: 0,
       processed: 0,
-      dead: 1,
+      dead: 0,
     });
   });
 });
