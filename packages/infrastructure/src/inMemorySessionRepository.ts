@@ -21,6 +21,22 @@ export class InMemorySessionRepository implements SessionRepository {
     );
   }
 
+  rotate(input: {
+    currentRefreshTokenHash: string;
+    replacement: OperatorSession;
+  }): Promise<boolean> {
+    const current = this.sessions.get(input.replacement.id);
+    if (
+      !current ||
+      current.revokedAt !== null ||
+      current.refreshTokenHash !== input.currentRefreshTokenHash
+    ) {
+      return Promise.resolve(false);
+    }
+    this.sessions.set(current.id, input.replacement);
+    return Promise.resolve(true);
+  }
+
   revoke(input: { sessionId: string; revokedAt: string }): Promise<void> {
     const session = this.sessions.get(input.sessionId);
     if (!session) return Promise.resolve();
