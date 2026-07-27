@@ -118,7 +118,7 @@ export class InMemoryOperationalIntelligenceRepository implements OperationalInt
     const candidates = [...this.orders.values()]
       .filter(
         (order) =>
-          ["queued", "failed"].includes(order.status) &&
+          (["queued", "failed"] as readonly WorkOrderStatus[]).includes(order.status) &&
           Date.parse(order.availableAt) <= nowMs &&
           (order.leaseUntil === null || Date.parse(order.leaseUntil) <= nowMs),
       )
