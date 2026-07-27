@@ -7,8 +7,8 @@ import {
 import {
   InMemoryOperationalEvidenceReader,
   InMemoryOperationalIntelligenceRepository,
-  PostgresOperationalEvidenceReader,
   PostgresOperationalIntelligenceRepository,
+  VerifiedOperationalEvidenceReader,
 } from "@eauto/infrastructure";
 import { loadOperationalIntelligenceConfig } from "./operationalIntelligenceConfig.js";
 import type { Runtime } from "./runtime.js";
@@ -21,7 +21,7 @@ export function createOperationalIntelligenceRuntime(baseRuntime: Runtime) {
     ? new PostgresOperationalIntelligenceRepository(pool)
     : new InMemoryOperationalIntelligenceRepository();
   const evidenceReader = pool
-    ? new PostgresOperationalEvidenceReader(pool)
+    ? new VerifiedOperationalEvidenceReader(pool)
     : new InMemoryOperationalEvidenceReader();
   const clock = { now: () => new Date() };
   const ids = { next: (prefix: string) => `${prefix}_${randomUUID()}` };
