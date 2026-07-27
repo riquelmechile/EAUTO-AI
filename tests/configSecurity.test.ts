@@ -69,6 +69,7 @@ describe("production security configuration", () => {
         DATABASE_URL: "postgres://eauto:eauto@localhost:5432/eauto",
         AUTH_MODE: "static-token",
         OPERATOR_TOKENS_JSON: productionIdentity,
+        CORS_ORIGIN: "https://app.example.com",
       }),
     ).toThrow(/OBJECT_STORAGE_PUBLIC_ENDPOINT/);
 
@@ -78,6 +79,7 @@ describe("production security configuration", () => {
         DATABASE_URL: "postgres://eauto:eauto@localhost:5432/eauto",
         AUTH_MODE: "static-token",
         OPERATOR_TOKENS_JSON: productionIdentity,
+        CORS_ORIGIN: "https://app.example.com",
         OBJECT_STORAGE_PUBLIC_ENDPOINT: "http://uploads.example.com",
       }),
     ).toThrow(/must use HTTPS/);
