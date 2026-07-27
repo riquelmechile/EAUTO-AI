@@ -28,7 +28,7 @@ export type Signal = Readonly<{
 export type EvidenceDocument = Readonly<{
   reference: EvidenceReference;
   subject: EvidenceSubject;
-  kind: string;
+  kind?: string;
   authority: EvidenceAuthority;
   expiresAt: string;
   payload: unknown;
@@ -164,6 +164,7 @@ export function assertUsableEvidencePack(pack: OperationalEvidencePack, now: str
   }
   const invalid = pack.documents.find(
     (document) =>
+      !document.kind ||
       document.kind.trim().length === 0 ||
       document.authority === "advisory" ||
       Date.parse(document.expiresAt) <= Date.parse(now) ||
