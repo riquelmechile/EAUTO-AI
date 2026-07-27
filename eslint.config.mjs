@@ -9,11 +9,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: [
-            "eslint.config.mjs",
-            "scripts/*.mjs",
-            "apps/mobile/app.config.cjs",
-          ],
+          allowDefaultProject: ["eslint.config.mjs", "scripts/*.mjs", "apps/mobile/app.config.cjs"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
