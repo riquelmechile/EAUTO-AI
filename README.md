@@ -29,15 +29,15 @@ Operar comercio digital suele significar revisar datos fragmentados, reaccionar 
 
 EAUTO-AI busca resolver ese problema convirtiendo el negocio en una organización agéntica gobernada por un CEO humano.
 
-| Problema operativo | Respuesta de EAUTO-AI |
-| --- | --- |
-| Información repartida entre ventas, publicaciones, reclamos, anuncios y proveedores | Un modelo operacional autoritativo con aislamiento por organización y cuenta |
-| Decisiones reactivas o basadas en intuición | Evidencia fresca, utilidad esperada, costo y riesgo antes de activar razonamiento |
-| Automatizaciones que actúan sin control | Políticas explícitas, RBAC, aprobación humana y máquinas de estado fail-closed |
-| Una API responde `200`, pero nadie sabe si la acción ocurrió | Lectura posterior, receipts append-only y outcomes verificados |
-| Agentes que inventan, se autoconceden permisos o delegan sin límite | Contratos de rol, skills versionadas, preflight, presupuestos y máximo de delegación |
-| Dos cuentas comerciales que pueden contaminarse entre sí | Scope obligatorio por organización, cuenta e idempotency key |
-| Costos de IA difíciles de justificar | Wake policy por utilidad esperada y costeo de cache hit, cache miss y output |
+| Problema operativo                                                                  | Respuesta de EAUTO-AI                                                                |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Información repartida entre ventas, publicaciones, reclamos, anuncios y proveedores | Un modelo operacional autoritativo con aislamiento por organización y cuenta         |
+| Decisiones reactivas o basadas en intuición                                         | Evidencia fresca, utilidad esperada, costo y riesgo antes de activar razonamiento    |
+| Automatizaciones que actúan sin control                                             | Políticas explícitas, RBAC, aprobación humana y máquinas de estado fail-closed       |
+| Una API responde `200`, pero nadie sabe si la acción ocurrió                        | Lectura posterior, receipts append-only y outcomes verificados                       |
+| Agentes que inventan, se autoconceden permisos o delegan sin límite                 | Contratos de rol, skills versionadas, preflight, presupuestos y máximo de delegación |
+| Dos cuentas comerciales que pueden contaminarse entre sí                            | Scope obligatorio por organización, cuenta e idempotency key                         |
+| Costos de IA difíciles de justificar                                                | Wake policy por utilidad esperada y costeo de cache hit, cache miss y output         |
 
 ## La visión
 
@@ -102,10 +102,10 @@ Una acción sensible solo puede avanzar con evidencia, policy hash, scope, aprob
 
 El sistema opera con tres niveles conceptuales:
 
-| Modo | Comportamiento |
-| --- | --- |
-| `ask` | Prepara y solicita aprobación |
-| `inform` | Ejecuta solo dentro de una política previamente autorizada e informa |
+| Modo         | Comportamiento                                                                       |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `ask`        | Prepara y solicita aprobación                                                        |
+| `inform`     | Ejecuta solo dentro de una política previamente autorizada e informa                 |
 | `autonomous` | Reservado para capacidades con historial, presupuesto, rollback y política explícita |
 
 La fundación actual mantiene las mutaciones externas en modo controlado. Ningún agente puede promover su propia autonomía.
@@ -161,23 +161,23 @@ La regla de dependencias siempre apunta hacia el dominio. El dominio no conoce F
 
 **Leyenda:** ✅ verificado · 🟡 integración pendiente · 🔒 bloqueado intencionalmente
 
-| Área | Estado | Qué existe hoy |
-| --- | :---: | --- |
-| Dominio y gobernanza | ✅ | Dinero, evidencia, objetivos, políticas, autonomía y máquinas de estado |
-| Aislamiento multi-cuenta | ✅ | Scope por organización y cuenta para Plasticov y Maustian |
-| Agent OS | ✅ | Catálogo, planner determinista, preflight, work sessions, heartbeats y scorecards |
-| API | ✅ | Fastify, autenticación/RBAC, dashboard, inbox, acciones, receipts y operaciones |
-| Android | ✅ | Control plane Expo/React Native, empresa, inbox, agentes y Content Studio |
-| Persistencia | ✅ | PostgreSQL, migraciones idempotentes, constraints, leases y transacciones |
-| Procesamiento 24/7 | ✅ | Worker recuperable, outbox, retries, dead-letter y replay administrativo |
-| Evidencia y auditoría | ✅ | Evidence bundles, receipts SHA-256, delivery log y outcomes separados |
-| Object storage | ✅ | MinIO, bucket privado, versionado, URLs firmadas y smoke test |
-| Seguridad de despliegue | ✅ | Imágenes por digest, secrets fail-closed y GitHub Actions pinneadas por SHA |
-| CI y release | ✅ | Formato, tipos, lint, tests, build, PostgreSQL real, Docker, MinIO y doctors |
-| MercadoLibre live | 🟡 | Contratos, OAuth/webhook y guards preparados; faltan credenciales y validación real |
-| Proveedores de contenido | 🟡 | Gateway y simulación trazable; faltan adaptadores reales de imagen/video |
-| Escrituras externas autónomas | 🔒 | Deshabilitadas hasta validar política, rollback y verificación post-acción |
-| Operación comercial en producción | 🟡 | Falta infraestructura, secretos, restore drill, AAB real y pruebas live |
+| Área                              | Estado | Qué existe hoy                                                                      |
+| --------------------------------- | :----: | ----------------------------------------------------------------------------------- |
+| Dominio y gobernanza              |   ✅   | Dinero, evidencia, objetivos, políticas, autonomía y máquinas de estado             |
+| Aislamiento multi-cuenta          |   ✅   | Scope por organización y cuenta para Plasticov y Maustian                           |
+| Agent OS                          |   ✅   | Catálogo, planner determinista, preflight, work sessions, heartbeats y scorecards   |
+| API                               |   ✅   | Fastify, autenticación/RBAC, dashboard, inbox, acciones, receipts y operaciones     |
+| Android                           |   ✅   | Control plane Expo/React Native, empresa, inbox, agentes y Content Studio           |
+| Persistencia                      |   ✅   | PostgreSQL, migraciones idempotentes, constraints, leases y transacciones           |
+| Procesamiento 24/7                |   ✅   | Worker recuperable, outbox, retries, dead-letter y replay administrativo            |
+| Evidencia y auditoría             |   ✅   | Evidence bundles, receipts SHA-256, delivery log y outcomes separados               |
+| Object storage                    |   ✅   | MinIO, bucket privado, versionado, URLs firmadas y smoke test                       |
+| Seguridad de despliegue           |   ✅   | Imágenes por digest, secrets fail-closed y GitHub Actions pinneadas por SHA         |
+| CI y release                      |   ✅   | Formato, tipos, lint, tests, build, PostgreSQL real, Docker, MinIO y doctors        |
+| MercadoLibre live                 |   🟡   | Contratos, OAuth/webhook y guards preparados; faltan credenciales y validación real |
+| Proveedores de contenido          |   🟡   | Gateway y simulación trazable; faltan adaptadores reales de imagen/video            |
+| Escrituras externas autónomas     |   🔒   | Deshabilitadas hasta validar política, rollback y verificación post-acción          |
+| Operación comercial en producción |   🟡   | Falta infraestructura, secretos, restore drill, AAB real y pruebas live             |
 
 ### Qué puede demostrarse hoy
 
@@ -203,18 +203,18 @@ Consulte el [roadmap actualizado](docs/ROADMAP.md) para ver las siguientes fases
 
 ## Stack
 
-| Capa | Tecnología |
-| --- | --- |
-| Lenguaje | TypeScript 5.8 en modo estricto |
-| Runtime | Node.js 22+ |
-| API | Fastify |
-| Android | Expo + React Native |
-| Datos | PostgreSQL 17 |
-| Objetos | MinIO / S3-compatible storage |
-| Procesamiento | Workers, leases y transactional outbox |
-| Pruebas | Vitest + smokes productivos |
-| Infraestructura | Docker Compose + Caddy |
-| CI/CD | GitHub Actions pinneadas por SHA, GHCR y EAS |
+| Capa            | Tecnología                                   |
+| --------------- | -------------------------------------------- |
+| Lenguaje        | TypeScript 5.8 en modo estricto              |
+| Runtime         | Node.js 22+                                  |
+| API             | Fastify                                      |
+| Android         | Expo + React Native                          |
+| Datos           | PostgreSQL 17                                |
+| Objetos         | MinIO / S3-compatible storage                |
+| Procesamiento   | Workers, leases y transactional outbox       |
+| Pruebas         | Vitest + smokes productivos                  |
+| Infraestructura | Docker Compose + Caddy                       |
+| CI/CD           | GitHub Actions pinneadas por SHA, GHCR y EAS |
 
 ## Inicio rápido
 
@@ -322,17 +322,17 @@ La arquitectura sigue los principios de [The Amazing Gentleman Programming Book]
 
 ## Documentación
 
-| Documento | Contenido |
-| --- | --- |
-| [Visión de producto](docs/PRODUCT_VISION.md) | Problema, resultado buscado y KPI |
-| [Agent OS](docs/AGENT_OS.md) | Organización, roles, skills, preflight, sesiones y scorecards |
-| [Arquitectura objetivo](docs/TARGET_ARCHITECTURE.md) | Capas y planos del sistema |
-| [Política de autonomía](docs/AUTONOMY_POLICY.md) | Riesgo, aprobación y promoción controlada |
-| [Confianza verificable](docs/VERIFIABLE_TRUST.md) | Evidencia, receipts y outcomes |
-| [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md) | RBAC, scopes y secretos |
-| [LLM Gateway](docs/LLM_GATEWAY.md) | Provider, caché, costos y límites |
-| [Roadmap](docs/ROADMAP.md) | Estado real y próximas fases |
-| [Release de producción](docs/runbooks/production-release.md) | Despliegue, Android, backups y rollback |
+| Documento                                                    | Contenido                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------- |
+| [Visión de producto](docs/PRODUCT_VISION.md)                 | Problema, resultado buscado y KPI                             |
+| [Agent OS](docs/AGENT_OS.md)                                 | Organización, roles, skills, preflight, sesiones y scorecards |
+| [Arquitectura objetivo](docs/TARGET_ARCHITECTURE.md)         | Capas y planos del sistema                                    |
+| [Política de autonomía](docs/AUTONOMY_POLICY.md)             | Riesgo, aprobación y promoción controlada                     |
+| [Confianza verificable](docs/VERIFIABLE_TRUST.md)            | Evidencia, receipts y outcomes                                |
+| [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md)       | RBAC, scopes y secretos                                       |
+| [LLM Gateway](docs/LLM_GATEWAY.md)                           | Provider, caché, costos y límites                             |
+| [Roadmap](docs/ROADMAP.md)                                   | Estado real y próximas fases                                  |
+| [Release de producción](docs/runbooks/production-release.md) | Despliegue, Android, backups y rollback                       |
 
 ---
 

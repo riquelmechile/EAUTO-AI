@@ -11,16 +11,16 @@
 
 ## Resumen
 
-| Fase | Estado | Objetivo |
-| --- | :---: | --- |
-| F0 — Fundación de dominio | ✅ | Contratos, evidencia, políticas, acciones y recibos verificables |
-| F1 — Fundación productiva | ✅ | PostgreSQL, workers, almacenamiento, seguridad, CI y despliegue inmutable |
-| F2 — MercadoLibre read plane | 🟡 | Conectar cuentas reales y consolidar la verdad operacional |
-| F3 — Agent OS gobernado | 🟡 | Operar agentes con contratos, skills, sesiones, presupuestos y scorecards |
-| F4 — Content Studio real | 🟡 | Pasar de captura y simulación trazable a generación externa verificable |
-| F5 — Product Launch | 🟡 | Foto → investigación → economics → assets → publicación preparada |
-| F6 — Autonomía limitada | 🔒 | Promover capacidades solo con evidencia, presupuesto, rollback y outcomes |
-| F7 — Expansión comercial | ⬜ | Ecommerce propio, proveedores, Ads, redes sociales y marketplaces adicionales |
+| Fase                         | Estado | Objetivo                                                                      |
+| ---------------------------- | :----: | ----------------------------------------------------------------------------- |
+| F0 — Fundación de dominio    |   ✅   | Contratos, evidencia, políticas, acciones y recibos verificables              |
+| F1 — Fundación productiva    |   ✅   | PostgreSQL, workers, almacenamiento, seguridad, CI y despliegue inmutable     |
+| F2 — MercadoLibre read plane |   🟡   | Conectar cuentas reales y consolidar la verdad operacional                    |
+| F3 — Agent OS gobernado      |   🟡   | Operar agentes con contratos, skills, sesiones, presupuestos y scorecards     |
+| F4 — Content Studio real     |   🟡   | Pasar de captura y simulación trazable a generación externa verificable       |
+| F5 — Product Launch          |   🟡   | Foto → investigación → economics → assets → publicación preparada             |
+| F6 — Autonomía limitada      |   🔒   | Promover capacidades solo con evidencia, presupuesto, rollback y outcomes     |
+| F7 — Expansión comercial     |   ⬜   | Ecommerce propio, proveedores, Ads, redes sociales y marketplaces adicionales |
 
 ## F0 — Fundación de dominio ✅
 
