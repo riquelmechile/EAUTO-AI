@@ -20,6 +20,7 @@ import {
 } from "@eauto/domain";
 import { createAuthenticator, readBearerToken, type EnrollmentAuthenticator } from "./auth.js";
 import { registerMercadoLibreRoutes } from "./mercadoLibreRoutes.js";
+import { registerAgentOsRoutes } from "./agentOsRoutes.js";
 import { createRuntime, type Runtime } from "./runtime.js";
 import type { AppConfig } from "./config.js";
 
@@ -115,6 +116,11 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       siteId: "MLC",
       mode: "read-only",
     },
+    agentOs: {
+      enabled: true,
+      delegationDepth: 2,
+      externalWrites: false,
+    },
     externalWrites: false,
     contentGeneration: "development-simulator",
   }));
@@ -137,6 +143,14 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
 
   registerMercadoLibreRoutes(app, {
+    runtime,
+    authenticate: (request) => authenticate(request, runtime, authenticator),
+    requireAccount: async (actor, accountId, permission) => {
+      await requireAccount(runtime, actor, accountId, permission);
+    },
+  });
+
+  registerAgentOsRoutes(app, {
     runtime,
     authenticate: (request) => authenticate(request, runtime, authenticator),
     requireAccount: async (actor, accountId, permission) => {
