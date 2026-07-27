@@ -10,7 +10,7 @@ import { ActionService } from "../packages/application/src/actionService.js";
 const action: BusinessAction = {
   id: "action-1",
   accountId: "plasticov",
-  kind: "listing-edit",
+  kind: "listing.update",
   target: "MLC1",
   exactChanges: [{ field: "title", from: "Old", to: "New" }],
   rationale: "Improve clarity",
@@ -40,12 +40,11 @@ const action: BusinessAction = {
 describe("ActionService", () => {
   it("requires approval, verifies execution and emits durable lifecycle events", async () => {
     const outbox = new InMemoryOutboxRepository();
-    const actions = new InMemoryActionRepository(outbox);
     const receipts = new InMemoryReceiptRepository();
+    const actions = new InMemoryActionRepository(outbox, receipts);
     let now = 0;
     const service = new ActionService(
       actions,
-      receipts,
       {
         execute: () => Promise.resolve({ providerReceipt: { requestId: "remote-1" } }),
         verify: () => Promise.resolve({ verified: true, observedState: { title: "New" } }),
@@ -86,10 +85,52 @@ describe("ActionService", () => {
     ]);
   });
 
+  it("rejects duplicate action IDs instead of overwriting another proposal", async () => {
+    const actions = new InMemoryActionRepository();
+    const service = new ActionService(
+      actions,
+      {
+        execute: () => Promise.resolve({ providerReceipt: {} }),
+        verify: () => Promise.resolve({ verified: true, observedState: {} }),
+      },
+      { now: () => new Date("2026-07-26T00:00:00.000Z") },
+      { next: (prefix) => `${prefix}-duplicate` },
+    );
+    await service.propose(action);
+    await expect(
+      service.propose({ ...action, accountId: "maustian", rationale: "overwrite attempt" }),
+    ).rejects.toThrow(/already exists/);
+    expect((await actions.get(action.id))?.accountId).toBe("plasticov");
+  });
+
+  it("allows only one concurrent review transition", async () => {
+    const receipts = new InMemoryReceiptRepository();
+    const actions = new InMemoryActionRepository(new InMemoryOutboxRepository(), receipts);
+    const service = new ActionService(
+      actions,
+      {
+        execute: () => Promise.resolve({ providerReceipt: {} }),
+        verify: () => Promise.resolve({ verified: true, observedState: {} }),
+      },
+      { now: () => new Date("2026-07-26T00:00:00.000Z") },
+      { next: (prefix) => `${prefix}-${Math.random()}` },
+    );
+    await service.propose(action);
+    const outcomes = await Promise.allSettled([
+      service.markReviewed(action.id, "reviewer-a"),
+      service.markReviewed(action.id, "reviewer-b"),
+    ]);
+    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
+    expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(1);
+    expect((await receipts.listForAction(action.id)).map((receipt) => receipt.type)).toEqual([
+      "proposal",
+      "review",
+    ]);
+  });
+
   it("refuses incomplete evidence", async () => {
     const service = new ActionService(
       new InMemoryActionRepository(),
-      new InMemoryReceiptRepository(),
       {
         execute: () => Promise.resolve({ providerReceipt: {} }),
         verify: () => Promise.resolve({ verified: true, observedState: {} }),
@@ -103,5 +144,32 @@ describe("ActionService", () => {
         evidenceBundle: { ...action.evidenceBundle, complete: false, missingInputs: ["cost"] },
       }),
     ).rejects.toThrow(/Evidence incomplete/);
+  });
+  it("marks an attempted remote mutation uncertain when verification cannot prove the outcome", async () => {
+    const outbox = new InMemoryOutboxRepository();
+    const receipts = new InMemoryReceiptRepository();
+    const actions = new InMemoryActionRepository(outbox, receipts);
+    const service = new ActionService(
+      actions,
+      {
+        execute: () => Promise.resolve({ providerReceipt: { requestId: "remote-uncertain" } }),
+        verify: () => Promise.resolve({ verified: false, observedState: { title: "unknown" } }),
+      },
+      { now: () => new Date("2026-07-26T00:00:00.000Z") },
+      { next: (prefix) => `${prefix}-${Math.random()}` },
+    );
+
+    await service.propose(action);
+    await service.markReviewed(action.id);
+    await service.approve(action.id, "sebastian");
+    await expect(service.execute(action.id)).rejects.toThrow(/Remote verification failed/);
+    expect((await actions.get(action.id))?.status).toBe("uncertain");
+    expect((await receipts.listForAction(action.id)).at(-1)).toMatchObject({
+      type: "outcome",
+      payload: { remoteState: "unknown", requiresReconciliation: true },
+    });
+    expect((await actions.listPending("plasticov")).map((item) => item.status)).toContain(
+      "uncertain",
+    );
   });
 });

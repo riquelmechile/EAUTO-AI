@@ -11,9 +11,9 @@ fi
 
 npm run doctor:production -- --env=.env.production
 docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml pull api worker caddy postgres redis || true
+docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml pull api worker caddy postgres || true
 docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml build minio backup
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml up -d postgres redis minio
+docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml up -d postgres minio
 docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml run --rm migrate
 docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml run --rm object-storage-init
 docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml up -d api worker caddy backup

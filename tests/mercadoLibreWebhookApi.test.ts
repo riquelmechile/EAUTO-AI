@@ -16,6 +16,7 @@ function webhookConfig() {
     MELI_MAUSTIAN_SELLER_ID: "222",
     MELI_WEBHOOK_ENABLED: "true",
     MELI_APPLICATION_ID: "app-123",
+    MELI_WEBHOOK_TOKEN: "test-webhook-token-0123456789abcdef",
   });
 }
 
@@ -36,7 +37,7 @@ describe("MercadoLibre webhook API", () => {
     try {
       const first = await app.inject({
         method: "POST",
-        url: "/v1/webhooks/mercadolibre",
+        url: "/v1/webhooks/mercadolibre?token=test-webhook-token-0123456789abcdef",
         payload: notification,
       });
       expect(first.statusCode).toBe(200);
@@ -44,11 +45,26 @@ describe("MercadoLibre webhook API", () => {
 
       const duplicate = await app.inject({
         method: "POST",
-        url: "/v1/webhooks/mercadolibre",
+        url: "/v1/webhooks/mercadolibre?token=test-webhook-token-0123456789abcdef",
         payload: notification,
       });
       expect(duplicate.statusCode).toBe(200);
       expect(duplicate.json()).toEqual({ ok: true, queued: false });
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("silently rejects an invalid webhook token", async () => {
+    const app = await buildApp(webhookConfig());
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/webhooks/mercadolibre?token=wrong-token",
+        payload: notification,
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toEqual({ ok: true, queued: false });
     } finally {
       await app.close();
     }
@@ -64,7 +80,7 @@ describe("MercadoLibre webhook API", () => {
       ]) {
         const response = await app.inject({
           method: "POST",
-          url: "/v1/webhooks/mercadolibre",
+          url: "/v1/webhooks/mercadolibre?token=test-webhook-token-0123456789abcdef",
           payload,
         });
         expect(response.statusCode).toBe(200);

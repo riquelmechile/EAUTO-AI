@@ -23,6 +23,7 @@ Recibir señales de MercadoLibre Chile durante las 24 horas, persistirlas antes 
 
 - `MELI_WEBHOOK_ENABLED=true`
 - `MELI_APPLICATION_ID=<application id real>`
+- `MELI_WEBHOOK_TOKEN=<token aleatorio de al menos 32 caracteres>`
 - `MELI_NOTIFICATION_WORKER_ID`
 - `MELI_NOTIFICATION_POLL_INTERVAL_MS`
 - `MELI_NOTIFICATION_BATCH_SIZE`
@@ -31,7 +32,8 @@ Recibir señales de MercadoLibre Chile durante las 24 horas, persistirlas antes 
 - `MELI_NOTIFICATION_BASE_RETRY_MS`
 - `MELI_NOTIFICATION_MAX_RETRY_MS`
 
-El modo webhook exige MercadoLibre habilitado, application ID y los seller IDs chilenos de ambas cuentas. Plasticov y Maustian se resuelven desde esos seller IDs; nunca desde un account ID enviado por el webhook.
+Configure en MercadoLibre la URL `https://<API_DOMAIN>/v1/webhooks/mercadolibre?token=<MELI_WEBHOOK_TOKEN>`.
+El modo webhook exige MercadoLibre habilitado, application ID, token de URL y los seller IDs chilenos de ambas cuentas. Plasticov y Maustian se resuelven desde esos seller IDs; nunca desde un account ID enviado por el webhook.
 
 ## Seguridad
 

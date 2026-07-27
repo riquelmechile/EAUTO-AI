@@ -58,7 +58,13 @@ describe("Agent OS API", () => {
   });
 
   it("creates and completes a bounded CEO work session in owner development mode", async () => {
-    const app = await buildApp(loadConfig({ NODE_ENV: "test", AUTH_MODE: "disabled" }));
+    const app = await buildApp(
+      loadConfig({
+        NODE_ENV: "test",
+        AUTH_MODE: "disabled",
+        AGENT_MANUAL_CONTROL_ENABLED: "true",
+      }),
+    );
     try {
       const plan = await app.inject({
         method: "POST",
@@ -112,6 +118,20 @@ describe("Agent OS API", () => {
       });
       expect(completed.statusCode).toBe(200);
       expect(completed.json<{ status: string }>().status).toBe("completed");
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("blocks raw session control when the governed worker is the authority", async () => {
+    const app = await buildApp(loadConfig({ NODE_ENV: "test", AUTH_MODE: "disabled" }));
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: "/v1/agent-os/plasticov/sessions",
+        payload: {},
+      });
+      expect(response.statusCode).toBe(409);
     } finally {
       await app.close();
     }

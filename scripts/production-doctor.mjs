@@ -31,7 +31,6 @@ const files = [
 ];
 const secrets = [
   "POSTGRES_PASSWORD",
-  "REDIS_PASSWORD",
   "MINIO_ROOT_USER",
   "MINIO_ROOT_PASSWORD",
   "OBJECT_STORAGE_ACCESS_KEY",
@@ -46,6 +45,7 @@ const secrets = [
   "MELI_PLASTICOV_SELLER_ID",
   "MELI_MAUSTIAN_SELLER_ID",
   "MELI_APPLICATION_ID",
+  "MELI_WEBHOOK_TOKEN",
   "RESTIC_REPOSITORY",
   "RESTIC_PASSWORD",
   "RESTIC_AWS_ACCESS_KEY_ID",
@@ -100,6 +100,13 @@ if (configured.OPERATOR_TOKENS_JSON && !isPlaceholder(configured.OPERATOR_TOKENS
   } catch {
     failures.push("OPERATOR_TOKENS_JSON must be valid JSON.");
   }
+}
+if (
+  configured.MELI_WEBHOOK_TOKEN &&
+  !isPlaceholder(configured.MELI_WEBHOOK_TOKEN) &&
+  configured.MELI_WEBHOOK_TOKEN.length < 32
+) {
+  failures.push("MELI_WEBHOOK_TOKEN must contain at least 32 characters.");
 }
 if (
   configured.MELI_TOKEN_VAULT_KEY_BASE64 &&

@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { Pool } from "pg";
 import {
   GovernedWorkOrderProcessor,
   GovernedWorkOrderService,
@@ -11,13 +10,11 @@ import {
   PostgresOperationalIntelligenceRepository,
   VerifiedOperationalEvidenceReader,
 } from "@eauto/infrastructure";
-import { loadOperationalIntelligenceConfig } from "./operationalIntelligenceConfig.js";
+import type { AppConfig } from "./config.js";
 import type { Runtime } from "./runtime.js";
 
-export function createOperationalIntelligenceRuntime(baseRuntime: Runtime) {
-  const config = loadOperationalIntelligenceConfig();
-  const databaseUrl = process.env.DATABASE_URL;
-  const pool = databaseUrl ? new Pool({ connectionString: databaseUrl }) : null;
+export function createOperationalIntelligenceRuntime(baseRuntime: Runtime, config: AppConfig) {
+  const pool = baseRuntime.databasePool;
   const repository = pool
     ? new PostgresOperationalIntelligenceRepository(pool)
     : new InMemoryOperationalIntelligenceRepository();
@@ -60,7 +57,7 @@ export function createOperationalIntelligenceRuntime(baseRuntime: Runtime) {
     intelligence,
     workOrders,
     processor,
-    close: () => pool?.end() ?? Promise.resolve(),
+    close: () => Promise.resolve(),
   });
 }
 

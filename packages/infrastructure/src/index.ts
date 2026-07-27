@@ -20,3 +20,4 @@ export * from "./s3ObjectStorage.js";
 export * from "./verifiedOperationalEvidenceReader.js";
 
 export * from "./mercadoLibreNotificationRepositories.js";
+export * from "./actionLifecycleEventHandlers.js";

@@ -308,14 +308,21 @@ export class AgentOsService {
         completedCount: completed.length,
         verifiedOutcomeCount: verified.length,
         failedCount: relevant.filter((session) => session.status === "failed").length,
-        policyViolationCount: 0,
-        humanCorrectionCount: 0,
+        policyViolationCount: null,
+        humanCorrectionCount: null,
         totalCostMinorClp: relevant.reduce((total, session) => total + session.spentMinorClp, 0),
-        verifiedOutcomeValueMinorClp: 0,
-        cacheHitTokens: 0,
-        cacheMissTokens: 0,
-        outputTokens: 0,
-        recommendedAutonomy: recommendAutonomy(relevant.length, verified.length),
+        verifiedOutcomeValueMinorClp: null,
+        cacheHitTokens: null,
+        cacheMissTokens: null,
+        outputTokens: null,
+        metricsComplete: false,
+        unavailableMetrics: Object.freeze([
+          "policy-violations",
+          "human-corrections",
+          "verified-outcome-value",
+          "llm-token-usage",
+        ]),
+        recommendedAutonomy: recommendAutonomy(relevant.length, verified.length, false),
         generatedAt,
       } satisfies AgentScorecard);
     });
@@ -382,7 +389,12 @@ function depthFor(level: "ceo" | "director" | "specialist"): 0 | 1 | 2 {
   return level === "ceo" ? 0 : level === "director" ? 1 : 2;
 }
 
-function recommendAutonomy(runCount: number, verifiedOutcomeCount: number): AgentAutonomyLevel {
+function recommendAutonomy(
+  runCount: number,
+  verifiedOutcomeCount: number,
+  metricsComplete: boolean,
+): AgentAutonomyLevel {
+  if (!metricsComplete) return "ask";
   if (runCount >= 30 && verifiedOutcomeCount === runCount) return "autonomous";
   if (runCount >= 10 && verifiedOutcomeCount === runCount) return "inform";
   return "ask";

@@ -1,5 +1,18 @@
 import type { EvidenceBundle } from "./evidence.js";
 
+export const ACTION_KINDS = [
+  "listing.publish",
+  "listing.update",
+  "price.update",
+  "stock.update",
+  "question.answer",
+  "claim.respond",
+  "ads.update",
+  "social.publish",
+  "medusa.sync",
+] as const;
+export type ActionKind = (typeof ACTION_KINDS)[number];
+
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 export type ActionStatus =
   | "draft"
@@ -10,6 +23,7 @@ export type ActionStatus =
   | "executed"
   | "verified"
   | "failed"
+  | "uncertain"
   | "rejected"
   | "expired";
 
@@ -18,7 +32,7 @@ export type ExactChange = Readonly<{ field: string; from: unknown; to: unknown }
 export type BusinessAction = Readonly<{
   id: string;
   accountId: string;
-  kind: string;
+  kind: ActionKind;
   target: string;
   exactChanges: readonly ExactChange[];
   rationale: string;
@@ -43,10 +57,11 @@ const transitions: Readonly<Record<ActionStatus, readonly ActionStatus[]>> = Obj
   proposed: ["reviewed", "rejected", "expired"],
   reviewed: ["approved", "rejected", "expired"],
   approved: ["executing", "expired"],
-  executing: ["executed", "failed"],
-  executed: ["verified", "failed"],
+  executing: ["executed", "failed", "uncertain"],
+  executed: ["verified", "failed", "uncertain"],
   verified: [],
   failed: [],
+  uncertain: [],
   rejected: [],
   expired: [],
 });

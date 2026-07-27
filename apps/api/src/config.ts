@@ -1,5 +1,6 @@
 import { Buffer } from "node:buffer";
 import { z } from "zod";
+import { ACTION_KINDS } from "@eauto/domain";
 
 const optionalUrl = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -28,6 +29,7 @@ const configSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
   CORS_ORIGIN: z.string().default("*"),
   AUTH_MODE: z.enum(["disabled", "static-token"]).default("disabled"),
+  AGENT_MANUAL_CONTROL_ENABLED: environmentBoolean.default(false),
   OPERATOR_TOKENS_JSON: z.string().default("[]"),
   SESSION_ACCESS_TTL_MS: z.coerce.number().int().min(60_000).max(86_400_000).default(900_000),
   SESSION_REFRESH_TTL_MS: z.coerce
@@ -78,6 +80,8 @@ const configSchema = z.object({
     .min(1_024)
     .max(20_000_000)
     .default(2_000_000),
+  ACTION_POLICY_VERSION: z.string().min(1).max(128).default("company-policy-v1"),
+  ACTION_APPROVAL_TTL_MS: z.coerce.number().int().min(60_000).max(86_400_000).default(3_600_000),
   OUTBOX_WORKER_ID: z.string().min(1).default("eauto-outbox"),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(20),
@@ -85,6 +89,33 @@ const configSchema = z.object({
   OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(8),
   OUTBOX_BASE_RETRY_MS: z.coerce.number().int().min(100).max(300_000).default(1_000),
   OUTBOX_MAX_RETRY_MS: z.coerce.number().int().min(1_000).max(86_400_000).default(300_000),
+  INTELLIGENCE_WORKER_ENABLED: environmentBoolean.default(false),
+  INTELLIGENCE_WORKER_ID: z.string().min(1).default("eauto-intelligence"),
+  INTELLIGENCE_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(2_000),
+  INTELLIGENCE_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
+  INTELLIGENCE_LEASE_MS: z.coerce.number().int().min(5_000).max(300_000).default(60_000),
+  INTELLIGENCE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
+  INTELLIGENCE_RETRY_BASE_MS: z.coerce.number().int().min(1_000).max(300_000).default(5_000),
+  INTELLIGENCE_RETRY_MAX_MS: z.coerce.number().int().min(5_000).max(86_400_000).default(900_000),
+  INTELLIGENCE_SESSION_DEADLINE_MS: z.coerce
+    .number()
+    .int()
+    .min(60_000)
+    .max(86_400_000)
+    .default(900_000),
+  INTELLIGENCE_DEFAULT_EVIDENCE_MAX_AGE_MS: z.coerce
+    .number()
+    .int()
+    .min(60_000)
+    .max(86_400_000)
+    .default(900_000),
+  INTELLIGENCE_DEFAULT_BUDGET_MICROS_USD: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(100_000_000)
+    .default(50_000),
+  INTELLIGENCE_DEFAULT_BUDGET_MINOR_CLP: z.coerce.number().int().min(0).max(100_000_000).default(0),
   LLM_ENABLED: environmentBoolean.default(false),
   LLM_BASE_URL: z.string().url().default("https://api.deepseek.com"),
   LLM_API_KEY: optionalString,
@@ -119,6 +150,7 @@ const configSchema = z.object({
   MELI_MAXIMUM_SCAN_PAGES: z.coerce.number().int().min(1).max(1_000).default(100),
   MELI_WEBHOOK_ENABLED: environmentBoolean.default(false),
   MELI_APPLICATION_ID: optionalString,
+  MELI_WEBHOOK_TOKEN: optionalString,
   MELI_NOTIFICATION_WORKER_ID: z.string().min(1).default("eauto-meli-notifications"),
   MELI_NOTIFICATION_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
   MELI_NOTIFICATION_BATCH_SIZE: z.coerce.number().int().min(1).max(200).default(100),
@@ -168,6 +200,18 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     if (operatorIdentities.length === 0) {
       throw new Error("At least one operator identity is mandatory in production.");
     }
+    if (parsed.data.AGENT_MANUAL_CONTROL_ENABLED) {
+      throw new Error("AGENT_MANUAL_CONTROL_ENABLED cannot be enabled in production.");
+    }
+    const corsOrigins = parsed.data.CORS_ORIGIN.split(",").map((origin) => origin.trim());
+    if (corsOrigins.includes("*")) throw new Error("CORS_ORIGIN cannot be wildcard in production.");
+    for (const origin of corsOrigins) {
+      const url = new URL(origin);
+      if (url.protocol !== "https:") throw new Error("CORS_ORIGIN must use HTTPS in production.");
+      if (url.pathname !== "/" || url.search || url.hash) {
+        throw new Error("CORS_ORIGIN entries must be origins without path, query or fragment.");
+      }
+    }
     if (!parsed.data.OBJECT_STORAGE_PUBLIC_ENDPOINT) {
       throw new Error("OBJECT_STORAGE_PUBLIC_ENDPOINT is mandatory in production.");
     }
@@ -211,8 +255,10 @@ function validateActionExecutionConfig(config: z.infer<typeof configSchema>): vo
   if (entries.length === 0) {
     throw new Error("ACTION_EXECUTION_ENABLED requires at least one allowlisted route.");
   }
+  const allowedKinds = new Set<string>(ACTION_KINDS);
   for (const [kind, value] of entries) {
-    if (!kind.trim() || !isRecord(value)) throw new Error("Each action route must be an object.");
+    if (!allowedKinds.has(kind)) throw new Error(`Unknown action route kind ${kind}.`);
+    if (!isRecord(value)) throw new Error("Each action route must be an object.");
     for (const field of ["executeUrl", "verifyUrl"] as const) {
       const urlValue = value[field];
       if (typeof urlValue !== "string")
@@ -237,8 +283,13 @@ function validateLlmConfig(config: z.infer<typeof configSchema>): void {
 
 function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {
   if (config.MELI_WEBHOOK_ENABLED) {
-    if (!config.MELI_ENABLED || !config.MELI_APPLICATION_ID) {
-      throw new Error("MELI_WEBHOOK_ENABLED requires MELI_ENABLED and MELI_APPLICATION_ID.");
+    if (!config.MELI_ENABLED || !config.MELI_APPLICATION_ID || !config.MELI_WEBHOOK_TOKEN) {
+      throw new Error(
+        "MELI_WEBHOOK_ENABLED requires MELI_ENABLED, MELI_APPLICATION_ID and MELI_WEBHOOK_TOKEN.",
+      );
+    }
+    if (config.MELI_WEBHOOK_TOKEN.length < 32) {
+      throw new Error("MELI_WEBHOOK_TOKEN must contain at least 32 characters.");
     }
   }
   if (!config.MELI_ENABLED) return;

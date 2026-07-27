@@ -9,6 +9,7 @@ export const MERCADOLIBRE_MOBILE_RETURN_URI = "eautoai://mercadolibre/oauth-comp
 
 export type MercadoLibreRouteDependencies = Readonly<{
   runtime: Runtime;
+  webhookToken: string | null;
   authenticate(request: FastifyRequest): Promise<ActorIdentity>;
   requireAccount(actor: ActorIdentity, accountId: string, permission: Permission): Promise<void>;
 }>;
@@ -17,7 +18,10 @@ export function registerMercadoLibreRoutes(
   app: FastifyInstance,
   dependencies: MercadoLibreRouteDependencies,
 ): void {
-  registerMercadoLibreNotificationRoutes(app, dependencies);
+  registerMercadoLibreNotificationRoutes(app, {
+    ...dependencies,
+    webhookToken: dependencies.webhookToken,
+  });
 
   app.post("/v1/integrations/mercadolibre/:accountId/authorize", async (request) => {
     const actor = await dependencies.authenticate(request);

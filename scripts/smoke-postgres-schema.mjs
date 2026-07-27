@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import {
+  PostgresActionLifecycleEventHandler,
+  PostgresActionRepository,
   PostgresAgentOsRepository,
   PostgresOperationalEvidenceReader,
   PostgresOperationalIntelligenceRepository,
+  PostgresOutboxRepository,
+  PostgresReceiptRepository,
+  PostgresSourceImageUploadRepository,
 } from "@eauto/infrastructure";
+import { ActionService, OutboxProcessor } from "@eauto/application";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required for the Postgres schema smoke.");
@@ -19,6 +25,8 @@ const orderIdA = `audit-order-a-${suffix}`;
 const orderIdB = `audit-order-b-${suffix}`;
 const packId = `audit-pack-${suffix}`;
 const assetId = `audit-asset-${suffix}`;
+const actionId = `audit-action-${suffix}`;
+const uploadId = `audit-upload-${suffix}`;
 const now = new Date();
 const nowIso = now.toISOString();
 const deadlineAt = new Date(now.getTime() + 60_000).toISOString();
@@ -171,8 +179,172 @@ try {
     throw new Error("Operational evidence omitted the exact evidence kind.");
   }
 
-  console.log("✓ Postgres migrations and scoped repositories verified");
+  const outboxRepository = new PostgresOutboxRepository(pool);
+  const receiptRepository = new PostgresReceiptRepository(pool);
+  const actionRepository = new PostgresActionRepository(pool);
+  let actionTick = 0;
+  const actionClock = { now: () => new Date(now.getTime() + actionTick++ * 1_000) };
+  const actionService = new ActionService(
+    actionRepository,
+    {
+      execute: () => Promise.resolve({ providerReceipt: { requestId: `provider-${suffix}` } }),
+      verify: () => Promise.resolve({ verified: false, observedState: { status: "unknown" } }),
+    },
+    actionClock,
+    { next: (prefix) => `${prefix}-${suffix}-${actionTick++}` },
+  );
+  const actionDraft = Object.freeze({
+    id: actionId,
+    accountId,
+    kind: "listing.update",
+    target: `MLC-${suffix}`,
+    exactChanges: Object.freeze([{ field: "title", from: "old", to: "new" }]),
+    rationale: "Schema smoke action",
+    risk: "low",
+    status: "draft",
+    evidenceBundle: Object.freeze({
+      id: packId,
+      accountId,
+      references: Object.freeze(evidence.documents.map((document) => document.reference)),
+      complete: true,
+      missingInputs: Object.freeze([]),
+    }),
+    policyVersion: "audit-policy-v1",
+    expiresAt: new Date(now.getTime() + 3_600_000).toISOString(),
+  });
+  await actionService.propose(actionDraft, "audit-agent");
+  const reviewResults = await Promise.allSettled([
+    actionService.markReviewed(actionId, "audit-reviewer-a"),
+    actionService.markReviewed(actionId, "audit-reviewer-b"),
+  ]);
+  if (reviewResults.filter((result) => result.status === "fulfilled").length !== 1) {
+    throw new Error("Concurrent action review was not compare-and-set protected.");
+  }
+  await actionService.approve(actionId, "audit-owner");
+  await actionService.execute(actionId, "audit-owner").catch(() => undefined);
+  const uncertainAction = await actionRepository.get(actionId);
+  if (uncertainAction?.status !== "uncertain") {
+    throw new Error("Unverified remote action was not marked uncertain.");
+  }
+  const actionReceipts = await receiptRepository.listForAction(actionId);
+  if (actionReceipts.length !== 5 || actionReceipts.at(-1)?.type !== "outcome") {
+    throw new Error("Action receipt chain is incomplete.");
+  }
+  if (
+    actionReceipts.some((receipt, index) =>
+      index === 0
+        ? receipt.previousReceiptHash !== null
+        : receipt.previousReceiptHash !== actionReceipts[index - 1]?.chainHash,
+    )
+  ) {
+    throw new Error("Action receipt chain is not linear.");
+  }
+
+  const lifecycle = new PostgresActionLifecycleEventHandler(pool);
+  const lifecycleProcessor = new OutboxProcessor(
+    outboxRepository,
+    {
+      "action.proposed": lifecycle.handle,
+      "action.reviewed": lifecycle.handle,
+      "action.approved": lifecycle.handle,
+      "action.execution.started": lifecycle.handle,
+      "action.executed": lifecycle.handle,
+      "action.verified": lifecycle.handle,
+      "action.failed": lifecycle.handle,
+      "action.uncertain": lifecycle.handle,
+    },
+    {
+      workerId: `audit-worker-${suffix}`,
+      leaseMs: 30_000,
+      maxAttempts: 3,
+      baseRetryMs: 100,
+      maxRetryMs: 1_000,
+      now: actionClock.now,
+    },
+  );
+  let delivered = 0;
+  for (;;) {
+    const result = await lifecycleProcessor.runOnce(100);
+    delivered += result.processed;
+    if (result.claimed === 0) break;
+  }
+  if (delivered !== 6) throw new Error(`Expected 6 lifecycle deliveries; received ${delivered}.`);
+  const deliveryRows = await pool.query(
+    `SELECT count(*)::int AS count FROM action_lifecycle_delivery_log WHERE action_id = $1`,
+    [actionId],
+  );
+  if (deliveryRows.rows[0]?.count !== 6) {
+    throw new Error("Lifecycle deliveries were acknowledged without materialization.");
+  }
+
+  await actionService
+    .propose(Object.freeze({ ...actionDraft, accountId: "plasticov" }), "audit-agent")
+    .then(() => {
+      throw new Error("Duplicate action ID overwrote a different account.");
+    })
+    .catch((error) => {
+      if (!String(error).includes("already exists")) throw error;
+    });
+
+  const uploadRepository = new PostgresSourceImageUploadRepository(pool);
+  const requestedUpload = Object.freeze({
+    id: uploadId,
+    organizationId,
+    accountId,
+    objectKey: `source/${organizationId}/${accountId}/${uploadId}.jpg`,
+    originalFileName: "audit.jpg",
+    contentType: "image/jpeg",
+    sizeBytes: 128,
+    checksumSha256Base64: "A".repeat(43) + "=",
+    status: "requested",
+    objectUri: null,
+    createdAt: nowIso,
+    expiresAt: deadlineAt,
+    verifiedAt: null,
+    rejectionReason: null,
+  });
+  await uploadRepository.save(requestedUpload);
+  await uploadRepository
+    .save(Object.freeze({ ...requestedUpload, accountId: "plasticov" }))
+    .then(() => {
+      throw new Error("Upload ID was reused across accounts.");
+    })
+    .catch((error) => {
+      if (!String(error).includes("different ownership")) throw error;
+    });
+  await uploadRepository.save(
+    Object.freeze({
+      ...requestedUpload,
+      status: "verified",
+      objectUri: `s3://eauto-content/${requestedUpload.objectKey}`,
+      verifiedAt: new Date(now.getTime() + 1_000).toISOString(),
+    }),
+  );
+  await uploadRepository
+    .save(Object.freeze({ ...requestedUpload, status: "expired" }))
+    .then(() => {
+      throw new Error("Terminal upload was transitioned twice.");
+    })
+    .catch((error) => {
+      if (!String(error).includes("transition conflict")) throw error;
+    });
+
+  console.log("✓ Postgres migrations, tenant constraints and durable lifecycles verified");
 } finally {
+  await pool
+    .query(`DELETE FROM action_lifecycle_delivery_log WHERE action_id = $1`, [actionId])
+    .catch(() => undefined);
+  await pool
+    .query(`DELETE FROM transactional_outbox WHERE aggregate_id = $1`, [actionId])
+    .catch(() => undefined);
+  await pool
+    .query(`DELETE FROM verifiable_receipts WHERE action_id = $1`, [actionId])
+    .catch(() => undefined);
+  await pool.query(`DELETE FROM approvals WHERE action_id = $1`, [actionId]).catch(() => undefined);
+  await pool.query(`DELETE FROM business_actions WHERE id = $1`, [actionId]).catch(() => undefined);
+  await pool
+    .query(`DELETE FROM source_image_uploads WHERE id = $1`, [uploadId])
+    .catch(() => undefined);
   await pool.query(`DELETE FROM content_assets WHERE id = $1`, [assetId]).catch(() => undefined);
   await pool
     .query(`DELETE FROM agent_work_orders WHERE id = ANY($1::text[])`, [[orderIdA, orderIdB]])

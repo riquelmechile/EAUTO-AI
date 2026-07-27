@@ -36,10 +36,12 @@ CREATE TABLE IF NOT EXISTS agent_work_sessions (
   payload_json jsonb NOT NULL
 );
 
--- The foundation migration already created an earlier agent_work_sessions table.
--- Migration 013 performs the in-place schema repair and creates the scoped indexes after
--- safely backfilling any legacy rows. Do not reference the new columns here because they
--- may not exist yet on an upgraded database.
-
+CREATE INDEX IF NOT EXISTS agent_work_sessions_account_idx
+  ON agent_work_sessions(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS agent_work_sessions_agent_status_idx
+  ON agent_work_sessions(agent_id, status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS agent_work_sessions_parent_idx
+  ON agent_work_sessions(parent_session_id)
+  WHERE parent_session_id IS NOT NULL;
 
 COMMIT;

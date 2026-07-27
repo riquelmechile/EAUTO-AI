@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { OutboxProcessor, type OutboxEventDraft } from "@eauto/application";
-import { InMemoryOutboxRepository } from "@eauto/infrastructure";
+import {
+  InMemoryActionLifecycleEventHandler,
+  InMemoryOutboxRepository,
+} from "@eauto/infrastructure";
 
 const event: OutboxEventDraft = Object.freeze({
   id: "event-1",
@@ -78,13 +81,14 @@ describe("OutboxProcessor", () => {
     expect((await processor.runOnce(1)).retried).toBe(1);
     now = new Date("2026-07-26T00:00:03.000Z");
     expect((await processor.runOnce(1)).dead).toBe(1);
-    expect((await repository.listDead(10))[0]).toMatchObject({
+    expect((await repository.listDead({ accountIds: ["plasticov"], limit: 10 }))[0]).toMatchObject({
       id: "event-1",
       attempts: 2,
       lastError: "poison-event",
     });
 
     await repository.requeueDead({
+      accountIds: ["plasticov"],
       id: "event-1",
       availableAt: "2026-07-26T00:00:04.000Z",
     });
@@ -94,5 +98,32 @@ describe("OutboxProcessor", () => {
       processed: 0,
       dead: 0,
     });
+  });
+
+  it("materializes action lifecycle events instead of acknowledging a no-op", async () => {
+    const repository = new InMemoryOutboxRepository();
+    const lifecycle = new InMemoryActionLifecycleEventHandler();
+    await repository.enqueue(event);
+    const processor = new OutboxProcessor(
+      repository,
+      { "action.proposed": lifecycle.handle },
+      {
+        workerId: "worker-audit",
+        leaseMs: 30_000,
+        maxAttempts: 3,
+        baseRetryMs: 1_000,
+        maxRetryMs: 10_000,
+        now: () => new Date("2026-07-26T00:00:01.000Z"),
+      },
+    );
+    expect((await processor.runOnce(1)).processed).toBe(1);
+    expect(lifecycle.list()).toEqual([
+      expect.objectContaining({
+        outboxEventId: "event-1",
+        accountId: "plasticov",
+        actionId: "action-1",
+        eventType: "action.proposed",
+      }),
+    ]);
   });
 });

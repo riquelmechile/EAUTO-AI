@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { ActorIdentity, Permission } from "@eauto/domain";
@@ -16,6 +17,7 @@ const webhookSchema = z.object({
 
 export type MercadoLibreNotificationRouteDependencies = Readonly<{
   runtime: Runtime;
+  webhookToken: string | null;
   authenticate(request: FastifyRequest): Promise<ActorIdentity>;
   requireAccount(actor: ActorIdentity, accountId: string, permission: Permission): Promise<void>;
 }>;
@@ -26,7 +28,15 @@ export function registerMercadoLibreNotificationRoutes(
 ): void {
   app.post("/v1/webhooks/mercadolibre", async (request) => {
     const service = dependencies.runtime.mercadoLibreNotificationIngestion;
-    if (!service) return { ok: true, queued: false };
+    const query = z.object({ token: z.string().optional() }).safeParse(request.query);
+    if (
+      !service ||
+      !dependencies.webhookToken ||
+      !query.success ||
+      !secureEquals(query.data.token ?? "", dependencies.webhookToken)
+    ) {
+      return { ok: true, queued: false };
+    }
     const body = webhookSchema.parse(request.body);
     const result = await service.ingest({
       notificationId: body._id,
@@ -82,4 +92,10 @@ export function registerMercadoLibreNotificationRoutes(
       return { requeued: true };
     },
   );
+}
+
+function secureEquals(left: string, right: string): boolean {
+  const leftHash = createHash("sha256").update(left, "utf8").digest();
+  const rightHash = createHash("sha256").update(right, "utf8").digest();
+  return timingSafeEqual(leftHash, rightHash);
 }

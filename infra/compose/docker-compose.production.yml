@@ -6,7 +6,6 @@ x-runtime: &runtime
     - ../../.env.production
   environment:
     DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
     OBJECT_STORAGE_PUBLIC_ENDPOINT: https://${S3_DOMAIN}
     OBJECT_STORAGE_INTERNAL_ENDPOINT: http://minio:9000
     OBJECT_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
@@ -36,27 +35,6 @@ services:
       - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-    security_opt:
-      - no-new-privileges:true
-
-  redis:
-    image: redis:8.8.1-alpine3.23
-    restart: unless-stopped
-    environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-    command:
-      - /bin/sh
-      - -ec
-      - exec redis-server --appendonly yes --save 900 1 --requirepass "$${REDIS_PASSWORD}"
-    volumes:
-      - redis_data:/data
-    networks:
-      - backend
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning ping | grep PONG"]
       interval: 10s
       timeout: 5s
       retries: 20
@@ -108,8 +86,6 @@ services:
         condition: service_completed_successfully
       object-storage-init:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
     healthcheck:
       test:
         - CMD
@@ -129,8 +105,6 @@ services:
         condition: service_completed_successfully
       object-storage-init:
         condition: service_completed_successfully
-      redis:
-        condition: service_healthy
 
   caddy:
     image: caddy:2.11.4-alpine
@@ -185,7 +159,6 @@ networks:
 
 volumes:
   postgres_data:
-  redis_data:
   minio_data:
   caddy_data:
   caddy_config:

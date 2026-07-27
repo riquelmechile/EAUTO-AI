@@ -8,7 +8,6 @@ const template = parseEnvironment(
 const config = loadConfig({
   ...template,
   POSTGRES_PASSWORD: "postgres-smoke-password",
-  REDIS_PASSWORD: "redis-smoke-password",
   DATABASE_URL: "postgres://eauto:postgres-smoke-password@postgres:5432/eauto",
   MINIO_ROOT_USER: "minio-smoke-user",
   MINIO_ROOT_PASSWORD: "minio-smoke-password",
@@ -32,6 +31,7 @@ const config = loadConfig({
   MELI_PLASTICOV_SELLER_ID: "100001",
   MELI_MAUSTIAN_SELLER_ID: "100002",
   MELI_APPLICATION_ID: "100003",
+  MELI_WEBHOOK_TOKEN: "smoke-webhook-token-0123456789abcdef",
 });
 
 const runtime = createRuntime(config);

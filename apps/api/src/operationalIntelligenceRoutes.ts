@@ -1,8 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { EVIDENCE_SUBJECTS, LLM_TASK_CLASSES, MEMORY_KINDS } from "@eauto/domain";
+import { EVIDENCE_SUBJECTS, LLM_TASK_CLASSES } from "@eauto/domain";
 import type { AgentOsRouteDependencies } from "./agentOsRoutes.js";
-import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";
 
 const accountParams = z.object({ accountId: z.string().min(3) });
 const proposalParams = z.object({ accountId: z.string().min(3), proposalId: z.string().min(3) });
@@ -12,8 +11,7 @@ export function registerOperationalIntelligenceRoutes(
   app: FastifyInstance,
   dependencies: AgentOsRouteDependencies,
 ): void {
-  const runtime = createOperationalIntelligenceRuntime(dependencies.runtime);
-  app.addHook("onClose", async () => runtime.close());
+  const runtime = dependencies.intelligenceRuntime;
 
   app.post("/v1/intelligence/:accountId/evidence-packs", async (request, reply) => {
     const actor = await dependencies.authenticate(request);
@@ -55,11 +53,10 @@ export function registerOperationalIntelligenceRoutes(
     const params = accountParams.parse(request.params);
     const body = z
       .object({
-        kind: z.enum(MEMORY_KINDS),
+        kind: z.enum(["decision", "preference", "lesson", "summary"]),
         content: z.string().min(3).max(20_000),
         sourceRefs: z.array(z.string().min(1)).min(1).max(200),
         confidence: z.enum(["low", "medium", "high"]),
-        verifiedOutcome: z.boolean(),
         expiresAt: z.string().datetime().nullable(),
         organizationWide: z.boolean().default(false),
       })
@@ -72,7 +69,7 @@ export function registerOperationalIntelligenceRoutes(
       content: body.content,
       sourceRefs: body.sourceRefs,
       confidence: body.confidence,
-      verifiedOutcome: body.verifiedOutcome,
+      verifiedOutcome: false,
       expiresAt: body.expiresAt,
     });
     return reply.code(201).send({ memory });

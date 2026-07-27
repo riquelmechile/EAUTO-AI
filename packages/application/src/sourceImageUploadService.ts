@@ -11,7 +11,11 @@ import type { Clock } from "./ports.js";
 
 export type SourceImageUploadRepository = {
   save(upload: SourceImageUpload): Promise<void>;
-  get(id: string): Promise<SourceImageUpload | null>;
+  get(input: {
+    id: string;
+    organizationId: string;
+    accountId: string;
+  }): Promise<SourceImageUpload | null>;
 };
 
 export type ObjectStoragePort = {
@@ -144,10 +148,8 @@ export class SourceImageUploadService {
     organizationId: string,
     accountId: string,
   ): Promise<SourceImageUpload> {
-    const upload = await this.uploads.get(id);
-    if (!upload || upload.organizationId !== organizationId || upload.accountId !== accountId) {
-      throw new UploadValidationError(`Upload ${id} was not found.`);
-    }
+    const upload = await this.uploads.get({ id, organizationId, accountId });
+    if (!upload) throw new UploadValidationError(`Upload ${id} was not found.`);
     return upload;
   }
 }
