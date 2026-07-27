@@ -1,0 +1,4 @@
+.env.production.example
+docs/runbooks/production-release.md
+infra/compose/docker-compose.production.yml
+scripts/deploy-production.sh
