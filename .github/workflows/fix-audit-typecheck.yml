@@ -25,12 +25,15 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           path = Path('packages/application/src/llmService.ts')
           text = path.read_text()
-          old = '''  list(accountId: string, limit = 100): Promise<readonly LlmRunRecord[]> {
-            return this.repository.list(accountId, Math.min(500, Math.max(1, limit)));
-          }'''
-          new = '''  list(
+          pattern = re.compile(
+              r'  list\(accountId: string, limit = 100\): Promise<readonly LlmRunRecord\[\]> \{\n'
+              r'\s+return this\.repository\.list\(accountId, Math\.min\(500, Math\.max\(1, limit\)\)\);\n'
+              r'  \}'
+          )
+          replacement = '''  list(
             organizationId: string,
             accountId: string,
             limit = 100,
@@ -41,9 +44,10 @@ jobs:
               limit: Math.min(500, Math.max(1, limit)),
             });
           }'''
-          if text.count(old) != 1:
-              raise SystemExit(f'Expected one legacy list implementation, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected one legacy list implementation, found {count}')
+          path.write_text(updated)
           PY
           npm ci --no-audit --no-fund
           npx prettier --write packages/application/src/llmService.ts
