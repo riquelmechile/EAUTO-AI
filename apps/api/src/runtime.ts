@@ -15,15 +15,18 @@ import {
   MercadoLibreService,
   OutboxProcessor,
   SessionService,
+  ShadowLlmService,
   SourceImageUploadService,
   type OutboxEventHandler,
 } from "@eauto/application";
 import { DeterministicContentProvider } from "@eauto/content";
 import {
+  DeepSeekGateway,
   InMemoryAccountRepository,
   InMemoryActionRepository,
   InMemoryAgentOsRepository,
   InMemoryContentAssetRepository,
+  InMemoryLlmRunRepository,
   InMemoryMercadoLibreConnectionRepository,
   InMemoryMercadoLibreOAuthStateRepository,
   InMemoryMercadoLibreNotificationRepository,
@@ -37,6 +40,7 @@ import {
   PostgresActionRepository,
   PostgresAgentOsRepository,
   PostgresContentAssetRepository,
+  PostgresLlmRunRepository,
   PostgresMercadoLibreConnectionRepository,
   PostgresMercadoLibreOAuthStateRepository,
   PostgresMercadoLibreNotificationRepository,
@@ -126,6 +130,7 @@ export function createRuntime(config: AppConfig) {
   const agentOsRepository = pool
     ? new PostgresAgentOsRepository(pool)
     : new InMemoryAgentOsRepository();
+  const llmRuns = pool ? new PostgresLlmRunRepository(pool) : new InMemoryLlmRunRepository();
   const clock = { now: () => new Date() };
   const ids = { next: (prefix: string) => `${prefix}_${randomUUID()}` };
   const actionService = new ActionService(
@@ -136,6 +141,7 @@ export function createRuntime(config: AppConfig) {
     ids,
   );
   const agentOs = new AgentOsService(agentOsRepository, clock, ids);
+  const shadowLlm = createShadowLlmRuntime(config, llmRuns, clock, ids);
   const contentStudio = new ContentStudioService(
     new DeterministicContentProvider(),
     assetRepository,
@@ -216,8 +222,10 @@ export function createRuntime(config: AppConfig) {
     receipts: receiptRepository,
     assets: assetRepository,
     outbox,
+    llmRuns,
     actionService,
     agentOs,
+    shadowLlm,
     contentStudio,
     sessionService,
     sourceImageUploads,
@@ -229,6 +237,28 @@ export function createRuntime(config: AppConfig) {
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
     close: () => pool?.end() ?? Promise.resolve(),
   };
+}
+
+function createShadowLlmRuntime(
+  config: AppConfig,
+  repository: InMemoryLlmRunRepository | PostgresLlmRunRepository,
+  clock: { now(): Date },
+  ids: { next(prefix: string): string },
+): ShadowLlmService | null {
+  if (!config.LLM_ENABLED) return null;
+  if (!config.LLM_API_KEY) throw new Error("LLM runtime is enabled but LLM_API_KEY is missing.");
+  return new ShadowLlmService(
+    new DeepSeekGateway({ baseUrl: config.LLM_BASE_URL, apiKey: config.LLM_API_KEY }),
+    repository,
+    clock,
+    ids,
+    {
+      timeoutMs: config.LLM_TIMEOUT_MS,
+      defaultMaximumPromptTokens: config.LLM_DEFAULT_MAXIMUM_PROMPT_TOKENS,
+      defaultMaximumOutputTokens: config.LLM_DEFAULT_MAXIMUM_OUTPUT_TOKENS,
+      dailyAccountBudgetMicrosUsd: config.LLM_DAILY_ACCOUNT_BUDGET_MICROS_USD,
+    },
+  );
 }
 
 function createMercadoLibreRuntime(
