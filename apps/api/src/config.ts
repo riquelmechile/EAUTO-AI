@@ -57,6 +57,28 @@ const configSchema = z.object({
   OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(8),
   OUTBOX_BASE_RETRY_MS: z.coerce.number().int().min(100).max(300_000).default(1_000),
   OUTBOX_MAX_RETRY_MS: z.coerce.number().int().min(1_000).max(86_400_000).default(300_000),
+  LLM_ENABLED: environmentBoolean.default(false),
+  LLM_BASE_URL: z.string().url().default("https://api.deepseek.com"),
+  LLM_API_KEY: optionalString,
+  LLM_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(300_000).default(90_000),
+  LLM_DEFAULT_MAXIMUM_PROMPT_TOKENS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(1_000_000)
+    .default(100_000),
+  LLM_DEFAULT_MAXIMUM_OUTPUT_TOKENS: z.coerce
+    .number()
+    .int()
+    .min(100)
+    .max(384_000)
+    .default(8_000),
+  LLM_DAILY_ACCOUNT_BUDGET_MICROS_USD: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(1_000_000_000)
+    .default(1_000_000),
   MELI_ENABLED: environmentBoolean.default(false),
   MELI_CLIENT_ID: optionalString,
   MELI_CLIENT_SECRET: optionalString,
@@ -110,6 +132,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     throw new Error("Object storage access and secret keys must be configured together.");
   }
 
+  validateLlmConfig(parsed.data);
   validateMercadoLibreConfig(parsed.data);
 
   if (parsed.data.NODE_ENV === "production") {
@@ -129,6 +152,14 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   }
 
   return parsed.data;
+}
+
+function validateLlmConfig(config: z.infer<typeof configSchema>): void {
+  if (!config.LLM_ENABLED) return;
+  if (!config.LLM_API_KEY) throw new Error("LLM_ENABLED requires LLM_API_KEY.");
+  if (config.NODE_ENV === "production" && new URL(config.LLM_BASE_URL).protocol !== "https:") {
+    throw new Error("LLM_BASE_URL must use HTTPS in production.");
+  }
 }
 
 function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {
