@@ -6,8 +6,7 @@ const templateMode = process.argv.includes("--template");
 const envArgument = process.argv.find((argument) => argument.startsWith("--env="));
 const envPath = resolve(process.cwd(), envArgument?.slice(6) ?? ".env.production");
 const configured = existsSync(envPath) ? parseEnvironment(await readFile(envPath, "utf8")) : {};
-const immutableImagePattern =
-  /^ghcr\.io\/riquelmechile\/eauto-ai@sha256:[a-f0-9]{64}$/;
+const immutableImagePattern = /^ghcr\.io\/riquelmechile\/eauto-ai@sha256:[a-f0-9]{64}$/;
 
 const files = [
   "Dockerfile",
