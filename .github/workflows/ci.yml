@@ -46,8 +46,24 @@ jobs:
             -e ACME_EMAIL=operations@example.cl \
             -v "$PWD/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile
-      - name: Build production API image
-        run: docker build --pull --target runtime --tag eauto-ai:ci .
+      - name: Capture production image build
+        id: image
+        shell: bash
+        run: |
+          set +e
+          docker build --pull --progress=plain --target runtime --tag eauto-ai:ci . > docker-build.log 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-image-build
+          path: docker-build.log
+          if-no-files-found: error
+      - name: Enforce production image build
+        if: steps.image.outputs.exit_code != '0'
+        run: exit 1
       - name: Start object storage
         run: |
           docker compose -f infra/compose/docker-compose.yml up -d minio
