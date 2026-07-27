@@ -15,7 +15,7 @@ FROM dependencies AS builder
 COPY tsconfig.base.json vitest.config.ts eslint.config.mjs ./
 COPY apps/api apps/api
 COPY packages packages
-RUN npm run build:server
+RUN npm run build:server -- --force
 
 FROM node:22.16.0-bookworm-slim AS runtime
 ENV NODE_ENV=production
