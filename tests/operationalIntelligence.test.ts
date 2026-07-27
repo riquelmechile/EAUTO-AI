@@ -279,9 +279,9 @@ describe("operational intelligence governance", () => {
     expect(result).toEqual({ leased: 1, completed: 1, failed: 0 });
     const sessions = await agentOs.listSessions("plasticov", 20);
     expect(sessions.map((session) => session.agentId)).toEqual([
-      "pricing",
-      "finance-director",
       "ceo",
+      "finance-director",
+      "pricing",
     ]);
     const proposals = await intelligence.listProposals("plasticov");
     expect(proposals).toHaveLength(1);
