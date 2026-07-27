@@ -1,9 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-const workflowPaths = [
-  ".github/workflows/ci.yml",
-  ".github/workflows/release.yml",
-];
+const workflowPaths = [".github/workflows/ci.yml", ".github/workflows/release.yml"];
 const allowedActions = new Set([
   "actions/checkout",
   "actions/setup-node",
