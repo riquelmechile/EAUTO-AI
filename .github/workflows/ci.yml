@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -18,43 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
-          ref: ${{ github.head_ref }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Apply strict type refinements
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('packages/application/src/governedWorkOrderProcessor.ts')
-          text = path.read_text()
-          text = text.replace(
-              '...new Set(pack.documents.map((document) => document.kind)),',
-              '...new Set(pack.documents.flatMap((document) => (document.kind ? [document.kind] : []))),',
-          )
-          text = text.replace(
-              '  if (!selected && !fallback) throw new Error(`Agent ${contract.id} has no allowed capability.`);\n  return selected ?? fallback;',
-              '  if (selected) return selected;\n  if (fallback) return fallback;\n  throw new Error(`Agent ${contract.id} has no allowed capability.`);',
-          )
-          path.write_text(text)
-          PY
-      - name: Apply canonical formatting
-        run: npm run format
-      - name: Commit refinements
-        run: |
-          if git diff --quiet; then
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "fix: refine governed work order types"
-          git push
+      - name: Check formatting
+        run: npm run format:check
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
