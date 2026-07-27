@@ -9,6 +9,8 @@ import {
 import {
   ActionService,
   ContentStudioService,
+  MercadoLibreNotificationIngestionService,
+  MercadoLibreNotificationProcessor,
   MercadoLibreService,
   OutboxProcessor,
   SessionService,
@@ -22,6 +24,7 @@ import {
   InMemoryContentAssetRepository,
   InMemoryMercadoLibreConnectionRepository,
   InMemoryMercadoLibreOAuthStateRepository,
+  InMemoryMercadoLibreNotificationRepository,
   InMemoryOutboxRepository,
   InMemoryReceiptRepository,
   InMemorySessionRepository,
@@ -33,6 +36,7 @@ import {
   PostgresContentAssetRepository,
   PostgresMercadoLibreConnectionRepository,
   PostgresMercadoLibreOAuthStateRepository,
+  PostgresMercadoLibreNotificationRepository,
   PostgresOutboxRepository,
   PostgresReceiptRepository,
   PostgresSessionRepository,
@@ -167,6 +171,37 @@ export function createRuntime(config: AppConfig) {
     now: () => new Date(),
   });
   const mercadoLibre = createMercadoLibreRuntime(config, pool, clock);
+  const mercadoLibreNotifications = pool
+    ? new PostgresMercadoLibreNotificationRepository(pool)
+    : new InMemoryMercadoLibreNotificationRepository();
+  const mercadoLibreNotificationIngestion =
+    config.MELI_WEBHOOK_ENABLED &&
+    config.MELI_APPLICATION_ID &&
+    config.MELI_PLASTICOV_SELLER_ID &&
+    config.MELI_MAUSTIAN_SELLER_ID
+      ? new MercadoLibreNotificationIngestionService(mercadoLibreNotifications, {
+          applicationId: config.MELI_APPLICATION_ID,
+          organizationId: "maustian",
+          accountBySellerId: Object.freeze({
+            [config.MELI_PLASTICOV_SELLER_ID]: "plasticov",
+            [config.MELI_MAUSTIAN_SELLER_ID]: "maustian",
+          }),
+          now: () => new Date(),
+          nextId: () => `meln_${randomUUID()}`,
+        })
+      : null;
+  const mercadoLibreNotificationProcessor =
+    config.MELI_WEBHOOK_ENABLED && mercadoLibre
+      ? new MercadoLibreNotificationProcessor(mercadoLibreNotifications, mercadoLibre, {
+          workerId: `${config.MELI_NOTIFICATION_WORKER_ID}-${process.pid}`,
+          leaseMs: config.MELI_NOTIFICATION_LEASE_MS,
+          maxAttempts: config.MELI_NOTIFICATION_MAX_ATTEMPTS,
+          baseRetryMs: config.MELI_NOTIFICATION_BASE_RETRY_MS,
+          maxRetryMs: config.MELI_NOTIFICATION_MAX_RETRY_MS,
+          batchSize: config.MELI_NOTIFICATION_BATCH_SIZE,
+          now: () => new Date(),
+        })
+      : null;
 
   return {
     accounts: accountRepository,
@@ -180,6 +215,9 @@ export function createRuntime(config: AppConfig) {
     sourceImageUploads,
     outboxProcessor,
     mercadoLibre,
+    mercadoLibreNotifications,
+    mercadoLibreNotificationIngestion,
+    mercadoLibreNotificationProcessor,
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
     close: () => pool?.end() ?? Promise.resolve(),
   };
