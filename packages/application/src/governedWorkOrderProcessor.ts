@@ -137,19 +137,21 @@ export class GovernedWorkOrderProcessor {
         accountId: order.accountId,
         sessionId: created.session.id,
       });
-      if (!leaf) {
-        const nextContract = chain[index + 1];
-        if (!nextContract) throw new Error("delegation-target-missing");
+
+      if (parentSessionId) {
         await this.agentOs.completeSession({
           organizationId: order.organizationId,
           accountId: order.accountId,
-          sessionId: started.id,
-          outputRefs: Object.freeze([`delegation:${nextContract.id}`, `evidence-pack:${pack.id}`]),
+          sessionId: parentSessionId,
+          outputRefs: Object.freeze([`delegation:${contract.id}`, `evidence-pack:${pack.id}`]),
           spentMinorClp: 0,
         });
-        parentSessionId = started.id;
-      } else {
+      }
+
+      if (leaf) {
         runningLeafSessionId = started.id;
+      } else {
+        parentSessionId = started.id;
       }
     }
 
