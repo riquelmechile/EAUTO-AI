@@ -1,0 +1,38 @@
+name: Diagnose typecheck
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    if: github.head_ref == 'fix/systematic-production-audit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Capture typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          status=$?
+          echo "$status" > typecheck.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: systematic-audit-typecheck
+          path: |
+            typecheck.log
+            typecheck.status
+          retention-days: 1
