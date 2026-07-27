@@ -36,7 +36,11 @@ export function registerAgentOsRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.planCompany(body);
+    return dependencies.runtime.agentOs.planCompany({
+      objective: body.objective,
+      ...(body.maximumTasks === undefined ? {} : { maximumTasks: body.maximumTasks }),
+      ...(body.budgetMinorClp === undefined ? {} : { budgetMinorClp: body.budgetMinorClp }),
+    });
   });
 
   app.post("/v1/agent-os/:accountId/plans/department", async (request) => {
@@ -51,7 +55,12 @@ export function registerAgentOsRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.planDepartment(body);
+    return dependencies.runtime.agentOs.planDepartment({
+      directorAgentId: body.directorAgentId,
+      objective: body.objective,
+      ...(body.maximumTasks === undefined ? {} : { maximumTasks: body.maximumTasks }),
+      ...(body.budgetMinorClp === undefined ? {} : { budgetMinorClp: body.budgetMinorClp }),
+    });
   });
 
   app.post("/v1/agent-os/:accountId/preflight", async (request) => {
@@ -91,7 +100,20 @@ export function registerAgentOsRoutes(
     const result = await dependencies.runtime.agentOs.createSession({
       organizationId: actor.organizationId,
       accountId: params.accountId,
-      ...body,
+      objectiveId: body.objectiveId,
+      agentId: body.agentId,
+      ...(body.parentSessionId === undefined ? {} : { parentSessionId: body.parentSessionId }),
+      requestedAction: body.requestedAction,
+      availableEvidenceKinds: body.availableEvidenceKinds,
+      evidenceRefs: body.evidenceRefs,
+      autonomy: body.autonomy,
+      requestedBudgetMinorClp: body.requestedBudgetMinorClp,
+      spentTodayMinorClp: body.spentTodayMinorClp,
+      policyAllowed: body.policyAllowed,
+      stableContextRefs: body.stableContextRefs,
+      volatileContextRefs: body.volatileContextRefs,
+      idempotencyKey: body.idempotencyKey,
+      deadlineAt: body.deadlineAt,
     });
     return reply.code(201).send(result);
   });
