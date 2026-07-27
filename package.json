@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --write . --log-level silent && git diff --name-only && exit 1",
+    "format:check": "prettier --check .",
     "check": "npm run format:check && npm run typecheck && npm run lint && npm test && npm run build",
     "dev:api": "npm run dev -w @eauto/api",
     "dev:worker": "npm run dev:worker -w @eauto/api",
