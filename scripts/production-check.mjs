@@ -4,6 +4,7 @@ const productionArguments = process.argv.slice(2);
 const checks = [
   ["scripts/production-doctor.mjs", ...productionArguments],
   ["scripts/release-doctor.mjs"],
+  ["scripts/workflow-supply-chain-doctor.mjs"],
 ];
 
 for (const arguments_ of checks) {
