@@ -3,3 +3,4 @@ docs/runbooks/production-release.md
 infra/compose/docker-compose.production.yml
 scripts/deploy-production.sh
 scripts/production-doctor.mjs
+tests/productionDeployment.test.ts
