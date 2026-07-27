@@ -58,7 +58,6 @@ jobs:
           tags: |
             type=ref,event=tag
             type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -70,15 +69,24 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: mode=max
           sbom: true
+      - name: Record immutable image digest
+        run: |
+          echo "### Runtime image" >> "$GITHUB_STEP_SUMMARY"
+          echo '```text' >> "$GITHUB_STEP_SUMMARY"
+          echo "ghcr.io/riquelmechile/eauto-ai@${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+        id: record_digest
 
   android:
     needs: quality
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
       EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
       GOOGLE_SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}
+      SUBMIT_TO_PLAY: ${{ github.event_name == 'workflow_dispatch' && inputs.submit_to_play == true }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v6
@@ -87,7 +95,7 @@ jobs:
           cache: npm
       - uses: expo/expo-github-action@v8
         with:
-          eas-version: latest
+          eas-version: 21.2.0
           packager: npm
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci --no-audit --no-fund
@@ -97,17 +105,44 @@ jobs:
           test -n "$EAS_PROJECT_ID" || { echo "EAS_PROJECT_ID is pending"; exit 1; }
           test -n "$EXPO_PUBLIC_API_URL" || { echo "EXPO_PUBLIC_API_URL is pending"; exit 1; }
           case "$EXPO_PUBLIC_API_URL" in https://*) ;; *) echo "EXPO_PUBLIC_API_URL must use HTTPS"; exit 1;; esac
-          if [[ "${{ inputs.submit_to_play || false }}" == "true" ]]; then
+          if [[ "$SUBMIT_TO_PLAY" == "true" ]]; then
             test -n "$GOOGLE_SERVICE_ACCOUNT_KEY_JSON" || { echo "GOOGLE_SERVICE_ACCOUNT_KEY_JSON is pending"; exit 1; }
             printf '%s' "$GOOGLE_SERVICE_ACCOUNT_KEY_JSON" > apps/mobile/google-service-account.json
           fi
-      - name: Trigger signed Android release
+      - name: Build signed Android App Bundle
+        id: android_build
         working-directory: apps/mobile
         run: |
-          if [[ "${{ inputs.submit_to_play || false }}" == "true" ]]; then
-            eas build --platform android --profile production --auto-submit --non-interactive --no-wait
-          else
-            eas build --platform android --profile production --non-interactive --no-wait
-          fi
+          build_json="$RUNNER_TEMP/eas-build.json"
+          eas build \
+            --platform android \
+            --profile production \
+            --non-interactive \
+            --wait \
+            --json > "$build_json"
+          build_id="$(node - "$build_json" <<'NODE'
+          const fs = require("node:fs");
+          const input = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+          const build = Array.isArray(input) ? input[0] : input;
+          if (!build || typeof build.id !== "string" || build.id.length === 0) {
+            throw new Error("EAS build completed without a build ID.");
+          }
+          process.stdout.write(build.id);
+          NODE
+          )"
+          echo "build_id=$build_id" >> "$GITHUB_OUTPUT"
+          echo "build_url=https://expo.dev/projects/$EAS_PROJECT_ID/builds/$build_id" >> "$GITHUB_OUTPUT"
+          echo "### Android App Bundle" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build: https://expo.dev/projects/$EAS_PROJECT_ID/builds/$build_id" >> "$GITHUB_STEP_SUMMARY"
+      - name: Submit the exact build to Google Play Internal
+        if: env.SUBMIT_TO_PLAY == 'true'
+        working-directory: apps/mobile
+        run: |
+          eas submit \
+            --platform android \
+            --profile production \
+            --id "${{ steps.android_build.outputs.build_id }}" \
+            --non-interactive \
+            --wait
       - if: always()
         run: rm -f apps/mobile/google-service-account.json
