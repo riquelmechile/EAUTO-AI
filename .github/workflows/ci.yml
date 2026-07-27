@@ -23,33 +23,26 @@ jobs:
         with:
           node-version: 22.16.0
           cache: npm
-      - run: npm ci --no-audit --no-fund
-      - run: npm run format:check
-      - run: npm run typecheck
-      - name: Capture lint diagnostics
-        id: lint
-        shell: bash
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build
+        run: npm run build
+      - name: Start object storage
         run: |
-          set +e
-          npm run lint > lint.log 2>&1
-          code=$?
-          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
-          exit 0
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: llm-gateway-lint
-          path: lint.log
-          if-no-files-found: error
-      - name: Enforce lint result
-        if: steps.lint.outputs.exit_code != '0'
-        run: exit 1
-      - run: npm test
-      - run: npm run build
-      - run: |
           docker compose -f infra/compose/docker-compose.yml up -d minio
           docker compose -f infra/compose/docker-compose.yml run --rm minio-init
-      - run: npm run smoke:object-storage
-      - if: always()
+      - name: Verify signed object storage flow
+        run: npm run smoke:object-storage
+      - name: Stop object storage
+        if: always()
         run: docker compose -f infra/compose/docker-compose.yml down --remove-orphans
-      - run: npm run doctor
+      - name: Doctor
+        run: npm run doctor
