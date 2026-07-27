@@ -101,6 +101,7 @@ export type AgentWorkOrder = Readonly<{
   accountId: string;
   objectiveId: string;
   agentId: string;
+  capability: string;
   taskClass: LlmTaskClass;
   requestedAction: string;
   evidencePackId: string;
