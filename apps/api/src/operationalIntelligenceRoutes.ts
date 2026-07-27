@@ -31,8 +31,7 @@ export function registerOperationalIntelligenceRoutes(
       accountId: params.accountId,
       purpose: body.purpose,
       subject: body.subject,
-      maximumAgeMs:
-        body.maximumAgeMs ?? runtime.config.INTELLIGENCE_DEFAULT_EVIDENCE_MAX_AGE_MS,
+      maximumAgeMs: body.maximumAgeMs ?? runtime.config.INTELLIGENCE_DEFAULT_EVIDENCE_MAX_AGE_MS,
     });
     return reply.code(201).send({ pack });
   });
@@ -142,8 +141,7 @@ export function registerOperationalIntelligenceRoutes(
       estimatedCostMicrosUsd: body.estimatedCostMicrosUsd,
       budgetMicrosUsd:
         body.budgetMicrosUsd ?? runtime.config.INTELLIGENCE_DEFAULT_BUDGET_MICROS_USD,
-      budgetMinorClp:
-        body.budgetMinorClp ?? runtime.config.INTELLIGENCE_DEFAULT_BUDGET_MINOR_CLP,
+      budgetMinorClp: body.budgetMinorClp ?? runtime.config.INTELLIGENCE_DEFAULT_BUDGET_MINOR_CLP,
       maximumAttempts: body.maximumAttempts ?? runtime.config.INTELLIGENCE_MAX_ATTEMPTS,
       idempotencyKey: body.idempotencyKey,
       ...(body.manual === undefined ? {} : { manual: body.manual }),

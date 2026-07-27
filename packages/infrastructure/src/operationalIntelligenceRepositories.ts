@@ -25,7 +25,9 @@ export class InMemoryOperationalEvidenceReader implements OperationalEvidenceRea
     subject: EvidenceSubject;
     asOf: string;
     maximumAgeMs: number;
-  }): Promise<Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>> {
+  }): Promise<
+    Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>
+  > {
     const key = `${input.organizationId}:${input.accountId}:${input.subject}`;
     const admitted = (this.documents[key] ?? []).filter(
       (document) =>
@@ -34,14 +36,13 @@ export class InMemoryOperationalEvidenceReader implements OperationalEvidenceRea
     );
     return Promise.resolve({
       documents: Object.freeze(admitted),
-      missingInputs: admitted.length === 0 ? Object.freeze([`${input.subject}-evidence`]) : Object.freeze([]),
+      missingInputs:
+        admitted.length === 0 ? Object.freeze([`${input.subject}-evidence`]) : Object.freeze([]),
     });
   }
 }
 
-export class InMemoryOperationalIntelligenceRepository
-  implements OperationalIntelligenceRepository
-{
+export class InMemoryOperationalIntelligenceRepository implements OperationalIntelligenceRepository {
   private readonly packs = new Map<string, OperationalEvidencePack>();
   private readonly memory = new Map<string, ConsultativeMemoryRecord>();
   private readonly orders = new Map<string, AgentWorkOrder>();
@@ -59,7 +60,10 @@ export class InMemoryOperationalIntelligenceRepository
 
   listEvidencePacks(accountId: string, limit: number): Promise<readonly OperationalEvidencePack[]> {
     return Promise.resolve(
-      sortDescending([...this.packs.values()].filter((pack) => pack.accountId === accountId), "generatedAt").slice(0, limit),
+      sortDescending(
+        [...this.packs.values()].filter((pack) => pack.accountId === accountId),
+        "generatedAt",
+      ).slice(0, limit),
     );
   }
 
@@ -97,7 +101,10 @@ export class InMemoryOperationalIntelligenceRepository
 
   listWorkOrders(accountId: string, limit: number): Promise<readonly AgentWorkOrder[]> {
     return Promise.resolve(
-      sortDescending([...this.orders.values()].filter((order) => order.accountId === accountId), "createdAt").slice(0, limit),
+      sortDescending(
+        [...this.orders.values()].filter((order) => order.accountId === accountId),
+        "createdAt",
+      ).slice(0, limit),
     );
   }
 
@@ -163,7 +170,11 @@ export class InMemoryOperationalIntelligenceRepository
     decidedBy: string;
   }): Promise<ShadowProposalRecord | null> {
     const current = this.proposals.get(input.id);
-    if (!current || current.accountId !== input.accountId || current.status !== "pending-approval") {
+    if (
+      !current ||
+      current.accountId !== input.accountId ||
+      current.status !== "pending-approval"
+    ) {
       return Promise.resolve(null);
     }
     const decided = Object.freeze({
@@ -186,9 +197,17 @@ export class PostgresOperationalEvidenceReader implements OperationalEvidenceRea
     subject: EvidenceSubject;
     asOf: string;
     maximumAgeMs: number;
-  }): Promise<Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>> {
+  }): Promise<
+    Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>
+  > {
     const minimumObservedAt = new Date(Date.parse(input.asOf) - input.maximumAgeMs).toISOString();
-    const rows = await readSubjectRows(this.pool, input.subject, input.organizationId, input.accountId, minimumObservedAt);
+    const rows = await readSubjectRows(
+      this.pool,
+      input.subject,
+      input.organizationId,
+      input.accountId,
+      minimumObservedAt,
+    );
     const expiresAt = new Date(Date.parse(input.asOf) + input.maximumAgeMs).toISOString();
     const documents = rows.map((row) => {
       const payloadHash = hashJson(row.payload_json);
@@ -216,9 +235,7 @@ export class PostgresOperationalEvidenceReader implements OperationalEvidenceRea
   }
 }
 
-export class PostgresOperationalIntelligenceRepository
-  implements OperationalIntelligenceRepository
-{
+export class PostgresOperationalIntelligenceRepository implements OperationalIntelligenceRepository {
   constructor(private readonly pool: Pool) {}
 
   async saveEvidencePack(pack: OperationalEvidencePack): Promise<void> {

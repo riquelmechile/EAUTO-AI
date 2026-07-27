@@ -29,7 +29,9 @@ export function createOperationalIntelligenceRuntime(baseRuntime: Runtime) {
   const intelligence = new OperationalIntelligenceService(repository, evidenceReader, clock, ids);
   const workOrders = new GovernedWorkOrderService(repository, clock, ids);
   if (config.INTELLIGENCE_WORKER_ENABLED && !baseRuntime.shadowLlm) {
-    throw new Error("INTELLIGENCE_WORKER_ENABLED requires LLM_ENABLED and a configured provider key.");
+    throw new Error(
+      "INTELLIGENCE_WORKER_ENABLED requires LLM_ENABLED and a configured provider key.",
+    );
   }
   const processor = config.INTELLIGENCE_WORKER_ENABLED
     ? new GovernedWorkOrderProcessor(

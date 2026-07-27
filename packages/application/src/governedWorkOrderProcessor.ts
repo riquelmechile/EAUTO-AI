@@ -134,10 +134,7 @@ export class GovernedWorkOrderProcessor {
         if (!nextContract) throw new Error("delegation-target-missing");
         await this.agentOs.completeSession({
           sessionId: started.id,
-          outputRefs: Object.freeze([
-            `delegation:${nextContract.id}`,
-            `evidence-pack:${pack.id}`,
-          ]),
+          outputRefs: Object.freeze([`delegation:${nextContract.id}`, `evidence-pack:${pack.id}`]),
           spentMinorClp: 0,
         });
         parentSessionId = started.id;
@@ -254,7 +251,9 @@ function resolveCapability(order: AgentWorkOrder, contract: AgentRoleContract): 
     return order.capability;
   }
   const preferred = ["proposal.create", "brief.create", "evidence.request"];
-  const selected = preferred.find((capability) => contract.allowedCapabilities.includes(capability));
+  const selected = preferred.find((capability) =>
+    contract.allowedCapabilities.includes(capability),
+  );
   const fallback = contract.allowedCapabilities[0];
   if (!selected && !fallback) throw new Error(`Agent ${contract.id} has no allowed capability.`);
   return selected ?? fallback;
@@ -345,7 +344,11 @@ function makeProposal(input: {
   });
 }
 
-function assertScope(pack: OperationalEvidencePack, organizationId: string, accountId: string): void {
+function assertScope(
+  pack: OperationalEvidencePack,
+  organizationId: string,
+  accountId: string,
+): void {
   if (pack.organizationId !== organizationId || pack.accountId !== accountId) {
     throw new Error("Evidence pack scope mismatch.");
   }
@@ -360,5 +363,8 @@ function hashJson(value: unknown): string {
 }
 
 function sanitizeText(value: string, maximum: number): string {
-  return value.replace(/[\r\n\t]+/g, " ").trim().slice(0, maximum);
+  return value
+    .replace(/[\r\n\t]+/g, " ")
+    .trim()
+    .slice(0, maximum);
 }

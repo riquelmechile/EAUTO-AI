@@ -12,7 +12,9 @@ export class VerifiedOperationalEvidenceReader implements OperationalEvidenceRea
     subject: EvidenceSubject;
     asOf: string;
     maximumAgeMs: number;
-  }): Promise<Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>> {
+  }): Promise<
+    Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>
+  > {
     const minimumObservedAt = new Date(Date.parse(input.asOf) - input.maximumAgeMs).toISOString();
     const rows = await readRows(
       this.pool,

@@ -26,7 +26,9 @@ export interface OperationalEvidenceReader {
     subject: EvidenceSubject;
     asOf: string;
     maximumAgeMs: number;
-  }): Promise<Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>>;
+  }): Promise<
+    Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>
+  >;
 }
 
 export interface OperationalIntelligenceRepository {
@@ -131,7 +133,8 @@ export class OperationalIntelligenceService {
       verifiedOutcome: input.verifiedOutcome,
       expiresAt: input.expiresAt,
     };
-    if (normalized.sourceRefs.length === 0) throw new Error("Memory requires provenance references.");
+    if (normalized.sourceRefs.length === 0)
+      throw new Error("Memory requires provenance references.");
     if (normalized.kind === "verified-outcome" && !normalized.verifiedOutcome) {
       throw new Error("Verified outcome memory requires a verified outcome receipt.");
     }
@@ -332,7 +335,9 @@ export class ShadowWorkOrderProcessor {
       stableContextRefs: Object.freeze(["company-constitution-v1", "company-policy-v1"]),
       volatileContextRefs: Object.freeze([pack.id, ...memory.map((record) => record.id)]),
       idempotencyKey: `work-order:${order.id}`,
-      deadlineAt: new Date(this.clock.now().getTime() + this.config.sessionDeadlineMs).toISOString(),
+      deadlineAt: new Date(
+        this.clock.now().getTime() + this.config.sessionDeadlineMs,
+      ).toISOString(),
     });
     if (sessionResult.session.status !== "queued") {
       await this.repository.updateWorkOrder(
@@ -402,13 +407,19 @@ export class ShadowWorkOrderProcessor {
     const attempts = order.attempts;
     const dead = attempts >= order.maximumAttempts;
     const now = this.clock.now();
-    const delay = Math.min(this.config.retryMaxMs, this.config.retryBaseMs * 2 ** Math.max(0, attempts - 1));
+    const delay = Math.min(
+      this.config.retryMaxMs,
+      this.config.retryBaseMs * 2 ** Math.max(0, attempts - 1),
+    );
     await this.repository.updateWorkOrder(
       Object.freeze({
         ...clearLease(order),
         status: dead ? "dead" : "failed",
         availableAt: new Date(now.getTime() + delay).toISOString(),
-        failureReason: sanitizeText(error instanceof Error ? error.message : "Unknown work order failure", 500),
+        failureReason: sanitizeText(
+          error instanceof Error ? error.message : "Unknown work order failure",
+          500,
+        ),
         completedAt: dead ? now.toISOString() : null,
         updatedAt: now.toISOString(),
       }),
@@ -490,7 +501,11 @@ function makeProposal(input: {
   });
 }
 
-function assertScope(pack: OperationalEvidencePack, organizationId: string, accountId: string): void {
+function assertScope(
+  pack: OperationalEvidencePack,
+  organizationId: string,
+  accountId: string,
+): void {
   if (pack.organizationId !== organizationId || pack.accountId !== accountId) {
     throw new Error("Evidence pack scope mismatch.");
   }
@@ -505,7 +520,10 @@ function hashJson(value: unknown): string {
 }
 
 function sanitizeText(value: string, maximum: number): string {
-  return value.replace(/[\r\n\t]+/g, " ").trim().slice(0, maximum);
+  return value
+    .replace(/[\r\n\t]+/g, " ")
+    .trim()
+    .slice(0, maximum);
 }
 
 function nonNegativeInteger(value: number, field: string): number {

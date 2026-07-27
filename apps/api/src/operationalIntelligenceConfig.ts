@@ -18,12 +18,7 @@ const schema = z.object({
   INTELLIGENCE_LEASE_MS: z.coerce.number().int().min(5_000).max(300_000).default(60_000),
   INTELLIGENCE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
   INTELLIGENCE_RETRY_BASE_MS: z.coerce.number().int().min(1_000).max(300_000).default(5_000),
-  INTELLIGENCE_RETRY_MAX_MS: z.coerce
-    .number()
-    .int()
-    .min(5_000)
-    .max(86_400_000)
-    .default(900_000),
+  INTELLIGENCE_RETRY_MAX_MS: z.coerce.number().int().min(5_000).max(86_400_000).default(900_000),
   INTELLIGENCE_SESSION_DEADLINE_MS: z.coerce
     .number()
     .int()
@@ -42,12 +37,7 @@ const schema = z.object({
     .min(0)
     .max(100_000_000)
     .default(50_000),
-  INTELLIGENCE_DEFAULT_BUDGET_MINOR_CLP: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(100_000_000)
-    .default(0),
+  INTELLIGENCE_DEFAULT_BUDGET_MINOR_CLP: z.coerce.number().int().min(0).max(100_000_000).default(0),
 });
 
 export type OperationalIntelligenceConfig = z.infer<typeof schema>;

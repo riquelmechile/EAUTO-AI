@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  EvidenceDocument,
-  OperationalEvidencePack,
-  ShadowAgentOutput,
-} from "@eauto/domain";
+import type { EvidenceDocument, OperationalEvidencePack, ShadowAgentOutput } from "@eauto/domain";
 import {
   AgentOsService,
   GovernedWorkOrderProcessor,
@@ -248,11 +244,7 @@ describe("operational intelligence governance", () => {
       missingEvidenceKinds: Object.freeze([]),
       stopReason: "completed",
     });
-    const agentOs = new AgentOsService(
-      new InMemoryAgentOsRepository(),
-      clock,
-      ids,
-    );
+    const agentOs = new AgentOsService(new InMemoryAgentOsRepository(), clock, ids);
     const llm = new ShadowLlmService(
       new FakeProvider(output),
       new InMemoryLlmRunRepository(),

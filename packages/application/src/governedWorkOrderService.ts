@@ -1,8 +1,4 @@
-import type {
-  AgentWorkOrder,
-  LlmTaskClass,
-  Signal,
-} from "@eauto/domain";
+import type { AgentWorkOrder, LlmTaskClass, Signal } from "@eauto/domain";
 import { assertUsableEvidencePack } from "@eauto/domain";
 import { decideWake, getCompanyAgentContract } from "@eauto/agent-kernel";
 import type { OperationalIntelligenceRepository } from "./operationalIntelligenceService.js";
@@ -34,7 +30,8 @@ export class GovernedWorkOrderService {
     manual?: boolean;
   }): Promise<Readonly<{ order: AgentWorkOrder; wake: ReturnType<typeof decideWake> }>> {
     const contract = getCompanyAgentContract(input.agentId);
-    if (!contract || !contract.active) throw new Error(`Unknown or inactive agent ${input.agentId}.`);
+    if (!contract || !contract.active)
+      throw new Error(`Unknown or inactive agent ${input.agentId}.`);
     if (!contract.allowedCapabilities.includes(input.capability)) {
       throw new Error(`Capability ${input.capability} is not allowed for ${input.agentId}.`);
     }
@@ -48,7 +45,9 @@ export class GovernedWorkOrderService {
     }
     const now = this.clock.now();
     assertUsableEvidencePack(pack, now.toISOString());
-    const availableKinds = new Set(pack.documents.flatMap((document) => (document.kind ? [document.kind] : [])));
+    const availableKinds = new Set(
+      pack.documents.flatMap((document) => (document.kind ? [document.kind] : [])),
+    );
     const missingKinds = contract.requiredEvidenceKinds.filter((kind) => !availableKinds.has(kind));
     const wake = decideWake({
       signals: input.signals,
@@ -59,11 +58,7 @@ export class GovernedWorkOrderService {
       ...(input.manual === undefined ? {} : { manual: input.manual }),
     });
     const status =
-      missingKinds.length > 0
-        ? "waiting-evidence"
-        : wake.shouldWake
-          ? "queued"
-          : "skipped";
+      missingKinds.length > 0 ? "waiting-evidence" : wake.shouldWake ? "queued" : "skipped";
     const order = Object.freeze({
       id: this.ids.next("work-order"),
       idempotencyKey: input.idempotencyKey,
@@ -90,7 +85,8 @@ export class GovernedWorkOrderService {
       leaseUntil: null,
       sessionId: null,
       outputRefs: Object.freeze([]),
-      failureReason: missingKinds.length > 0 ? `missing-evidence:${missingKinds.sort().join(",")}` : null,
+      failureReason:
+        missingKinds.length > 0 ? `missing-evidence:${missingKinds.sort().join(",")}` : null,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
       completedAt: status === "skipped" ? now.toISOString() : null,
