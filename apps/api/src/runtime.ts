@@ -17,11 +17,19 @@ import {
   SessionService,
   ShadowLlmService,
   SourceImageUploadService,
+  type ActionExecutor,
+  type ContentGenerationPort,
   type OutboxEventHandler,
 } from "@eauto/application";
-import { DeterministicContentProvider } from "@eauto/content";
+import {
+  DeterministicContentProvider,
+  DisabledContentProvider,
+  HttpContentProvider,
+} from "@eauto/content";
 import {
   DeepSeekGateway,
+  DisabledActionExecutor,
+  HttpActionExecutor,
   InMemoryAccountRepository,
   InMemoryActionRepository,
   InMemoryAgentOsRepository,
@@ -49,6 +57,7 @@ import {
   PostgresSessionRepository,
   PostgresSourceImageUploadRepository,
   S3ObjectStorage,
+  type HttpActionRoutes,
 } from "@eauto/infrastructure";
 import { NodeSessionSecrets } from "./sessionSecrets.js";
 import type { AppConfig } from "./config.js";
@@ -74,8 +83,9 @@ const developmentAccounts: readonly CommerceAccount[] = [
   }),
 ];
 
-class VerifiedDevelopmentExecutor {
+class VerifiedDevelopmentExecutor implements ActionExecutor {
   private readonly executed = new Set<string>();
+
   execute(action: BusinessAction): Promise<{ providerReceipt: unknown }> {
     this.executed.add(action.id);
     return Promise.resolve({
@@ -87,6 +97,7 @@ class VerifiedDevelopmentExecutor {
       },
     });
   }
+
   verify(action: BusinessAction): Promise<{ verified: boolean; observedState: unknown }> {
     return Promise.resolve({
       verified: this.executed.has(action.id),
@@ -133,29 +144,6 @@ export function createRuntime(config: AppConfig) {
   const llmRuns = pool ? new PostgresLlmRunRepository(pool) : new InMemoryLlmRunRepository();
   const clock = { now: () => new Date() };
   const ids = { next: (prefix: string) => `${prefix}_${randomUUID()}` };
-  const actionService = new ActionService(
-    actionRepository,
-    receiptRepository,
-    new VerifiedDevelopmentExecutor(),
-    clock,
-    ids,
-  );
-  const agentOs = new AgentOsService(agentOsRepository, clock, ids);
-  const shadowLlm = createShadowLlmRuntime(config, llmRuns, clock, ids);
-  const contentStudio = new ContentStudioService(
-    new DeterministicContentProvider(),
-    assetRepository,
-  );
-  const sessionService = new SessionService(
-    sessionRepository,
-    new NodeSessionSecrets(),
-    clock,
-    ids,
-    {
-      accessMs: config.SESSION_ACCESS_TTL_MS,
-      refreshMs: config.SESSION_REFRESH_TTL_MS,
-    },
-  );
   const objectStorage = new S3ObjectStorage({
     bucket: config.OBJECT_STORAGE_BUCKET,
     region: config.OBJECT_STORAGE_REGION,
@@ -171,6 +159,28 @@ export function createRuntime(config: AppConfig) {
       : {}),
     forcePathStyle: config.OBJECT_STORAGE_FORCE_PATH_STYLE,
   });
+  const actionRuntime = createActionExecutorRuntime(config);
+  const actionService = new ActionService(
+    actionRepository,
+    receiptRepository,
+    actionRuntime.executor,
+    clock,
+    ids,
+  );
+  const agentOs = new AgentOsService(agentOsRepository, clock, ids);
+  const shadowLlm = createShadowLlmRuntime(config, llmRuns, clock, ids);
+  const contentRuntime = createContentGenerationRuntime(config, objectStorage);
+  const contentStudio = new ContentStudioService(contentRuntime.provider, assetRepository);
+  const sessionService = new SessionService(
+    sessionRepository,
+    new NodeSessionSecrets(),
+    clock,
+    ids,
+    {
+      accessMs: config.SESSION_ACCESS_TTL_MS,
+      refreshMs: config.SESSION_REFRESH_TTL_MS,
+    },
+  );
   const sourceImageUploads = new SourceImageUploadService(uploadRepository, objectStorage, clock, {
     maximumBytes: config.SOURCE_IMAGE_MAX_BYTES,
     uploadExpiresInSeconds: config.SOURCE_IMAGE_UPLOAD_TTL_SECONDS,
@@ -224,9 +234,11 @@ export function createRuntime(config: AppConfig) {
     outbox,
     llmRuns,
     actionService,
+    actionExecutionMode: actionRuntime.mode,
     agentOs,
     shadowLlm,
     contentStudio,
+    contentGenerationMode: contentRuntime.mode,
     sessionService,
     sourceImageUploads,
     outboxProcessor,
@@ -237,6 +249,78 @@ export function createRuntime(config: AppConfig) {
     persistenceMode: pool ? ("postgres" as const) : ("in-memory-development" as const),
     close: () => pool?.end() ?? Promise.resolve(),
   };
+}
+
+function createActionExecutorRuntime(config: AppConfig): Readonly<{
+  executor: ActionExecutor;
+  mode: "external" | "disabled" | "development-simulator";
+}> {
+  if (config.ACTION_EXECUTION_ENABLED) {
+    if (!config.ACTION_PROVIDER_API_KEY) {
+      throw new Error("Action execution is enabled but provider API key is missing.");
+    }
+    return Object.freeze({
+      executor: new HttpActionExecutor(parseActionRoutes(config.ACTION_PROVIDER_ROUTES_JSON), {
+        apiKey: config.ACTION_PROVIDER_API_KEY,
+        timeoutMs: config.ACTION_PROVIDER_TIMEOUT_MS,
+        maximumResponseBytes: config.ACTION_PROVIDER_MAX_RESPONSE_BYTES,
+        providerName: config.ACTION_PROVIDER_NAME,
+      }),
+      mode: "external" as const,
+    });
+  }
+  if (config.NODE_ENV !== "production") {
+    return Object.freeze({
+      executor: new VerifiedDevelopmentExecutor(),
+      mode: "development-simulator" as const,
+    });
+  }
+  return Object.freeze({ executor: new DisabledActionExecutor(), mode: "disabled" as const });
+}
+
+function createContentGenerationRuntime(
+  config: AppConfig,
+  storage: S3ObjectStorage,
+): Readonly<{
+  provider: ContentGenerationPort;
+  mode: "external" | "disabled" | "deterministic-development";
+}> {
+  if (config.CONTENT_GENERATION_ENABLED) {
+    if (!config.CONTENT_PROVIDER_URL || !config.CONTENT_PROVIDER_API_KEY) {
+      throw new Error("Content generation is enabled but provider configuration is incomplete.");
+    }
+    return Object.freeze({
+      provider: new HttpContentProvider(storage, {
+        endpoint: config.CONTENT_PROVIDER_URL,
+        apiKey: config.CONTENT_PROVIDER_API_KEY,
+        providerName: config.CONTENT_PROVIDER_NAME,
+        timeoutMs: config.CONTENT_PROVIDER_TIMEOUT_MS,
+        maximumResponseBytes: config.CONTENT_PROVIDER_MAX_RESPONSE_BYTES,
+        maximumAssetBytes: config.CONTENT_MAX_ASSET_BYTES,
+      }),
+      mode: "external" as const,
+    });
+  }
+  if (config.NODE_ENV !== "production") {
+    return Object.freeze({
+      provider: new DeterministicContentProvider(),
+      mode: "deterministic-development" as const,
+    });
+  }
+  return Object.freeze({ provider: new DisabledContentProvider(), mode: "disabled" as const });
+}
+
+function parseActionRoutes(value: string): HttpActionRoutes {
+  const parsed = JSON.parse(value) as unknown;
+  if (!isRecord(parsed)) throw new Error("Action provider routes must be an object.");
+  const routes: Record<string, { executeUrl: string; verifyUrl: string }> = {};
+  for (const [kind, route] of Object.entries(parsed)) {
+    if (!isRecord(route) || typeof route.executeUrl !== "string" || typeof route.verifyUrl !== "string") {
+      throw new Error(`Action route ${kind} is invalid.`);
+    }
+    routes[kind] = Object.freeze({ executeUrl: route.executeUrl, verifyUrl: route.verifyUrl });
+  }
+  return Object.freeze(routes);
 }
 
 function createShadowLlmRuntime(
@@ -313,6 +397,10 @@ function createMercadoLibreRuntime(
     refreshWindowMs: config.MELI_REFRESH_WINDOW_MS,
     refreshLeaseMs: config.MELI_REFRESH_LEASE_MS,
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 export type Runtime = ReturnType<typeof createRuntime>;
