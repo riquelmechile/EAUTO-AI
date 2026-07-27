@@ -112,7 +112,9 @@ if (
   !isPlaceholder(configured.OBJECT_STORAGE_SECRET_KEY) &&
   configured.OBJECT_STORAGE_SECRET_KEY !== configured.MINIO_ROOT_PASSWORD
 ) {
-  failures.push("Self-hosted MinIO requires OBJECT_STORAGE_SECRET_KEY to match MINIO_ROOT_PASSWORD.");
+  failures.push(
+    "Self-hosted MinIO requires OBJECT_STORAGE_SECRET_KEY to match MINIO_ROOT_PASSWORD.",
+  );
 }
 
 console.log(`\nImplementation failures: ${failures.length}`);

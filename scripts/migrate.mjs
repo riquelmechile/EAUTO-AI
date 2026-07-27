@@ -38,10 +38,10 @@ try {
       continue;
     }
     await client.query(sql);
-    await client.query(
-      "INSERT INTO schema_migrations (filename, content_hash) VALUES ($1, $2)",
-      [filename, contentHash],
-    );
+    await client.query("INSERT INTO schema_migrations (filename, content_hash) VALUES ($1, $2)", [
+      filename,
+      contentHash,
+    ]);
     console.log(`✓ ${filename} applied`);
   }
 } finally {

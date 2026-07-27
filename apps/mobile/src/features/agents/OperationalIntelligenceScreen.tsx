@@ -104,7 +104,9 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
         </View>
         <Text style={styles.status}>{busy ? "Procesando…" : status}</Text>
         <Text style={styles.meta}>
-          Worker {readiness?.workerEnabled ? "activo" : "inactivo"} · LLM {readiness?.llmEnabled ? "activo" : "inactivo"} · modo {readiness?.mode ?? "—"} · escrituras externas {readiness?.externalWrites ? "activas" : "bloqueadas"}
+          Worker {readiness?.workerEnabled ? "activo" : "inactivo"} · LLM{" "}
+          {readiness?.llmEnabled ? "activo" : "inactivo"} · modo {readiness?.mode ?? "—"} ·
+          escrituras externas {readiness?.externalWrites ? "activas" : "bloqueadas"}
         </Text>
         <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.secondary}>
           <Text style={styles.buttonText}>Actualizar</Text>
@@ -123,7 +125,8 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
               </View>
               <Text style={styles.copy}>{proposal.rationale}</Text>
               <Text style={styles.meta}>
-                Agente {proposal.agentId} · impacto esperado {formatImpact(proposal.expectedImpactMinorClp)}
+                Agente {proposal.agentId} · impacto esperado{" "}
+                {formatImpact(proposal.expectedImpactMinorClp)}
               </Text>
               <View style={styles.decisionRow}>
                 <Pressable
@@ -143,7 +146,9 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
                   <Text style={styles.buttonText}>Rechazar</Text>
                 </Pressable>
               </View>
-              <Text style={styles.warning}>Aprobar registra una decisión; no publica ni modifica MercadoLibre.</Text>
+              <Text style={styles.warning}>
+                Aprobar registra una decisión; no publica ni modifica MercadoLibre.
+              </Text>
             </View>
           ))
         )}
@@ -152,18 +157,24 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
       <Panel title="Evidencia y work orders">
         {packs.slice(0, 8).map((pack) => (
           <View key={pack.id} style={styles.row}>
-            <Text style={styles.cardTitle}>{pack.subject} · {pack.documents.length} documentos</Text>
+            <Text style={styles.cardTitle}>
+              {pack.subject} · {pack.documents.length} documentos
+            </Text>
             <Text style={styles.meta}>
-              {pack.complete ? "completo" : `incompleto: ${pack.missingInputs.join(", ")}`} · vence {formatDate(pack.expiresAt)}
+              {pack.complete ? "completo" : `incompleto: ${pack.missingInputs.join(", ")}`} · vence{" "}
+              {formatDate(pack.expiresAt)}
             </Text>
           </View>
         ))}
         {activeOrders.slice(0, 12).map((order) => (
           <View key={order.id} style={styles.row}>
-            <Text style={styles.cardTitle}>{order.agentId} · {order.status}</Text>
+            <Text style={styles.cardTitle}>
+              {order.agentId} · {order.status}
+            </Text>
             <Text style={styles.copy}>{order.requestedAction}</Text>
             <Text style={styles.meta}>
-              utilidad {order.expectedUtility.toFixed(2)} · intento {order.attempts}/{order.maximumAttempts} · {order.wakeReason}
+              utilidad {order.expectedUtility.toFixed(2)} · intento {order.attempts}/
+              {order.maximumAttempts} · {order.wakeReason}
             </Text>
             {order.failureReason ? <Text style={styles.warning}>{order.failureReason}</Text> : null}
           </View>
@@ -173,7 +184,11 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
   );
 }
 
-function Metric({ label, value, urgent = false }: Readonly<{ label: string; value: number; urgent?: boolean }>) {
+function Metric({
+  label,
+  value,
+  urgent = false,
+}: Readonly<{ label: string; value: number; urgent?: boolean }>) {
   return (
     <View style={[styles.metric, urgent && styles.metricUrgent]}>
       <Text style={styles.metricValue}>{value}</Text>
@@ -226,15 +241,38 @@ const styles = StyleSheet.create({
   secondary: { alignItems: "center", backgroundColor: "#334155", borderRadius: 12, padding: 11 },
   buttonText: { color: "white", fontWeight: "800" },
   card: { backgroundColor: "#0f172a", borderRadius: 12, gap: 8, padding: 11 },
-  cardHeader: { alignItems: "flex-start", flexDirection: "row", gap: 8, justifyContent: "space-between" },
+  cardHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+  },
   cardTitle: { color: "#e2e8f0", flex: 1, fontWeight: "800" },
-  risk: { borderRadius: 999, overflow: "hidden", paddingHorizontal: 8, paddingVertical: 3, textTransform: "uppercase" },
+  risk: {
+    borderRadius: 999,
+    overflow: "hidden",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    textTransform: "uppercase",
+  },
   riskHigh: { backgroundColor: "#7f1d1d", color: "#fecaca" },
   riskMedium: { backgroundColor: "#78350f", color: "#fde68a" },
   riskLow: { backgroundColor: "#14532d", color: "#bbf7d0" },
   decisionRow: { flexDirection: "row", gap: 8 },
-  approve: { alignItems: "center", backgroundColor: "#166534", borderRadius: 10, flex: 1, padding: 10 },
-  reject: { alignItems: "center", backgroundColor: "#991b1b", borderRadius: 10, flex: 1, padding: 10 },
+  approve: {
+    alignItems: "center",
+    backgroundColor: "#166534",
+    borderRadius: 10,
+    flex: 1,
+    padding: 10,
+  },
+  reject: {
+    alignItems: "center",
+    backgroundColor: "#991b1b",
+    borderRadius: 10,
+    flex: 1,
+    padding: 10,
+  },
   disabled: { opacity: 0.4 },
   row: { borderBottomColor: "#334155", borderBottomWidth: 1, gap: 4, paddingVertical: 9 },
 });

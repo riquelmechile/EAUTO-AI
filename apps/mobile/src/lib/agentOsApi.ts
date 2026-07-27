@@ -165,9 +165,7 @@ export const agentOsApi = {
       body: JSON.stringify({ objective, maximumTasks: 5, budgetMinorClp }),
     }),
   intelligenceReadiness: (accountId: string) =>
-    request<IntelligenceReadiness>(
-      `/v1/intelligence/${encodeURIComponent(accountId)}/readiness`,
-    ),
+    request<IntelligenceReadiness>(`/v1/intelligence/${encodeURIComponent(accountId)}/readiness`),
   evidencePacks: (accountId: string) =>
     request<{ packs: readonly EvidencePackSummary[] }>(
       `/v1/intelligence/${encodeURIComponent(accountId)}/evidence-packs?limit=50`,
