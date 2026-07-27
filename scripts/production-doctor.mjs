@@ -6,6 +6,8 @@ const templateMode = process.argv.includes("--template");
 const envArgument = process.argv.find((argument) => argument.startsWith("--env="));
 const envPath = resolve(process.cwd(), envArgument?.slice(6) ?? ".env.production");
 const configured = existsSync(envPath) ? parseEnvironment(await readFile(envPath, "utf8")) : {};
+const immutableImagePattern =
+  /^ghcr\.io\/riquelmechile\/eauto-ai@sha256:[a-f0-9]{64}$/;
 
 const files = [
   "Dockerfile",
@@ -173,7 +175,7 @@ function expectHostname(key) {
 function validateImmutableImage() {
   const value = configured.EAUTO_IMAGE;
   if (!value || (templateMode && isPlaceholder(value))) return;
-  if (!/^ghcr\.io\/riquelmechile\/eauto-ai@sha256:[a-f0-9]{64}$/.test(value)) {
+  if (!immutableImagePattern.test(value)) {
     failures.push(
       "EAUTO_IMAGE must be the immutable GHCR digest ghcr.io/riquelmechile/eauto-ai@sha256:<64 hex>.",
     );
