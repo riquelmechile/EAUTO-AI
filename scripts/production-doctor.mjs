@@ -22,6 +22,8 @@ const files = [
   "scripts/deploy-production.sh",
   "scripts/production-doctor.mjs",
   "infra/postgres/migrations/012_operational_intelligence.sql",
+  "packages/content/src/httpContentProvider.ts",
+  "packages/infrastructure/src/httpActionExecutor.ts",
   "apps/mobile/app.config.cjs",
   "apps/mobile/eas.json",
   ".github/workflows/release.yml",
@@ -32,7 +34,11 @@ const secrets = [
   "REDIS_PASSWORD",
   "MINIO_ROOT_USER",
   "MINIO_ROOT_PASSWORD",
+  "OBJECT_STORAGE_ACCESS_KEY",
+  "OBJECT_STORAGE_SECRET_KEY",
   "OPERATOR_TOKENS_JSON",
+  "CONTENT_PROVIDER_API_KEY",
+  "ACTION_PROVIDER_API_KEY",
   "LLM_API_KEY",
   "MELI_CLIENT_ID",
   "MELI_CLIENT_SECRET",
@@ -62,16 +68,20 @@ for (const key of secrets) {
 }
 
 expectValue("NODE_ENV", "production");
-expectValue("AUTH_MODE", "tokens");
+expectValue("AUTH_MODE", "static-token");
+expectValue("CONTENT_GENERATION_ENABLED", "true");
+expectValue("ACTION_EXECUTION_ENABLED", "true");
 expectValue("LLM_ENABLED", "true");
 expectValue("INTELLIGENCE_WORKER_ENABLED", "true");
 expectValue("MELI_ENABLED", "true");
 expectValue("MELI_WEBHOOK_ENABLED", "true");
 expectHttps("EXPO_PUBLIC_API_URL");
+expectHttps("CONTENT_PROVIDER_URL");
 expectHttps("MELI_REDIRECT_URI");
 expectHttps("OBJECT_STORAGE_PUBLIC_ENDPOINT");
 expectHostname("API_DOMAIN");
 expectHostname("S3_DOMAIN");
+validateActionRoutes();
 
 if (
   configured.API_DOMAIN &&
@@ -142,6 +152,45 @@ function expectHostname(key) {
   if (!value || (templateMode && isPlaceholder(value))) return;
   if (!/^(?=.{1,253}$)(?!-)[a-z0-9.-]+(?<!-)$/i.test(value)) {
     failures.push(`${key} must be a valid hostname.`);
+  }
+}
+
+function validateActionRoutes() {
+  const value = configured.ACTION_PROVIDER_ROUTES_JSON;
+  if (!value || (templateMode && isPlaceholder(value))) return;
+  try {
+    const routes = JSON.parse(value);
+    if (!routes || typeof routes !== "object" || Array.isArray(routes)) {
+      failures.push("ACTION_PROVIDER_ROUTES_JSON must be an object.");
+      return;
+    }
+    const entries = Object.entries(routes);
+    if (entries.length === 0) failures.push("ACTION_PROVIDER_ROUTES_JSON cannot be empty.");
+    for (const [kind, route] of entries) {
+      if (!route || typeof route !== "object" || Array.isArray(route)) {
+        failures.push(`Action route ${kind} must be an object.`);
+        continue;
+      }
+      for (const field of ["executeUrl", "verifyUrl"]) {
+        const url = route[field];
+        if (typeof url !== "string") {
+          failures.push(`Action route ${kind}.${field} is required.`);
+          continue;
+        }
+        try {
+          const parsed = new URL(url);
+          if (parsed.protocol !== "https:")
+            failures.push(`Action route ${kind}.${field} must use HTTPS.`);
+          if (parsed.username || parsed.password) {
+            failures.push(`Action route ${kind}.${field} cannot embed credentials.`);
+          }
+        } catch {
+          failures.push(`Action route ${kind}.${field} must be a valid URL.`);
+        }
+      }
+    }
+  } catch {
+    failures.push("ACTION_PROVIDER_ROUTES_JSON must be valid JSON.");
   }
 }
 

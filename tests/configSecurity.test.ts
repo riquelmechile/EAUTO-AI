@@ -18,6 +18,8 @@ const baseProduction = {
   AUTH_MODE: "static-token",
   OPERATOR_TOKENS_JSON: productionIdentity,
   OBJECT_STORAGE_PUBLIC_ENDPOINT: "https://uploads.example.com",
+  OBJECT_STORAGE_ACCESS_KEY: "storage-access",
+  OBJECT_STORAGE_SECRET_KEY: "storage-secret",
 } as const;
 
 const mercadoLibreChile = {
@@ -29,6 +31,13 @@ const mercadoLibreChile = {
   MELI_PLASTICOV_SELLER_ID: "111",
   MELI_MAUSTIAN_SELLER_ID: "222",
 } as const;
+
+const actionRoutes = JSON.stringify({
+  "price.update": {
+    executeUrl: "https://actions.example.com/v1/execute",
+    verifyUrl: "https://actions.example.com/v1/verify",
+  },
+});
 
 describe("production security configuration", () => {
   it("rejects production without Postgres and authentication", () => {
@@ -73,6 +82,16 @@ describe("production security configuration", () => {
     ).toThrow(/must use HTTPS/);
   });
 
+  it("rejects production without object storage credentials", () => {
+    expect(() =>
+      loadConfig({
+        ...baseProduction,
+        OBJECT_STORAGE_ACCESS_KEY: "",
+        OBJECT_STORAGE_SECRET_KEY: "",
+      }),
+    ).toThrow(/credentials are mandatory/);
+  });
+
   it("parses false as false instead of a truthy string", () => {
     const config = loadConfig({ OBJECT_STORAGE_FORCE_PATH_STYLE: "false" });
     expect(config.OBJECT_STORAGE_FORCE_PATH_STYLE).toBe(false);
@@ -82,6 +101,56 @@ describe("production security configuration", () => {
     const config = loadConfig(baseProduction);
     expect(config.AUTH_MODE).toBe("static-token");
     expect(config.OBJECT_STORAGE_PUBLIC_ENDPOINT).toBe("https://uploads.example.com");
+  });
+
+  it("requires an HTTPS content provider and API key when enabled", () => {
+    expect(() => loadConfig({ CONTENT_GENERATION_ENABLED: "true" })).toThrow(
+      /CONTENT_GENERATION_ENABLED requires/,
+    );
+    expect(() =>
+      loadConfig({
+        CONTENT_GENERATION_ENABLED: "true",
+        CONTENT_PROVIDER_URL: "http://content.example.com/v1/generate",
+        CONTENT_PROVIDER_API_KEY: "secret",
+        NODE_ENV: "production",
+      }),
+    ).toThrow(/CONTENT_PROVIDER_URL must use HTTPS/);
+  });
+
+  it("requires allowlisted HTTPS action routes and an API key", () => {
+    expect(() =>
+      loadConfig({
+        ACTION_EXECUTION_ENABLED: "true",
+        ACTION_PROVIDER_ROUTES_JSON: actionRoutes,
+      }),
+    ).toThrow(/ACTION_PROVIDER_API_KEY/);
+    expect(() =>
+      loadConfig({
+        ACTION_EXECUTION_ENABLED: "true",
+        ACTION_PROVIDER_API_KEY: "secret",
+        ACTION_PROVIDER_ROUTES_JSON: JSON.stringify({
+          "price.update": {
+            executeUrl: "http://actions.example.com/v1/execute",
+            verifyUrl: "https://actions.example.com/v1/verify",
+          },
+        }),
+        NODE_ENV: "production",
+      }),
+    ).toThrow(/must use HTTPS/);
+  });
+
+  it("accepts complete production provider configuration", () => {
+    const config = loadConfig({
+      ...baseProduction,
+      CONTENT_GENERATION_ENABLED: "true",
+      CONTENT_PROVIDER_URL: "https://content.example.com/v1/generate",
+      CONTENT_PROVIDER_API_KEY: "content-secret",
+      ACTION_EXECUTION_ENABLED: "true",
+      ACTION_PROVIDER_API_KEY: "action-secret",
+      ACTION_PROVIDER_ROUTES_JSON: actionRoutes,
+    });
+    expect(config.CONTENT_GENERATION_ENABLED).toBe(true);
+    expect(config.ACTION_EXECUTION_ENABLED).toBe(true);
   });
 
   it("keeps MercadoLibre disabled unless the complete Chile configuration exists", () => {

@@ -50,6 +50,34 @@ const configSchema = z.object({
     .max(50_000_000)
     .default(10_000_000),
   SOURCE_IMAGE_UPLOAD_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(300),
+  CONTENT_GENERATION_ENABLED: environmentBoolean.default(false),
+  CONTENT_PROVIDER_URL: optionalUrl,
+  CONTENT_PROVIDER_API_KEY: optionalString,
+  CONTENT_PROVIDER_NAME: z.string().min(1).default("external-content-provider"),
+  CONTENT_PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(600_000).default(120_000),
+  CONTENT_PROVIDER_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_024)
+    .max(20_000_000)
+    .default(2_000_000),
+  CONTENT_MAX_ASSET_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_048_576)
+    .max(500_000_000)
+    .default(100_000_000),
+  ACTION_EXECUTION_ENABLED: environmentBoolean.default(false),
+  ACTION_PROVIDER_ROUTES_JSON: z.string().default("{}"),
+  ACTION_PROVIDER_API_KEY: optionalString,
+  ACTION_PROVIDER_NAME: z.string().min(1).default("external-action-provider"),
+  ACTION_PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(300_000).default(30_000),
+  ACTION_PROVIDER_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_024)
+    .max(20_000_000)
+    .default(2_000_000),
   OUTBOX_WORKER_ID: z.string().min(1).default("eauto-outbox"),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
   OUTBOX_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(20),
@@ -127,6 +155,8 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     throw new Error("Object storage access and secret keys must be configured together.");
   }
 
+  validateContentConfig(parsed.data);
+  validateActionExecutionConfig(parsed.data);
   validateLlmConfig(parsed.data);
   validateMercadoLibreConfig(parsed.data);
 
@@ -144,9 +174,57 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     if (new URL(parsed.data.OBJECT_STORAGE_PUBLIC_ENDPOINT).protocol !== "https:") {
       throw new Error("OBJECT_STORAGE_PUBLIC_ENDPOINT must use HTTPS in production.");
     }
+    if (!parsed.data.OBJECT_STORAGE_ACCESS_KEY || !parsed.data.OBJECT_STORAGE_SECRET_KEY) {
+      throw new Error("Object storage credentials are mandatory in production.");
+    }
   }
 
   return parsed.data;
+}
+
+function validateContentConfig(config: z.infer<typeof configSchema>): void {
+  if (!config.CONTENT_GENERATION_ENABLED) return;
+  if (!config.CONTENT_PROVIDER_URL || !config.CONTENT_PROVIDER_API_KEY) {
+    throw new Error("CONTENT_GENERATION_ENABLED requires CONTENT_PROVIDER_URL and API key.");
+  }
+  if (
+    config.NODE_ENV === "production" &&
+    new URL(config.CONTENT_PROVIDER_URL).protocol !== "https:"
+  ) {
+    throw new Error("CONTENT_PROVIDER_URL must use HTTPS in production.");
+  }
+}
+
+function validateActionExecutionConfig(config: z.infer<typeof configSchema>): void {
+  let routes: unknown;
+  try {
+    routes = JSON.parse(config.ACTION_PROVIDER_ROUTES_JSON);
+  } catch {
+    throw new Error("ACTION_PROVIDER_ROUTES_JSON must contain valid JSON.");
+  }
+  if (!isRecord(routes)) throw new Error("ACTION_PROVIDER_ROUTES_JSON must contain an object.");
+  if (!config.ACTION_EXECUTION_ENABLED) return;
+  if (!config.ACTION_PROVIDER_API_KEY) {
+    throw new Error("ACTION_EXECUTION_ENABLED requires ACTION_PROVIDER_API_KEY.");
+  }
+  const entries = Object.entries(routes);
+  if (entries.length === 0) {
+    throw new Error("ACTION_EXECUTION_ENABLED requires at least one allowlisted route.");
+  }
+  for (const [kind, value] of entries) {
+    if (!kind.trim() || !isRecord(value)) throw new Error("Each action route must be an object.");
+    for (const field of ["executeUrl", "verifyUrl"] as const) {
+      const urlValue = value[field];
+      if (typeof urlValue !== "string")
+        throw new Error(`Action route ${kind}.${field} is required.`);
+      const url = new URL(urlValue);
+      if (url.username || url.password)
+        throw new Error(`Action route ${kind}.${field} cannot embed credentials.`);
+      if (config.NODE_ENV === "production" && url.protocol !== "https:") {
+        throw new Error(`Action route ${kind}.${field} must use HTTPS in production.`);
+      }
+    }
+  }
 }
 
 function validateLlmConfig(config: z.infer<typeof configSchema>): void {
@@ -189,4 +267,8 @@ function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void 
   if (config.NODE_ENV === "production" && new URL(config.MELI_REDIRECT_URI).protocol !== "https:") {
     throw new Error("MELI_REDIRECT_URI must use HTTPS in production.");
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

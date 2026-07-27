@@ -27,7 +27,8 @@
     "migrate": "node scripts/migrate.mjs",
     "build:server": "tsc -b packages/domain packages/agent-kernel packages/application packages/content packages/infrastructure apps/api",
     "smoke:core": "node scripts/smoke-core.mjs",
-    "smoke:object-storage": "node scripts/smoke-object-storage.mjs"
+    "smoke:object-storage": "node scripts/smoke-object-storage.mjs",
+    "smoke:production-runtime": "node scripts/smoke-production-runtime.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

@@ -121,8 +121,9 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       delegationDepth: 2,
       externalWrites: false,
     },
-    externalWrites: false,
-    contentGeneration: "development-simulator",
+    externalWrites: runtime.actionExecutionMode === "external",
+    actionExecution: runtime.actionExecutionMode,
+    contentGeneration: runtime.contentGenerationMode,
   }));
 
   app.post("/v1/auth/session", async (request, reply) => {
@@ -236,7 +237,7 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       sourceImageUpload: sourceImage,
       assets,
       requestedBy: actor.id,
-      externalGenerationPerformed: false,
+      externalGenerationPerformed: runtime.contentGenerationMode === "external",
     });
   });
 

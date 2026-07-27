@@ -55,6 +55,30 @@ export class S3ObjectStorage implements ObjectStoragePort {
     });
   }
 
+  async putGeneratedObject(input: {
+    objectKey: string;
+    contentType: string;
+    body: Uint8Array;
+    checksumSha256Base64: string;
+    metadata: Readonly<Record<string, string>>;
+  }): Promise<Readonly<{ objectUri: string }>> {
+    await this.inspectionClient.send(
+      new PutObjectCommand({
+        Bucket: this.config.bucket,
+        Key: input.objectKey,
+        Body: input.body,
+        ContentLength: input.body.byteLength,
+        ContentType: input.contentType,
+        ChecksumSHA256: input.checksumSha256Base64,
+        Metadata: {
+          ...input.metadata,
+          sha256: input.checksumSha256Base64,
+        },
+      }),
+    );
+    return Object.freeze({ objectUri: `s3://${this.config.bucket}/${input.objectKey}` });
+  }
+
   async inspectObject(objectKey: string): Promise<
     Readonly<{
       exists: boolean;
