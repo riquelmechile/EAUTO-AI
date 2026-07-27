@@ -1,6 +1,9 @@
 name: Export source
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - feat/mercadolibre-webhooks-runtime
