@@ -8,6 +8,7 @@ import {
 } from "@eauto/domain";
 import {
   ActionService,
+  AgentOsService,
   ContentStudioService,
   MercadoLibreNotificationIngestionService,
   MercadoLibreNotificationProcessor,
@@ -21,6 +22,7 @@ import { DeterministicContentProvider } from "@eauto/content";
 import {
   InMemoryAccountRepository,
   InMemoryActionRepository,
+  InMemoryAgentOsRepository,
   InMemoryContentAssetRepository,
   InMemoryMercadoLibreConnectionRepository,
   InMemoryMercadoLibreOAuthStateRepository,
@@ -33,6 +35,7 @@ import {
   NodeMercadoLibreSecurity,
   PostgresAccountRepository,
   PostgresActionRepository,
+  PostgresAgentOsRepository,
   PostgresContentAssetRepository,
   PostgresMercadoLibreConnectionRepository,
   PostgresMercadoLibreOAuthStateRepository,
@@ -120,6 +123,9 @@ export function createRuntime(config: AppConfig) {
   const uploadRepository = pool
     ? new PostgresSourceImageUploadRepository(pool)
     : new InMemorySourceImageUploadRepository();
+  const agentOsRepository = pool
+    ? new PostgresAgentOsRepository(pool)
+    : new InMemoryAgentOsRepository();
   const clock = { now: () => new Date() };
   const ids = { next: (prefix: string) => `${prefix}_${randomUUID()}` };
   const actionService = new ActionService(
@@ -129,6 +135,7 @@ export function createRuntime(config: AppConfig) {
     clock,
     ids,
   );
+  const agentOs = new AgentOsService(agentOsRepository, clock, ids);
   const contentStudio = new ContentStudioService(
     new DeterministicContentProvider(),
     assetRepository,
@@ -210,6 +217,7 @@ export function createRuntime(config: AppConfig) {
     assets: assetRepository,
     outbox,
     actionService,
+    agentOs,
     contentStudio,
     sessionService,
     sourceImageUploads,

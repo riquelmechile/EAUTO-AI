@@ -13,14 +13,16 @@ import { DashboardScreen } from "./src/features/dashboard/DashboardScreen";
 import { InboxScreen } from "./src/features/inbox/InboxScreen";
 import { ContentStudioScreen } from "./src/features/content-studio/ContentStudioScreen";
 import { LoginScreen } from "./src/features/auth/LoginScreen";
+import { AgentOsScreen } from "./src/features/agents/AgentOsScreen";
 import { MercadoLibreScreen } from "./src/features/mercadolibre/MercadoLibreScreen";
 import { api } from "./src/lib/api";
 import { sessionStore, type MobileSession } from "./src/lib/session";
 
-type Tab = "dashboard" | "mercadolibre" | "inbox" | "studio";
+type Tab = "dashboard" | "agents" | "mercadolibre" | "inbox" | "studio";
 
 const TABS: readonly { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Empresa" },
+  { id: "agents", label: "Agentes" },
   { id: "mercadolibre", label: "MercadoLibre" },
   { id: "inbox", label: "Decisiones" },
   { id: "studio", label: "Contenido" },
@@ -103,6 +105,7 @@ export default function App() {
       </ScrollView>
       <ScrollView contentContainerStyle={styles.content}>
         {tab === "dashboard" ? <DashboardScreen /> : null}
+        {tab === "agents" ? <AgentOsScreen roles={session.actor.roles} /> : null}
         {tab === "mercadolibre" ? <MercadoLibreScreen roles={session.actor.roles} /> : null}
         {tab === "inbox" ? <InboxScreen /> : null}
         {tab === "studio" ? <ContentStudioScreen /> : null}

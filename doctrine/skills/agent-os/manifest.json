@@ -1,0 +1,28 @@
+{
+  "id": "agent-os",
+  "version": "1.0.0",
+  "purpose": "Gobernar la organización de agentes, planificación, preflight, sesiones y scorecards.",
+  "authorizedAgents": ["ceo", "governance-director", "agent-evaluator"],
+  "allowedCapabilities": [
+    "plan.create",
+    "work-order.create",
+    "evidence.request",
+    "brief.create",
+    "scorecards.read"
+  ],
+  "forbiddenCapabilities": [
+    "marketplace.write-unapproved",
+    "money.transfer",
+    "credential.read",
+    "policy.bypass",
+    "evidence.fabricate",
+    "autonomy.promote"
+  ],
+  "requiredEvidence": ["company-state", "policy-version"],
+  "maximumIterations": 5,
+  "timeoutMs": 120000,
+  "maximumDailyBudgetMinorClp": 100000,
+  "requiresHumanApproval": true,
+  "cacheClass": "global-stable",
+  "risk": "critical"
+}

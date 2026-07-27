@@ -1,3 +1,4 @@
+export * from "./agentOsRepositories.js";
 export * from "./inMemoryMercadoLibreRepositories.js";
 export * from "./inMemoryOutboxRepository.js";
 export * from "./inMemoryRepositories.js";

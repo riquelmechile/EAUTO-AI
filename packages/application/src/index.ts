@@ -1,4 +1,5 @@
 export * from "./actionService.js";
+export * from "./agentOsService.js";
 export * from "./contentStudioService.js";
 export * from "./mercadoLibreService.js";
 export * from "./outbox.js";
