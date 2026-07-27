@@ -1,16 +1,23 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
+const typedConfigs = tseslint.configs.recommendedTypeChecked.map((config) => ({
+  ...config,
+  files: ["**/*.{ts,tsx}"],
+}));
+
 export default tseslint.config(
   { ignores: ["**/dist/**", "**/.expo/**", "**/node_modules/**"] },
-  js.configs.recommended,
-  ...tseslint.configs.recommendedTypeChecked,
   {
+    ...js.configs.recommended,
+    files: ["**/*.{js,mjs,cjs,ts,tsx}"],
+  },
+  ...typedConfigs,
+  {
+    files: ["**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ["eslint.config.mjs", "scripts/*.mjs", "apps/mobile/app.config.cjs"],
-        },
+        projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -21,32 +28,18 @@ export default tseslint.config(
     },
   },
   {
-    files: ["eslint.config.mjs"],
+    files: ["**/*.{js,mjs,cjs}"],
     languageOptions: {
       globals: {
-        Buffer: "readonly",
-        console: "readonly",
-        fetch: "readonly",
-        process: "readonly",
-        setTimeout: "readonly",
-        URL: "readonly",
-      },
-    },
-  },
-  {
-    ...tseslint.configs.disableTypeChecked,
-    files: ["scripts/*.mjs", "apps/mobile/app.config.cjs"],
-    languageOptions: {
-      globals: {
-        Buffer: "readonly",
-        console: "readonly",
-        fetch: "readonly",
-        process: "readonly",
-        setTimeout: "readonly",
-        URL: "readonly",
         AggregateError: "readonly",
-        require: "readonly",
+        Buffer: "readonly",
+        URL: "readonly",
+        console: "readonly",
+        fetch: "readonly",
         module: "readonly",
+        process: "readonly",
+        require: "readonly",
+        setTimeout: "readonly",
       },
     },
   },
