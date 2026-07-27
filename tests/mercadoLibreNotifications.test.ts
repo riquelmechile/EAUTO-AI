@@ -50,9 +50,10 @@ describe("MercadoLibre notification ingestion", () => {
     const repository = new InMemoryMercadoLibreNotificationRepository();
     const service = ingestion(repository);
 
-    await expect(
-      service.ingest({ ...basePayload, applicationId: "other-app" }),
-    ).resolves.toEqual({ accepted: false, reason: "application-mismatch" });
+    await expect(service.ingest({ ...basePayload, applicationId: "other-app" })).resolves.toEqual({
+      accepted: false,
+      reason: "application-mismatch",
+    });
     await expect(service.ingest({ ...basePayload, sellerId: "999" })).resolves.toEqual({
       accepted: false,
       reason: "unknown-seller",
