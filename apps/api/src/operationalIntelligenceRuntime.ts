@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import {
   GovernedWorkOrderProcessor,
+  GovernedWorkOrderService,
   OperationalIntelligenceService,
 } from "@eauto/application";
 import {
@@ -26,6 +27,7 @@ export function createOperationalIntelligenceRuntime(baseRuntime: Runtime) {
   const clock = { now: () => new Date() };
   const ids = { next: (prefix: string) => `${prefix}_${randomUUID()}` };
   const intelligence = new OperationalIntelligenceService(repository, evidenceReader, clock, ids);
+  const workOrders = new GovernedWorkOrderService(repository, clock, ids);
   if (config.INTELLIGENCE_WORKER_ENABLED && !baseRuntime.shadowLlm) {
     throw new Error("INTELLIGENCE_WORKER_ENABLED requires LLM_ENABLED and a configured provider key.");
   }
@@ -54,6 +56,7 @@ export function createOperationalIntelligenceRuntime(baseRuntime: Runtime) {
     repository,
     evidenceReader,
     intelligence,
+    workOrders,
     processor,
     close: () => pool?.end() ?? Promise.resolve(),
   });
