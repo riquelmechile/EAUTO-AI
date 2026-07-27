@@ -8,6 +8,7 @@ export * from "./inMemorySourceImageUploadRepository.js";
 export * from "./llmRunRepositories.js";
 export * from "./mercadoLibreHttpClient.js";
 export * from "./nodeMercadoLibreSecurity.js";
+export * from "./operationalIntelligenceRepositories.js";
 export * from "./postgresActionRepository.js";
 export * from "./postgresMercadoLibreRepositories.js";
 export * from "./postgresOutboxRepository.js";
