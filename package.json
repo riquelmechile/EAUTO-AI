@@ -23,7 +23,7 @@
     "dev:worker": "npm run dev:worker -w @eauto/api",
     "dev:mobile": "npm run start -w @eauto/mobile",
     "doctor": "node scripts/doctor.mjs",
-    "doctor:production": "node scripts/production-doctor.mjs",
+    "doctor:production": "node scripts/production-doctor.mjs && node scripts/release-doctor.mjs",
     "migrate": "node scripts/migrate.mjs",
     "build:server": "tsc -b packages/domain packages/agent-kernel packages/application packages/content packages/infrastructure apps/api",
     "smoke:core": "node scripts/smoke-core.mjs",
