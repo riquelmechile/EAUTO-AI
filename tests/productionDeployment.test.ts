@@ -1,7 +1,7 @@
+import { spawnSync } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 
 const temporaryDirectories: string[] = [];
@@ -58,7 +58,9 @@ async function validProductionEnvironment(): Promise<string> {
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
   );
 });
 
@@ -105,7 +107,9 @@ describe("immutable production deployment", () => {
       { cwd: process.cwd(), encoding: "utf8" },
     );
     expect(rejected.status).toBe(1);
-    expect(`${rejected.stdout}\n${rejected.stderr}`).toContain("EAUTO_IMAGE must be the immutable");
+    expect(`${rejected.stdout}\n${rejected.stderr}`).toContain(
+      "EAUTO_IMAGE must be the immutable",
+    );
   });
 
   it("detects placeholders embedded inside URLs", async () => {
