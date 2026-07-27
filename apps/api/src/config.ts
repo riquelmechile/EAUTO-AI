@@ -80,7 +80,12 @@ const configSchema = z.object({
   MELI_NOTIFICATION_LEASE_MS: z.coerce.number().int().min(1_000).max(300_000).default(30_000),
   MELI_NOTIFICATION_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(8),
   MELI_NOTIFICATION_BASE_RETRY_MS: z.coerce.number().int().min(100).max(300_000).default(1_000),
-  MELI_NOTIFICATION_MAX_RETRY_MS: z.coerce.number().int().min(1_000).max(86_400_000).default(300_000),
+  MELI_NOTIFICATION_MAX_RETRY_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(86_400_000)
+    .default(300_000),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
