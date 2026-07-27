@@ -4,9 +4,16 @@ x-runtime: &runtime
   image: ${EAUTO_IMAGE:-ghcr.io/riquelmechile/eauto-ai:latest}
   env_file:
     - ../../.env.production
+  environment:
+    DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    OBJECT_STORAGE_PUBLIC_ENDPOINT: https://${S3_DOMAIN}
+    OBJECT_STORAGE_INTERNAL_ENDPOINT: http://minio:9000
+    OBJECT_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
+    OBJECT_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
   restart: unless-stopped
   networks:
-    - internal
+    - backend
   security_opt:
     - no-new-privileges:true
   cap_drop:
@@ -26,7 +33,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
-      - internal
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -47,7 +54,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - internal
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning ping | grep PONG"]
       interval: 10s
@@ -69,7 +76,7 @@ services:
     volumes:
       - minio_data:/data
     networks:
-      - internal
+      - backend
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -142,7 +149,7 @@ services:
       - caddy_config:/config
     networks:
       - edge
-      - internal
+      - backend
     depends_on:
       api:
         condition: service_healthy
@@ -158,7 +165,7 @@ services:
     env_file:
       - ../../.env.production
     networks:
-      - internal
+      - backend
     depends_on:
       postgres:
         condition: service_healthy
@@ -174,8 +181,7 @@ services:
 
 networks:
   edge:
-  internal:
-    internal: true
+  backend:
 
 volumes:
   postgres_data:
