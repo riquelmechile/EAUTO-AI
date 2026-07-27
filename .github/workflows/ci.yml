@@ -30,22 +30,21 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
           path = Path('packages/infrastructure/src/operationalIntelligenceRepositories.ts')
           text = path.read_text()
-          text = text.replace(
-              '["queued", "failed"].includes(order.status)',
-              '(["queued", "failed"] as readonly WorkOrderStatus[]).includes(order.status)',
-          )
-          path.write_text(text)
+          pattern = r'\[\s*"queued"\s*,\s*"failed"\s*\]\.includes\(order\.status\)'
+          replacement = '(["queued", "failed"] as readonly WorkOrderStatus[]).includes(order.status)'
+          updated, count = re.subn(pattern, replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one claimable status match, found {count}')
+          path.write_text(updated)
           PY
       - name: Apply canonical formatting
         run: npm run format
       - name: Commit lint fix
         run: |
-          if git diff --quiet; then
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
