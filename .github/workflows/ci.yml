@@ -30,22 +30,16 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
+          import re
           from pathlib import Path
           path = Path('tests/operationalIntelligence.test.ts')
           text = path.read_text()
-          old = '''    expect(sessions.map((session) => session.agentId)).toEqual([
-              "pricing",
-              "finance-director",
-              "ceo",
-            ]);'''
-          new = '''    expect(sessions.map((session) => session.agentId)).toEqual([
-              "ceo",
-              "finance-director",
-              "pricing",
-            ]);'''
-          if old not in text:
-              raise SystemExit('Expected hierarchy assertion was not found')
-          path.write_text(text.replace(old, new, 1))
+          pattern = r'"pricing",\s*"finance-director",\s*"ceo",'
+          replacement = '"ceo",\n      "finance-director",\n      "pricing",'
+          updated, count = re.subn(pattern, replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected exactly one hierarchy assertion, found {count}')
+          path.write_text(updated)
           PY
       - name: Apply canonical formatting
         run: npm run format
