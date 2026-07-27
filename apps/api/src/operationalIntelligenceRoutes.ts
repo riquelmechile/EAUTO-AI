@@ -96,8 +96,9 @@ export function registerOperationalIntelligenceRoutes(
       .object({
         objectiveId: z.string().min(3).max(256),
         agentId: z.string().min(2).max(256),
+        capability: z.string().min(2).max(256),
         taskClass: z.enum(LLM_TASK_CLASSES),
-        requestedAction: z.string().min(3).max(5_000),
+        instruction: z.string().min(3).max(5_000),
         evidencePackId: z.string().min(3),
         signals: z
           .array(
@@ -124,13 +125,14 @@ export function registerOperationalIntelligenceRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    const result = await runtime.intelligence.enqueueWorkOrder({
+    const result = await runtime.workOrders.enqueue({
       organizationId: actor.organizationId,
       accountId: params.accountId,
       objectiveId: body.objectiveId,
       agentId: body.agentId,
+      capability: body.capability,
       taskClass: body.taskClass,
-      requestedAction: body.requestedAction,
+      instruction: body.instruction,
       evidencePackId: body.evidencePackId,
       signals: body.signals,
       ...(body.previousSignalsHash === undefined
@@ -188,9 +190,10 @@ export function registerOperationalIntelligenceRoutes(
     return { proposal, executionCreated: false };
   });
 
-  app.get("/v1/intelligence/readiness", async (request) => {
+  app.get("/v1/intelligence/:accountId/readiness", async (request) => {
     const actor = await dependencies.authenticate(request);
-    await dependencies.requireAccount(actor, "plasticov", "agents.read");
+    const params = accountParams.parse(request.params);
+    await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
       workerEnabled: runtime.config.INTELLIGENCE_WORKER_ENABLED,
       llmEnabled: dependencies.runtime.shadowLlm !== null,
