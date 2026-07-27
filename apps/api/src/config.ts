@@ -187,7 +187,10 @@ function validateContentConfig(config: z.infer<typeof configSchema>): void {
   if (!config.CONTENT_PROVIDER_URL || !config.CONTENT_PROVIDER_API_KEY) {
     throw new Error("CONTENT_GENERATION_ENABLED requires CONTENT_PROVIDER_URL and API key.");
   }
-  if (config.NODE_ENV === "production" && new URL(config.CONTENT_PROVIDER_URL).protocol !== "https:") {
+  if (
+    config.NODE_ENV === "production" &&
+    new URL(config.CONTENT_PROVIDER_URL).protocol !== "https:"
+  ) {
     throw new Error("CONTENT_PROVIDER_URL must use HTTPS in production.");
   }
 }
@@ -212,9 +215,11 @@ function validateActionExecutionConfig(config: z.infer<typeof configSchema>): vo
     if (!kind.trim() || !isRecord(value)) throw new Error("Each action route must be an object.");
     for (const field of ["executeUrl", "verifyUrl"] as const) {
       const urlValue = value[field];
-      if (typeof urlValue !== "string") throw new Error(`Action route ${kind}.${field} is required.`);
+      if (typeof urlValue !== "string")
+        throw new Error(`Action route ${kind}.${field} is required.`);
       const url = new URL(urlValue);
-      if (url.username || url.password) throw new Error(`Action route ${kind}.${field} cannot embed credentials.`);
+      if (url.username || url.password)
+        throw new Error(`Action route ${kind}.${field} cannot embed credentials.`);
       if (config.NODE_ENV === "production" && url.protocol !== "https:") {
         throw new Error(`Action route ${kind}.${field} must use HTTPS in production.`);
       }

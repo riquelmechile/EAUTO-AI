@@ -50,13 +50,10 @@ describe("HttpActionExecutor", () => {
         }),
       )
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({ verified: true, observedState: { price: 11_000 } }),
-          {
-            status: 200,
-            headers: { "content-type": "application/json" },
-          },
-        ),
+        new Response(JSON.stringify({ verified: true, observedState: { price: 11_000 } }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
       );
     vi.stubGlobal("fetch", fetchMock);
 

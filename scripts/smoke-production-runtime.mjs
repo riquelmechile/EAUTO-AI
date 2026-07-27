@@ -2,7 +2,9 @@ import { readFile } from "node:fs/promises";
 import { loadConfig } from "../apps/api/dist/config.js";
 import { createRuntime } from "../apps/api/dist/runtime.js";
 
-const template = parseEnvironment(await readFile(new URL("../.env.production.example", import.meta.url), "utf8"));
+const template = parseEnvironment(
+  await readFile(new URL("../.env.production.example", import.meta.url), "utf8"),
+);
 const config = loadConfig({
   ...template,
   POSTGRES_PASSWORD: "postgres-smoke-password",

@@ -18,9 +18,7 @@ export class DisabledActionExecutor implements ActionExecutor {
   }
 
   verify(action: BusinessAction): Promise<{ verified: boolean; observedState: unknown }> {
-    return Promise.reject(
-      new Error(`External verification is disabled for action ${action.id}.`),
-    );
+    return Promise.reject(new Error(`External verification is disabled for action ${action.id}.`));
   }
 }
 
@@ -115,7 +113,9 @@ export class HttpActionExecutor implements ActionExecutor {
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`Action provider ${operation} timed out after ${this.config.timeoutMs} ms.`);
+        throw new Error(
+          `Action provider ${operation} timed out after ${this.config.timeoutMs} ms.`,
+        );
       }
       throw error;
     } finally {

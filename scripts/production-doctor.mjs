@@ -179,7 +179,8 @@ function validateActionRoutes() {
         }
         try {
           const parsed = new URL(url);
-          if (parsed.protocol !== "https:") failures.push(`Action route ${kind}.${field} must use HTTPS.`);
+          if (parsed.protocol !== "https:")
+            failures.push(`Action route ${kind}.${field} must use HTTPS.`);
           if (parsed.username || parsed.password) {
             failures.push(`Action route ${kind}.${field} cannot embed credentials.`);
           }

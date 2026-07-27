@@ -315,7 +315,11 @@ function parseActionRoutes(value: string): HttpActionRoutes {
   if (!isRecord(parsed)) throw new Error("Action provider routes must be an object.");
   const routes: Record<string, { executeUrl: string; verifyUrl: string }> = {};
   for (const [kind, route] of Object.entries(parsed)) {
-    if (!isRecord(route) || typeof route.executeUrl !== "string" || typeof route.verifyUrl !== "string") {
+    if (
+      !isRecord(route) ||
+      typeof route.executeUrl !== "string" ||
+      typeof route.verifyUrl !== "string"
+    ) {
       throw new Error(`Action route ${kind} is invalid.`);
     }
     routes[kind] = Object.freeze({ executeUrl: route.executeUrl, verifyUrl: route.verifyUrl });

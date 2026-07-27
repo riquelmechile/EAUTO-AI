@@ -71,9 +71,7 @@ export class HttpContentProvider implements ContentGenerationPort {
       });
       const text = await readLimitedResponse(response, this.config.maximumResponseBytes);
       if (!response.ok) {
-        throw new Error(
-          `Content provider failed with HTTP ${response.status}: ${sanitize(text)}`,
-        );
+        throw new Error(`Content provider failed with HTTP ${response.status}: ${sanitize(text)}`);
       }
       try {
         return JSON.parse(text) as unknown;
@@ -201,7 +199,8 @@ function parseProviderAssets(value: unknown): readonly ProviderAsset[] {
   const assets = value.assets.map((entry, index) => parseProviderAsset(entry, index));
   const kinds = new Set(assets.map((asset) => asset.kind));
   for (const required of ["image", "copy"] as const) {
-    if (!kinds.has(required)) throw new Error(`Content provider omitted required ${required} asset.`);
+    if (!kinds.has(required))
+      throw new Error(`Content provider omitted required ${required} asset.`);
   }
   return Object.freeze(assets);
 }
