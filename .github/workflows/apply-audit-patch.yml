@@ -27,8 +27,6 @@ jobs:
           cat .audit-patch/*.txt > /tmp/audit-patch.b64
           base64 --decode /tmp/audit-patch.b64 > /tmp/audit-patch.tar.gz
           tar -xzf /tmp/audit-patch.tar.gz -C .
-          rm -rf .audit-patch
-          rm -f .github/workflows/apply-audit-patch.yml
       - name: Install and format
         run: |
           npm ci --no-audit --no-fund
