@@ -5,6 +5,7 @@ export * from "./agentOs.js";
 export * from "./autonomy.js";
 export * from "./content.js";
 export * from "./evidence.js";
+export * from "./llm.js";
 export * from "./mercadolibre.js";
 export * from "./money.js";
 export * from "./objectives.js";
