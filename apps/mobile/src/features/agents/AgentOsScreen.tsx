@@ -176,10 +176,7 @@ export function AgentOsScreen({ roles }: Readonly<{ roles: readonly string[] }>)
         <View style={styles.metrics}>
           <Metric label="Activas" value={activeSessions.length} />
           <Metric label="Total 30 días" value={sessions.length} />
-          <Metric
-            label="Con actividad"
-            value={usedScorecards.length}
-          />
+          <Metric label="Con actividad" value={usedScorecards.length} />
         </View>
         {activeSessions.length === 0 ? (
           <Text style={styles.empty}>No hay sesiones activas.</Text>
@@ -187,10 +184,12 @@ export function AgentOsScreen({ roles }: Readonly<{ roles: readonly string[] }>)
           activeSessions.slice(0, 12).map((session) => (
             <View key={session.id} style={styles.task}>
               <Text style={styles.taskTitle}>
-                {contracts.find((contract) => contract.id === session.agentId)?.label ?? session.agentId}
+                {contracts.find((contract) => contract.id === session.agentId)?.label ??
+                  session.agentId}
               </Text>
               <Text style={styles.meta}>
-                {session.status} · {session.requestedAction} · {formatClp(session.spentMinorClp)} / {formatClp(session.budgetMinorClp)}
+                {session.status} · {session.requestedAction} · {formatClp(session.spentMinorClp)} /{" "}
+                {formatClp(session.budgetMinorClp)}
               </Text>
             </View>
           ))
@@ -198,10 +197,13 @@ export function AgentOsScreen({ roles }: Readonly<{ roles: readonly string[] }>)
         {usedScorecards.map((scorecard) => (
           <View key={scorecard.agentId} style={styles.scorecard}>
             <Text style={styles.taskTitle}>
-              {contracts.find((contract) => contract.id === scorecard.agentId)?.label ?? scorecard.agentId}
+              {contracts.find((contract) => contract.id === scorecard.agentId)?.label ??
+                scorecard.agentId}
             </Text>
             <Text style={styles.meta}>
-              {scorecard.completedCount}/{scorecard.runCount} completadas · outcomes verificados {scorecard.verifiedOutcomeCount} · recomendación {scorecard.recommendedAutonomy.toUpperCase()}
+              {scorecard.completedCount}/{scorecard.runCount} completadas · outcomes verificados{" "}
+              {scorecard.verifiedOutcomeCount} · recomendación{" "}
+              {scorecard.recommendedAutonomy.toUpperCase()}
             </Text>
           </View>
         ))}
@@ -251,7 +253,16 @@ const styles = StyleSheet.create({
   directorTitle: { color: "#f8fafc", fontWeight: "800" },
   specialists: { color: "#7dd3fc", fontSize: 11, lineHeight: 17 },
   meta: { color: "#94a3b8", fontSize: 11, lineHeight: 16 },
-  input: { backgroundColor: "#0f172a", borderColor: "#334155", borderRadius: 12, borderWidth: 1, color: "white", minHeight: 100, padding: 12, textAlignVertical: "top" },
+  input: {
+    backgroundColor: "#0f172a",
+    borderColor: "#334155",
+    borderRadius: 12,
+    borderWidth: 1,
+    color: "white",
+    minHeight: 100,
+    padding: 12,
+    textAlignVertical: "top",
+  },
   plan: { gap: 8 },
   planHeader: { color: "#fde68a", fontWeight: "800" },
   task: { backgroundColor: "#0f172a", borderRadius: 10, gap: 3, padding: 9 },

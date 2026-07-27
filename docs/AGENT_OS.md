@@ -25,15 +25,15 @@ El CEO Agent solo delega a directores. Un director solo delega a sus especialist
 
 ## Departamentos
 
-| Departamento | Director | Cobertura principal |
-|---|---|---|
-| Finanzas | `finance-director` | verdad económica, unit economics, pricing y Ads |
-| Portafolio | `portfolio-director` | analytics, catálogo, oportunidades y retread |
-| Abastecimiento | `supply-director` | proveedores, inventario, forecast e importaciones |
-| Operaciones | `operations-director` | ventas, preguntas, reclamos, reputación y logística |
-| Crecimiento | `growth-director` | reconocimiento, lanzamiento, contenido, imagen, video, copy y Product Ads |
-| Expansión | `expansion-director` | ecommerce propio y nuevos marketplaces |
-| Gobernanza | `governance-director` | memoria, investigación, experimentos, riesgo, auditoría y evaluación de agentes |
+| Departamento   | Director              | Cobertura principal                                                             |
+| -------------- | --------------------- | ------------------------------------------------------------------------------- |
+| Finanzas       | `finance-director`    | verdad económica, unit economics, pricing y Ads                                 |
+| Portafolio     | `portfolio-director`  | analytics, catálogo, oportunidades y retread                                    |
+| Abastecimiento | `supply-director`     | proveedores, inventario, forecast e importaciones                               |
+| Operaciones    | `operations-director` | ventas, preguntas, reclamos, reputación y logística                             |
+| Crecimiento    | `growth-director`     | reconocimiento, lanzamiento, contenido, imagen, video, copy y Product Ads       |
+| Expansión      | `expansion-director`  | ecommerce propio y nuevos marketplaces                                          |
+| Gobernanza     | `governance-director` | memoria, investigación, experimentos, riesgo, auditoría y evaluación de agentes |
 
 El catálogo completo vive en `packages/agent-kernel/src/companyCatalog.ts` y es validado al cargar el módulo.
 

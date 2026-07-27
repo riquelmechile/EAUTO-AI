@@ -16,7 +16,9 @@ describe("company agent catalog", () => {
     expect(() => assertValidAgentHierarchy(COMPANY_AGENT_CATALOG)).not.toThrow();
     expect(COMPANY_AGENT_CATALOG.filter((agent) => agent.level === "ceo")).toHaveLength(1);
     expect(COMPANY_AGENT_CATALOG.filter((agent) => agent.level === "director")).toHaveLength(7);
-    expect(COMPANY_AGENT_CATALOG.filter((agent) => agent.level === "specialist").length).toBeGreaterThan(20);
+    expect(
+      COMPANY_AGENT_CATALOG.filter((agent) => agent.level === "specialist").length,
+    ).toBeGreaterThan(20);
   });
 
   it("covers the verified MSL and kiiess manager domains", () => {

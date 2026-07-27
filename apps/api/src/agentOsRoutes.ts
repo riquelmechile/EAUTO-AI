@@ -144,7 +144,9 @@ export function registerAgentOsRoutes(
       .object({ limit: z.coerce.number().int().min(1).max(500).default(100) })
       .parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
-    return { sessions: await dependencies.runtime.agentOs.listSessions(params.accountId, query.limit) };
+    return {
+      sessions: await dependencies.runtime.agentOs.listSessions(params.accountId, query.limit),
+    };
   });
 
   app.get("/v1/agent-os/:accountId/preflights", async (request) => {

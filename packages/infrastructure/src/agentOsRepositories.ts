@@ -87,10 +87,7 @@ export class PostgresAgentOsRepository implements AgentOsRepository {
     );
   }
 
-  async listPreflights(
-    accountId: string,
-    limit: number,
-  ): Promise<readonly AgentPreflightReport[]> {
+  async listPreflights(accountId: string, limit: number): Promise<readonly AgentPreflightReport[]> {
     const result = await this.pool.query<PreflightRow>(
       `SELECT payload_json
        FROM agent_preflight_reports
@@ -158,7 +155,13 @@ export class PostgresAgentOsRepository implements AgentOsRepository {
            updated_at = $4,
            payload_json = $5::jsonb
        WHERE id = $1`,
-      [session.id, session.status, session.spentMinorClp, session.updatedAt, JSON.stringify(session)],
+      [
+        session.id,
+        session.status,
+        session.spentMinorClp,
+        session.updatedAt,
+        JSON.stringify(session),
+      ],
     );
     if (result.rowCount !== 1) throw new Error(`Agent session ${session.id} not found.`);
   }

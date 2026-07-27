@@ -221,7 +221,10 @@ function scoreContracts(
       ),
     }))
     .filter((entry) => entry.score > 0)
-    .sort((left, right) => right.score - left.score || left.contract.id.localeCompare(right.contract.id));
+    .sort(
+      (left, right) =>
+        right.score - left.score || left.contract.id.localeCompare(right.contract.id),
+    );
 }
 
 function task(input: {
@@ -255,7 +258,9 @@ function selectReadOnlyAction(contract: AgentRoleContract): string {
         capability.endsWith(".plan") ||
         capability.endsWith(".package") ||
         capability === "proposal.create",
-    ) ?? contract.allowedCapabilities[0] ?? "evidence.request"
+    ) ??
+    contract.allowedCapabilities[0] ??
+    "evidence.request"
   );
 }
 

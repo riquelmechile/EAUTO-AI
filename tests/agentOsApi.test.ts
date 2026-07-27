@@ -41,7 +41,9 @@ describe("Agent OS API", () => {
         headers,
       });
       expect(catalog.statusCode).toBe(200);
-      expect(catalog.json<{ contracts: readonly { id: string }[] }>().contracts.length).toBeGreaterThan(20);
+      expect(
+        catalog.json<{ contracts: readonly { id: string }[] }>().contracts.length,
+      ).toBeGreaterThan(20);
 
       const forbidden = await app.inject({
         method: "POST",

@@ -117,11 +117,12 @@ export class AgentOsService {
     }
 
     const now = this.clock.now().toISOString();
-    const status = preflight.status === "allow"
-      ? "queued"
-      : preflight.missingEvidenceKinds.length > 0
-        ? "waiting-evidence"
-        : "waiting-approval";
+    const status =
+      preflight.status === "allow"
+        ? "queued"
+        : preflight.missingEvidenceKinds.length > 0
+          ? "waiting-evidence"
+          : "waiting-approval";
     const session = Object.freeze({
       id: this.ids.next("agent-session"),
       organizationId: input.organizationId,
@@ -132,9 +133,10 @@ export class AgentOsService {
       delegationDepth: depthFor(contract.level),
       status,
       requestedAction: input.requestedAction,
-      expectedEvidenceKinds: preflight.missingEvidenceKinds.length > 0
-        ? preflight.missingEvidenceKinds
-        : contract.requiredEvidenceKinds,
+      expectedEvidenceKinds:
+        preflight.missingEvidenceKinds.length > 0
+          ? preflight.missingEvidenceKinds
+          : contract.requiredEvidenceKinds,
       evidenceRefs: Object.freeze([...input.evidenceRefs]),
       outputRefs: Object.freeze([]),
       policyVersion: "company-policy-v1",
@@ -168,7 +170,13 @@ export class AgentOsService {
       throw new Error(`Agent session ${sessionId} cannot start from ${session.status}.`);
     }
     const now = this.clock.now().toISOString();
-    return this.persist({ ...session, status: "running", startedAt: now, heartbeatAt: now, updatedAt: now });
+    return this.persist({
+      ...session,
+      status: "running",
+      startedAt: now,
+      heartbeatAt: now,
+      updatedAt: now,
+    });
   }
 
   async heartbeat(input: {
@@ -178,7 +186,8 @@ export class AgentOsService {
   }): Promise<AgentWorkSession> {
     const session = await this.requireSession(input.sessionId);
     if (session.status !== "running") throw new Error("Only running sessions accept heartbeats.");
-    if (input.iterationCount > session.maximumIterations) throw new Error("Maximum iterations exceeded.");
+    if (input.iterationCount > session.maximumIterations)
+      throw new Error("Maximum iterations exceeded.");
     if (input.spentMinorClp > session.budgetMinorClp) throw new Error("Session budget exceeded.");
     const now = this.clock.now().toISOString();
     return this.persist({
@@ -197,7 +206,8 @@ export class AgentOsService {
   }): Promise<AgentWorkSession> {
     const session = await this.requireSession(input.sessionId);
     if (session.status !== "running") throw new Error("Only running sessions can complete.");
-    if (input.outputRefs.length === 0) throw new Error("Completed sessions require output references.");
+    if (input.outputRefs.length === 0)
+      throw new Error("Completed sessions require output references.");
     if (input.spentMinorClp > session.budgetMinorClp) throw new Error("Session budget exceeded.");
     const now = this.clock.now().toISOString();
     return this.persist({
@@ -282,13 +292,16 @@ export class AgentOsService {
     parentSessionId: string | null,
   ): Promise<void> {
     if (expectedParentAgentId === null) {
-      if (parentSessionId !== null) throw new Error("The CEO session cannot have a parent session.");
+      if (parentSessionId !== null)
+        throw new Error("The CEO session cannot have a parent session.");
       return;
     }
     if (!parentSessionId) throw new Error("Delegated sessions require a parent session.");
     const parent = await this.requireSession(parentSessionId);
     if (parent.agentId !== expectedParentAgentId) {
-      throw new Error(`Expected parent agent ${expectedParentAgentId}; received ${parent.agentId}.`);
+      throw new Error(
+        `Expected parent agent ${expectedParentAgentId}; received ${parent.agentId}.`,
+      );
     }
   }
 
@@ -322,5 +335,8 @@ function recommendAutonomy(runCount: number, verifiedOutcomeCount: number): Agen
 }
 
 function sanitizeReason(reason: string): string {
-  return reason.replace(/[\r\n\t]+/g, " ").trim().slice(0, 500);
+  return reason
+    .replace(/[\r\n\t]+/g, " ")
+    .trim()
+    .slice(0, 500);
 }
