@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -18,38 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
-          ref: ${{ github.head_ref }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
-      - name: Apply typed claimable statuses
-        shell: bash
-        run: |
-          python - <<'PY'
-          import re
-          from pathlib import Path
-          path = Path('packages/infrastructure/src/operationalIntelligenceRepositories.ts')
-          text = path.read_text()
-          pattern = r'\[\s*"queued"\s*,\s*"failed"\s*\]\.includes\(order\.status\)'
-          replacement = '(["queued", "failed"] as readonly WorkOrderStatus[]).includes(order.status)'
-          updated, count = re.subn(pattern, replacement, text, count=1)
-          if count != 1:
-              raise SystemExit(f'Expected exactly one claimable status match, found {count}')
-          path.write_text(updated)
-          PY
-      - name: Apply canonical formatting
-        run: npm run format
-      - name: Commit lint fix
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .
-          git commit -m "fix: type claimable work order statuses"
-          git push
+      - name: Check formatting
+        run: npm run format:check
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
