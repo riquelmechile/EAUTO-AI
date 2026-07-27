@@ -1,0 +1,32 @@
+name: Audit source export
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Create source snapshot
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude='**/dist' \
+            --exclude='**/.expo' \
+            --exclude='*.log' \
+            -czf /tmp/eauto-source-audit.tar.gz .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eauto-source-audit
+          path: /tmp/eauto-source-audit.tar.gz
+          if-no-files-found: error
+          retention-days: 1
