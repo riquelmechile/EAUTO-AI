@@ -26,9 +26,20 @@ export type LlmRoutingPolicy = Readonly<{
   maximumOutputTokens: number;
 }>;
 
+const FLASH_TASK_CLASSES: readonly LlmTaskClass[] = Object.freeze([
+  "classification",
+  "extraction",
+  "summarization",
+]);
+const PRO_TASK_CLASSES: readonly LlmTaskClass[] = Object.freeze([
+  "planning",
+  "analysis",
+  "critical-review",
+]);
+
 export const DEFAULT_LLM_ROUTING_POLICY: LlmRoutingPolicy = Object.freeze({
-  flashTaskClasses: Object.freeze(["classification", "extraction", "summarization"]),
-  proTaskClasses: Object.freeze(["planning", "analysis", "critical-review"]),
+  flashTaskClasses: FLASH_TASK_CLASSES,
+  proTaskClasses: PRO_TASK_CLASSES,
   maximumInputTokens: 200_000,
   maximumOutputTokens: 8_000,
 });
