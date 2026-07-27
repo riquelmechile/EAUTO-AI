@@ -35,12 +35,16 @@ jobs:
         run: npm test
       - name: Build application
         run: npm run build
-      - name: Validate production configuration
+      - name: Prepare production template
+        run: cp .env.production.example .env.production
+      - name: Validate production and release contracts
+        run: npm run doctor:production -- --template --env=.env.production
+      - name: Verify production runtime and PostgreSQL
+        run: npm run smoke:production-runtime
+      - name: Validate production Compose
+        run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
+      - name: Validate Caddy configuration
         run: |
-          cp .env.production.example .env.production
-          npm run doctor:production -- --template --env=.env.production
-          npm run smoke:production-runtime
-          docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
           docker run --rm \
             -e API_DOMAIN=api.example.cl \
             -e S3_DOMAIN=files.example.cl \
