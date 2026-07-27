@@ -15,6 +15,9 @@ export const PERMISSIONS = [
   "integrations.read",
   "integrations.manage",
   "integrations.sync",
+  "agents.read",
+  "agents.manage",
+  "agents.run",
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -37,8 +40,11 @@ const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = Object.f
     "action.propose",
     "action.review",
     "receipts.read",
+    "operations.read",
     "integrations.read",
     "integrations.sync",
+    "agents.read",
+    "agents.run",
   ],
   reviewer: [
     "dashboard.read",
@@ -47,14 +53,23 @@ const ROLE_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> = Object.f
     "action.approve",
     "receipts.read",
     "integrations.read",
+    "agents.read",
   ],
-  viewer: ["dashboard.read", "inbox.read", "receipts.read", "integrations.read"],
+  viewer: [
+    "dashboard.read",
+    "inbox.read",
+    "receipts.read",
+    "integrations.read",
+    "agents.read",
+  ],
   agent: [
     "dashboard.read",
     "content.create",
     "action.propose",
     "receipts.read",
     "integrations.read",
+    "agents.read",
+    "agents.run",
   ],
 });
 
