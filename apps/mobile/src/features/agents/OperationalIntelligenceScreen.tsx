@@ -86,7 +86,7 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
           aprobación nunca ejecuta una mutación por sí sola.
         </Text>
         <View style={styles.accountRow}>
-          {ACOUNTS.map((account) => (
+          {ACCOUNTS.map((account) => (
             <Pressable
               accessibilityRole="button"
               key={account.id}
