@@ -28,21 +28,24 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           path = Path('apps/api/src/app.ts')
-          text = path.read_text()
-          old = '''  const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());
-          await app.register(cors, {
-            origin:
-              corsOrigins.length === 1 ? (corsOrigins[0] === "*" ? true : corsOrigins[0]) : corsOrigins,
-          });
-          '''
-          new = '''  const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());
-          const corsOrigin =
-            corsOrigins.length === 1 ? (corsOrigins[0] === "*" ? true : corsOrigins[0]) : corsOrigins;
-          await app.register(cors, corsOrigin === undefined ? {} : { origin: corsOrigin });
-          '''
-          if text.count(old) != 1:
-              raise SystemExit('Expected exactly one CORS block to replace.')
-          path.write_text(text.replace(old, new))
+          lines = path.read_text().splitlines(keepends=True)
+          starts = [index for index, line in enumerate(lines) if 'const corsOrigins = config.CORS_ORIGIN' in line]
+          if len(starts) != 1:
+              raise SystemExit(f'Expected one CORS origin declaration, found {len(starts)}.')
+          start = starts[0]
+          end = next(
+              (index + 1 for index in range(start + 1, min(start + 10, len(lines))) if lines[index].strip() == '});'),
+              None,
+          )
+          if end is None:
+              raise SystemExit('Could not locate the end of the CORS registration block.')
+          replacement = [
+              '  const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());\n',
+              '  const corsOrigin =\n',
+              '    corsOrigins.length === 1 ? (corsOrigins[0] === "*" ? true : corsOrigins[0]) : corsOrigins;\n',
+              '  await app.register(cors, corsOrigin === undefined ? {} : { origin: corsOrigin });\n',
+          ]
+          path.write_text(''.join(lines[:start] + replacement + lines[end:]))
           PY
           rm -f .github/workflows/diagnose-typecheck.yml
           rm -f .github/workflows/apply-cors-fix.yml
