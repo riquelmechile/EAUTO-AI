@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import {
+  GovernedWorkOrderProcessor,
   OperationalIntelligenceService,
-  ShadowWorkOrderProcessor,
 } from "@eauto/application";
 import {
   InMemoryOperationalEvidenceReader,
@@ -30,7 +30,7 @@ export function createOperationalIntelligenceRuntime(baseRuntime: Runtime) {
     throw new Error("INTELLIGENCE_WORKER_ENABLED requires LLM_ENABLED and a configured provider key.");
   }
   const processor = config.INTELLIGENCE_WORKER_ENABLED
-    ? new ShadowWorkOrderProcessor(
+    ? new GovernedWorkOrderProcessor(
         repository,
         intelligence,
         baseRuntime.agentOs,
