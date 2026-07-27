@@ -26,10 +26,12 @@ rejectText(workflow, "type=raw,value=latest", "Release workflow cannot publish a
 rejectText(workflow, "eas submit --latest", "Submission cannot select an unrelated latest build.");
 
 if (eas.cli?.version !== "21.2.0") failures.push("eas.json must pin cli.version to 21.2.0.");
-if (eas.cli?.requireCommit !== true) failures.push("eas.json must require a committed source tree.");
+if (eas.cli?.requireCommit !== true)
+  failures.push("eas.json must require a committed source tree.");
 for (const profile of ["preview", "production"]) {
   const image = eas.build?.[profile]?.android?.image;
-  if (image !== "auto") failures.push(`EAS ${profile} Android image must be auto, received ${String(image)}.`);
+  if (image !== "auto")
+    failures.push(`EAS ${profile} Android image must be auto, received ${String(image)}.`);
 }
 
 if (failures.length > 0) {
