@@ -1,5 +1,6 @@
 export * from "./agentOsRepositories.js";
 export * from "./deepSeekGateway.js";
+export * from "./httpActionExecutor.js";
 export * from "./inMemoryMercadoLibreRepositories.js";
 export * from "./inMemoryOutboxRepository.js";
 export * from "./inMemoryRepositories.js";
