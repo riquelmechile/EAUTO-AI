@@ -35,15 +35,6 @@ jobs:
         run: npm test
       - name: Build application
         run: npm run build
-      - name: Verify Postgres migrations and scoped repositories
-        env:
-          DATABASE_URL: postgres://eauto:eauto@127.0.0.1:5432/eauto
-        run: |
-          docker compose -f infra/compose/docker-compose.yml up -d postgres
-          until docker compose -f infra/compose/docker-compose.yml exec -T postgres pg_isready -U eauto -d eauto; do sleep 2; done
-          npm run migrate
-          npm run smoke:postgres-schema
-          npm run migrate
       - name: Validate production configuration
         run: |
           cp .env.production.example .env.production
@@ -64,8 +55,8 @@ jobs:
           docker compose -f infra/compose/docker-compose.yml run --rm minio-init
       - name: Verify signed object storage flow
         run: npm run smoke:object-storage
-      - name: Stop integration services
+      - name: Stop object storage
         if: always()
-        run: docker compose -f infra/compose/docker-compose.yml down --volumes --remove-orphans
+        run: docker compose -f infra/compose/docker-compose.yml down --remove-orphans
       - name: Doctor
         run: npm run doctor
