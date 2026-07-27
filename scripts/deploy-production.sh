@@ -9,25 +9,40 @@ if [[ ! -f .env.production ]]; then
   exit 1
 fi
 
-npm run doctor:production -- --env=.env.production
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml pull api worker caddy postgres || true
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml build minio backup
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml up -d postgres minio
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml run --rm migrate
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml run --rm object-storage-init
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml up -d api worker caddy backup
+compose=(docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml)
 
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml ps
-api_domain="$(awk -F= '$1=="API_DOMAIN" {print $2}' .env.production | tail -1 | tr -d '\r')"
+npm run doctor:production -- --env=.env.production
+"${compose[@]}" config --quiet
+
+eauto_image="$(awk -F= '$1=="EAUTO_IMAGE" {sub(/^[^=]*=/, ""); print; exit}' .env.production | tr -d '\r')"
+if [[ -z "${eauto_image}" ]]; then
+  echo "EAUTO_IMAGE is missing after production validation." >&2
+  exit 1
+fi
+printf 'Deploying immutable runtime: %s\n' "${eauto_image}"
+
+# A pull failure is fatal. Continuing would silently redeploy an older local image.
+"${compose[@]}" pull --policy always api worker migrate object-storage-init caddy postgres
+"${compose[@]}" build --pull minio backup
+
+docker image inspect "${eauto_image}" >/dev/null
+
+"${compose[@]}" up -d postgres minio
+"${compose[@]}" run --rm migrate
+"${compose[@]}" run --rm object-storage-init
+"${compose[@]}" up -d api worker caddy backup
+
+"${compose[@]}" ps
+api_domain="$(awk -F= '$1=="API_DOMAIN" {sub(/^[^=]*=/, ""); print; exit}' .env.production | tr -d '\r')"
 for attempt in $(seq 1 30); do
   if curl --fail --silent --show-error "https://${api_domain}/ready" >/dev/null; then
     echo "✓ production readiness verified at https://${api_domain}/ready"
+    echo "✓ deployed ${eauto_image}"
     exit 0
   fi
   sleep 5
 done
 
-echo "Deployment started but readiness did not become healthy." >&2
-docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml logs --tail=200 api worker caddy >&2
+echo "Deployment started but readiness did not become healthy. Automatic rollback was not attempted because database migrations are forward-only." >&2
+"${compose[@]}" logs --tail=200 api worker caddy >&2
 exit 1

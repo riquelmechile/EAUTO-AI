@@ -2,9 +2,9 @@
 
 ## Estado de la release
 
-El repositorio contiene todo el software y la infraestructura necesarios para una instalación productiva de una sola región. Lo único que debe proporcionarse fuera del control de versiones son dominios, credenciales, llaves de cifrado y cuentas de proveedores.
+El repositorio contiene el software y la infraestructura necesarios para una instalación productiva de una sola región. Fuera del control de versiones deben proporcionarse dominios, credenciales, llaves de cifrado, cuentas de proveedores y el digest inmutable de la imagen publicada.
 
-La autonomía productiva permanece deliberadamente en **shadow + aprobación humana**. Aprobar una propuesta no ejecuta una mutación. Las escrituras de MercadoLibre requieren un adapter y una política de acción verificable específicos; no existe un interruptor de “autonomía total”.
+La autonomía productiva permanece deliberadamente en **shadow + aprobación humana**. Aprobar una propuesta no ejecuta una mutación. Las escrituras externas requieren un adapter y una política de acción verificable específicos; no existe un interruptor de “autonomía total”.
 
 ## Requisitos
 
@@ -14,6 +14,7 @@ La autonomía productiva permanece deliberadamente en **shadow + aprobación hum
 - Cuenta DeepSeek y aplicación MercadoLibre Chile.
 - Repositorio Restic externo y cifrado.
 - Proyecto Expo/EAS y credenciales de firma Android.
+- Digest GHCR producido por la workflow de release.
 
 ## Configuración
 
@@ -21,7 +22,7 @@ La autonomía productiva permanece deliberadamente en **shadow + aprobación hum
 cp .env.production.example .env.production
 ```
 
-Reemplace los valores `__REQUIRED__`. Genere secretos independientes y largos. Nunca reutilice la contraseña de PostgreSQL, Redis, MinIO, Restic o el token del operador.
+Reemplace todos los valores `__REQUIRED__`. Genere secretos independientes y largos. Nunca reutilice la contraseña de PostgreSQL, MinIO, Restic o el token del operador.
 
 Ejemplos de generación local:
 
@@ -31,6 +32,29 @@ openssl rand -base64 32  # MELI_TOKEN_VAULT_KEY_BASE64: debe decodificar a 32 by
 ```
 
 `OPERATOR_TOKENS_JSON` contiene hashes SHA-256 de tokens, no el token en texto plano. Cree el token fuera del servidor, guarde el valor original en un gestor de secretos y coloque solamente su hash y scope en la configuración.
+
+### Imagen inmutable
+
+`EAUTO_IMAGE` debe usar el digest completo publicado por GHCR:
+
+```text
+EAUTO_IMAGE=ghcr.io/riquelmechile/eauto-ai@sha256:<64 caracteres hexadecimales>
+```
+
+No use `latest`, tags de versión ni tags `sha-*`: los tags pueden moverse. El despliegue y el doctor rechazan cualquier referencia que no sea un digest.
+
+### PostgreSQL
+
+`DATABASE_URL` es la autoridad exacta usada por API, worker y migrador. No se reconstruye desde otras variables. Si la contraseña contiene `@`, `:`, `/`, `?`, `#`, `%` u otros caracteres reservados, codifíquelos con percent-encoding dentro de la URL.
+
+Ejemplo conceptual:
+
+```text
+POSTGRES_PASSWORD=contraseña:compleja
+DATABASE_URL=postgres://eauto:contrase%C3%B1a%3Acompleja@postgres:5432/eauto
+```
+
+`POSTGRES_PASSWORD` conserva el valor real para el contenedor PostgreSQL; `DATABASE_URL` contiene su representación codificada como URL.
 
 ## Validación previa
 
@@ -42,7 +66,7 @@ docker compose --env-file .env.production \
   -f infra/compose/docker-compose.production.yml config --quiet
 ```
 
-El doctor falla si falta una implementación o un secreto. En CI se utiliza `--template` exclusivamente para comprobar que la plantilla y la infraestructura estén completas.
+El doctor falla si falta una implementación, un secreto, una URL válida o un digest inmutable. También detecta placeholders embebidos dentro de URLs. En CI se utiliza `--template` exclusivamente para comprobar que la plantilla y la infraestructura estén completas.
 
 ## Despliegue
 
@@ -52,24 +76,25 @@ bash scripts/deploy-production.sh
 
 El script:
 
-1. valida configuración y secretos;
+1. valida configuración, secretos, `DATABASE_URL` y digest;
 2. valida Compose;
-3. descarga imágenes publicadas;
-4. compila MinIO desde el último tag oficial de seguridad y la imagen de backup;
-5. arranca PostgreSQL, Redis y almacenamiento;
-6. ejecuta migraciones con advisory lock y hashes inmutables;
-7. crea el bucket y habilita versionado;
-8. arranca API, worker, Caddy y backups;
-9. comprueba `https://API_DOMAIN/ready`.
+3. descarga obligatoriamente la imagen exacta y las imágenes base;
+4. detiene el proceso ante cualquier error de pull, evitando reutilizar una imagen local antigua;
+5. compila MinIO desde el tag oficial fijado y la imagen de backup;
+6. arranca PostgreSQL y almacenamiento;
+7. ejecuta migraciones con advisory lock y hashes inmutables;
+8. crea el bucket y habilita versionado;
+9. arranca API, worker, Caddy y backups;
+10. comprueba `https://API_DOMAIN/ready` y registra el digest desplegado.
 
-PostgreSQL, Redis y MinIO no publican puertos. Caddy es el único ingreso y emite certificados TLS automáticamente.
+PostgreSQL y MinIO no publican puertos. Caddy es el único ingreso y emite certificados TLS automáticamente.
 
 ## MercadoLibre Chile
 
 Configure en la aplicación MercadoLibre:
 
 - redirect OAuth: `https://API_DOMAIN/v1/integrations/mercadolibre/oauth/callback`;
-- webhook: `https://API_DOMAIN/v1/webhooks/mercadolibre`;
+- webhook: `https://API_DOMAIN/v1/webhooks/mercadolibre?token=<MELI_WEBHOOK_TOKEN>`;
 - sitio esperado: `MLC`;
 - seller ID Plasticov;
 - seller ID Maustian.
@@ -129,12 +154,12 @@ Secrets de GitHub requeridos:
 - `EXPO_PUBLIC_API_URL` con HTTPS;
 - `GOOGLE_SERVICE_ACCOUNT_KEY_JSON` solamente para envío automático a Google Play.
 
-La workflow `Production release` genera una imagen multi-arquitectura en GHCR y dispara un AAB firmado en EAS. El envío a Play Internal se activa manualmente.
+La workflow `Production release` genera una imagen multi-arquitectura en GHCR y dispara un AAB firmado en EAS. El envío a Play Internal se activa manualmente. Copie el digest publicado por el job de contenedor a `EAUTO_IMAGE`; no copie solamente el tag.
 
 ## Rollback
 
-- Aplicación: cambie `EAUTO_IMAGE` a un tag o SHA anterior y ejecute nuevamente el script de despliegue.
-- Base de datos: las migraciones son forward-only e inmutables; para corrupción o cambio incompatible use el restore drill en una instalación aislada y documente la decisión.
+- Aplicación: cambie `EAUTO_IMAGE` al digest anterior conocido y ejecute nuevamente el script. El pull es obligatorio y no utiliza una copia local silenciosamente.
+- Base de datos: las migraciones son forward-only e inmutables. El script no intenta rollback automático si readiness falla. Para corrupción o cambio incompatible use el restore drill en una instalación aislada y documente la decisión.
 - Worker: puede detenerse sin perder trabajo; leases vencidos son recuperables.
 - Inteligencia: configure `INTELLIGENCE_WORKER_ENABLED=false` para detener razonamiento sin detener API ni ingesta.
 - LLM: configure `LLM_ENABLED=false` para bloquear proveedor y conservar auditoría.
@@ -145,9 +170,10 @@ La workflow `Production release` genera una imagen multi-arquitectura en GHCR y 
 No declare producción operativa hasta comprobar:
 
 - doctor productivo verde;
+- digest de `EAUTO_IMAGE` registrado;
 - `/health` y `/ready` verdes;
 - OAuth Plasticov y Maustian verificados;
-- webhook real deduplicado;
+- webhook real autenticado y deduplicado;
 - ejecución shadow DeepSeek registrada con cache hit/miss;
 - backup externo completo;
 - restore drill exitoso;

@@ -1,11 +1,10 @@
 name: eauto-ai-production
 
 x-runtime: &runtime
-  image: ${EAUTO_IMAGE:-ghcr.io/riquelmechile/eauto-ai:latest}
+  image: ${EAUTO_IMAGE:?EAUTO_IMAGE must reference an immutable GHCR digest}
   env_file:
     - ../../.env.production
   environment:
-    DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     OBJECT_STORAGE_PUBLIC_ENDPOINT: https://${S3_DOMAIN}
     OBJECT_STORAGE_INTERNAL_ENDPOINT: http://minio:9000
     OBJECT_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}

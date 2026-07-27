@@ -6,6 +6,7 @@ const templateMode = process.argv.includes("--template");
 const envArgument = process.argv.find((argument) => argument.startsWith("--env="));
 const envPath = resolve(process.cwd(), envArgument?.slice(6) ?? ".env.production");
 const configured = existsSync(envPath) ? parseEnvironment(await readFile(envPath, "utf8")) : {};
+const immutableImagePattern = /^ghcr\.io\/riquelmechile\/eauto-ai@sha256:[a-f0-9]{64}$/;
 
 const files = [
   "Dockerfile",
@@ -19,9 +20,14 @@ const files = [
   "infra/backup/restore.sh",
   "scripts/init-object-storage.mjs",
   "scripts/migrate.mjs",
+  "scripts/smoke-postgres-schema.mjs",
+  "scripts/smoke-production-runtime.mjs",
   "scripts/deploy-production.sh",
   "scripts/production-doctor.mjs",
+  "infra/postgres/migrations/009a_prepare_agent_work_sessions.sql",
   "infra/postgres/migrations/012_operational_intelligence.sql",
+  "infra/postgres/migrations/014_tenant_integrity_and_action_guards.sql",
+  "infra/postgres/migrations/015_action_lifecycle_delivery_log.sql",
   "packages/content/src/httpContentProvider.ts",
   "packages/infrastructure/src/httpActionExecutor.ts",
   "apps/mobile/app.config.cjs",
@@ -52,6 +58,7 @@ const secrets = [
   "RESTIC_AWS_SECRET_ACCESS_KEY",
   "EAS_PROJECT_ID",
 ];
+const requiredRuntimeValues = ["EAUTO_IMAGE", "DATABASE_URL"];
 const failures = [];
 const pending = [];
 
@@ -60,7 +67,7 @@ for (const path of files) {
   console.log(`${ok ? "✓" : "✗"} ${path}`);
   if (!ok) failures.push(`Missing file: ${path}`);
 }
-for (const key of secrets) {
+for (const key of [...secrets, ...requiredRuntimeValues]) {
   const value = configured[key]?.trim();
   const ready = Boolean(value && !isPlaceholder(value));
   console.log(`${ready ? "✓" : "○"} ${key}${ready ? " configured" : " pending"}`);
@@ -81,6 +88,8 @@ expectHttps("MELI_REDIRECT_URI");
 expectHttps("OBJECT_STORAGE_PUBLIC_ENDPOINT");
 expectHostname("API_DOMAIN");
 expectHostname("S3_DOMAIN");
+validateImmutableImage();
+validateDatabaseUrl();
 validateActionRoutes();
 
 if (
@@ -135,7 +144,7 @@ if (
 }
 
 console.log(`\nImplementation failures: ${failures.length}`);
-console.log(`Secrets pending: ${pending.length}`);
+console.log(`Configuration values pending: ${pending.length}`);
 for (const failure of failures) console.error(`✗ ${failure}`);
 if (pending.length > 0) console.log(`Pending: ${pending.join(", ")}`);
 if (failures.length > 0 || (!templateMode && pending.length > 0)) process.exitCode = 1;
@@ -159,6 +168,34 @@ function expectHostname(key) {
   if (!value || (templateMode && isPlaceholder(value))) return;
   if (!/^(?=.{1,253}$)(?!-)[a-z0-9.-]+(?<!-)$/i.test(value)) {
     failures.push(`${key} must be a valid hostname.`);
+  }
+}
+
+function validateImmutableImage() {
+  const value = configured.EAUTO_IMAGE;
+  if (!value || (templateMode && isPlaceholder(value))) return;
+  if (!immutableImagePattern.test(value)) {
+    failures.push(
+      "EAUTO_IMAGE must be the immutable GHCR digest ghcr.io/riquelmechile/eauto-ai@sha256:<64 hex>.",
+    );
+  }
+}
+
+function validateDatabaseUrl() {
+  const value = configured.DATABASE_URL;
+  if (!value || (templateMode && isPlaceholder(value))) return;
+  try {
+    const url = new URL(value);
+    if (!new Set(["postgres:", "postgresql:"]).has(url.protocol)) {
+      failures.push("DATABASE_URL must use postgres:// or postgresql://.");
+    }
+    if (!url.username || !url.password || !url.hostname || url.pathname.length < 2) {
+      failures.push("DATABASE_URL requires username, password, host and database name.");
+    }
+  } catch {
+    failures.push(
+      "DATABASE_URL must be a valid PostgreSQL URL; percent-encode reserved password characters.",
+    );
   }
 }
 
@@ -224,5 +261,5 @@ function unquote(value) {
 }
 
 function isPlaceholder(value) {
-  return /^<[^>]+>$/.test(value) || value === "__REQUIRED__";
+  return value.includes("__REQUIRED__") || /<[^>]+>/.test(value);
 }
