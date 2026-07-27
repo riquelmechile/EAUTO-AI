@@ -14,7 +14,7 @@ concurrency:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,8 +33,21 @@ jobs:
         run: npm run lint
       - name: Test
         run: npm test
-      - name: Build
+      - name: Build application
         run: npm run build
+      - name: Validate production configuration
+        run: |
+          cp .env.production.example .env.production
+          npm run doctor:production -- --template --env=.env.production
+          docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
+          docker run --rm \
+            -e API_DOMAIN=api.example.cl \
+            -e S3_DOMAIN=files.example.cl \
+            -e ACME_EMAIL=operations@example.cl \
+            -v "$PWD/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Build production API image
+        run: docker build --pull --target runtime --tag eauto-ai:ci .
       - name: Start object storage
         run: |
           docker compose -f infra/compose/docker-compose.yml up -d minio

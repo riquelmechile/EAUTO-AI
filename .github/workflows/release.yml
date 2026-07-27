@@ -1,0 +1,113 @@
+name: Production release
+
+on:
+  workflow_dispatch:
+    inputs:
+      submit_to_play:
+        description: Submit the Android App Bundle to the configured Play track
+        required: true
+        default: false
+        type: boolean
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      - name: Validate production template
+        run: |
+          cp .env.production.example .env.production
+          npm run doctor:production -- --template --env=.env.production
+          docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
+      - name: Build production API image
+        run: docker build --pull --tag eauto-ai:release-candidate .
+
+  container:
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/riquelmechile/eauto-ai
+          tags: |
+            type=ref,event=tag
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.metadata.outputs.tags }}
+          labels: ${{ steps.metadata.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+  android:
+    needs: quality
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
+      EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
+      GOOGLE_SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: npm
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci --no-audit --no-fund
+      - name: Validate Android release credentials
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "EXPO_TOKEN is pending"; exit 1; }
+          test -n "$EAS_PROJECT_ID" || { echo "EAS_PROJECT_ID is pending"; exit 1; }
+          test -n "$EXPO_PUBLIC_API_URL" || { echo "EXPO_PUBLIC_API_URL is pending"; exit 1; }
+          case "$EXPO_PUBLIC_API_URL" in https://*) ;; *) echo "EXPO_PUBLIC_API_URL must use HTTPS"; exit 1;; esac
+          if [[ "${{ inputs.submit_to_play || false }}" == "true" ]]; then
+            test -n "$GOOGLE_SERVICE_ACCOUNT_KEY_JSON" || { echo "GOOGLE_SERVICE_ACCOUNT_KEY_JSON is pending"; exit 1; }
+            printf '%s' "$GOOGLE_SERVICE_ACCOUNT_KEY_JSON" > apps/mobile/google-service-account.json
+          fi
+      - name: Trigger signed Android release
+        working-directory: apps/mobile
+        run: |
+          if [[ "${{ inputs.submit_to_play || false }}" == "true" ]]; then
+            eas build --platform android --profile production --auto-submit --non-interactive --no-wait
+          else
+            eas build --platform android --profile production --non-interactive --no-wait
+          fi
+      - if: always()
+        run: rm -f apps/mobile/google-service-account.json

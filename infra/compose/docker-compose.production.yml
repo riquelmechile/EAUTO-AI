@@ -1,0 +1,191 @@
+name: eauto-ai-production
+
+x-runtime: &runtime
+  image: ${EAUTO_IMAGE:-ghcr.io/riquelmechile/eauto-ai:latest}
+  env_file:
+    - ../../.env.production
+  environment:
+    DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    OBJECT_STORAGE_PUBLIC_ENDPOINT: https://${S3_DOMAIN}
+    OBJECT_STORAGE_INTERNAL_ENDPOINT: http://minio:9000
+    OBJECT_STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
+    OBJECT_STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+  restart: unless-stopped
+  networks:
+    - backend
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  read_only: true
+  tmpfs:
+    - /tmp:size=128m,mode=1777
+
+services:
+  postgres:
+    image: postgres:17.10-alpine3.24
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: redis:8.8.1-alpine3.23
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command:
+      - /bin/sh
+      - -ec
+      - exec redis-server --appendonly yes --save 900 1 --requirepass "$${REDIS_PASSWORD}"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $${REDIS_PASSWORD} --no-auth-warning ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    security_opt:
+      - no-new-privileges:true
+
+  minio:
+    build:
+      context: ../..
+      dockerfile: infra/minio/Dockerfile
+    image: ${MINIO_IMAGE:-eauto-minio:RELEASE.2025-10-15T17-29-55Z}
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: ["server", "/data", "--address", ":9000"]
+    volumes:
+      - minio_data:/data
+    networks:
+      - backend
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  migrate:
+    <<: *runtime
+    restart: "no"
+    command: ["npm", "run", "migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  object-storage-init:
+    <<: *runtime
+    restart: "no"
+    command: ["node", "scripts/init-object-storage.mjs"]
+    depends_on:
+      minio:
+        condition: service_started
+
+  api:
+    <<: *runtime
+    command: ["npm", "run", "start", "-w", "@eauto/api"]
+    expose:
+      - "3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      object-storage-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:3000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  worker:
+    <<: *runtime
+    command: ["npm", "run", "start:worker", "-w", "@eauto/api"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      object-storage-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      S3_DOMAIN: ${S3_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+      - backend
+    depends_on:
+      api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+  backup:
+    build:
+      context: ../..
+      dockerfile: infra/backup/Dockerfile
+    image: ${BACKUP_IMAGE:-eauto-backup:17.10}
+    restart: unless-stopped
+    env_file:
+      - ../../.env.production
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=2g,mode=1777
+
+networks:
+  edge:
+  backend:
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  caddy_data:
+  caddy_config:

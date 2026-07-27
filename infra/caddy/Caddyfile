@@ -1,0 +1,47 @@
+{
+  email {$ACME_EMAIL}
+  admin off
+}
+
+{$API_DOMAIN} {
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "no-referrer"
+    Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    -Server
+  }
+  request_body {
+    max_size 2MB
+  }
+  reverse_proxy api:3000 {
+    health_uri /ready
+    health_interval 15s
+    health_timeout 5s
+  }
+  log {
+    output stdout
+    format json
+  }
+}
+
+{$S3_DOMAIN} {
+  encode zstd gzip
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "no-referrer"
+    -Server
+  }
+  request_body {
+    max_size 12MB
+  }
+  reverse_proxy minio:9000
+  log {
+    output stdout
+    format json
+  }
+}
