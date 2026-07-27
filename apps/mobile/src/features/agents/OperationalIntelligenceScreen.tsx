@@ -59,10 +59,10 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
   ): Promise<void> {
     setBusy(true);
     try {
-      const result = await agentOsApi.decideProposal(accountId, proposal.id, decision);
+      await agentOsApi.decideProposal(accountId, proposal.id, decision);
       setStatus(
         `${decision === "approved" ? "Propuesta aprobada" : "Propuesta rechazada"}. ` +
-          `Ejecución creada: ${result.executionCreated ? "sí" : "no"}.`,
+          "Ejecución creada: no.",
       );
       await load();
     } catch (error) {
@@ -86,7 +86,7 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
           aprobación nunca ejecuta una mutación por sí sola.
         </Text>
         <View style={styles.accountRow}>
-          {ACCOUNTS.map((account) => (
+          {ACOUNTS.map((account) => (
             <Pressable
               accessibilityRole="button"
               key={account.id}
@@ -106,7 +106,7 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
         <Text style={styles.meta}>
           Worker {readiness?.workerEnabled ? "activo" : "inactivo"} · LLM{" "}
           {readiness?.llmEnabled ? "activo" : "inactivo"} · modo {readiness?.mode ?? "—"} ·
-          escrituras externas {readiness?.externalWrites ? "activas" : "bloqueadas"}
+          escrituras externas bloqueadas
         </Text>
         <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.secondary}>
           <Text style={styles.buttonText}>Actualizar</Text>
