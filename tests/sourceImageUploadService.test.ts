@@ -36,7 +36,7 @@ function fixture(observed?: Partial<Awaited<ReturnType<ObjectStoragePort["inspec
       uploadExpiresInSeconds: 300,
     },
   );
-  return { service, setNow: (value: string) => (now = new Date(value)) };
+  return { repository, service, setNow: (value: string) => (now = new Date(value)) };
 }
 
 const request = {
@@ -78,6 +78,26 @@ describe("SourceImageUploadService", () => {
     await expect(service.verifyUpload("source-1", "maustian", "maustian")).rejects.toThrow(
       UploadValidationError,
     );
+  });
+
+  it("does not let another account reuse an upload ID", async () => {
+    const { service } = fixture();
+    await service.requestUpload(request);
+    await expect(
+      service.requestUpload({
+        ...request,
+        organizationId: "other-organization",
+        accountId: "maustian",
+      }),
+    ).rejects.toThrow(/ownership or content|ownership is immutable/);
+  });
+
+  it("does not let the same account change immutable upload metadata", async () => {
+    const { service } = fixture();
+    await service.requestUpload(request);
+    await expect(
+      service.requestUpload({ ...request, sizeBytes: request.sizeBytes + 1 }),
+    ).rejects.toThrow(/different content/);
   });
 
   it("expires uncompleted upload intents", async () => {

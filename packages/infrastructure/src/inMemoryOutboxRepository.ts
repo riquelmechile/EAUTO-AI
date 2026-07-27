@@ -104,11 +104,20 @@ export class InMemoryOutboxRepository implements OutboxRepository {
     return Promise.resolve("pending");
   }
 
-  listDead(limit: number): Promise<readonly DeadOutboxEvent[]> {
+  listDead(input: {
+    accountIds: readonly string[];
+    limit: number;
+  }): Promise<readonly DeadOutboxEvent[]> {
+    const allowed = new Set(input.accountIds);
     const dead = [...this.events.values()]
-      .filter((stored) => stored.status === "dead")
+      .filter(
+        (stored) =>
+          stored.status === "dead" &&
+          stored.event.accountId !== undefined &&
+          allowed.has(stored.event.accountId),
+      )
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-      .slice(0, limit)
+      .slice(0, input.limit)
       .map((stored) =>
         Object.freeze({
           ...stored.event,
@@ -121,9 +130,18 @@ export class InMemoryOutboxRepository implements OutboxRepository {
     return Promise.resolve(dead);
   }
 
-  requeueDead(input: { id: string; availableAt: string }): Promise<void> {
+  requeueDead(input: {
+    id: string;
+    accountIds: readonly string[];
+    availableAt: string;
+  }): Promise<void> {
     const stored = this.events.get(input.id);
-    if (!stored || stored.status !== "dead") {
+    if (
+      !stored ||
+      stored.status !== "dead" ||
+      stored.event.accountId === undefined ||
+      !input.accountIds.includes(stored.event.accountId)
+    ) {
       throw new Error(`Dead-letter event ${input.id} not found.`);
     }
     stored.status = "pending";
@@ -133,14 +151,22 @@ export class InMemoryOutboxRepository implements OutboxRepository {
     return Promise.resolve();
   }
 
-  stats(): Promise<OutboxStats> {
+  stats(accountIds?: readonly string[]): Promise<OutboxStats> {
+    const allowed = accountIds === undefined ? null : new Set(accountIds);
     const result: Record<OutboxStatus, number> = {
       pending: 0,
       processing: 0,
       processed: 0,
       dead: 0,
     };
-    for (const stored of this.events.values()) result[stored.status] += 1;
+    for (const stored of this.events.values()) {
+      if (
+        allowed === null ||
+        (stored.event.accountId !== undefined && allowed.has(stored.event.accountId))
+      ) {
+        result[stored.status] += 1;
+      }
+    }
     return Promise.resolve(Object.freeze(result));
   }
 

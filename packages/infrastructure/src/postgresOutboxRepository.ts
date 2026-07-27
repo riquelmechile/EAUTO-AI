@@ -134,15 +134,18 @@ export class PostgresOutboxRepository implements OutboxRepository {
     return status;
   }
 
-  async listDead(limit: number): Promise<readonly DeadOutboxEvent[]> {
+  async listDead(input: {
+    accountIds: readonly string[];
+    limit: number;
+  }): Promise<readonly DeadOutboxEvent[]> {
     const result = await this.pool.query<DeadOutboxRow>(
       `SELECT id, idempotency_key, aggregate_type, aggregate_id, account_id,
          event_type, payload_json, attempts, last_error, available_at, created_at
        FROM transactional_outbox
-       WHERE status = 'dead'
+       WHERE status = 'dead' AND account_id = ANY($1::text[])
        ORDER BY created_at ASC
-       LIMIT $1`,
-      [limit],
+       LIMIT $2`,
+      [input.accountIds, input.limit],
     );
     return result.rows.map((row) =>
       Object.freeze({
@@ -162,22 +165,28 @@ export class PostgresOutboxRepository implements OutboxRepository {
     );
   }
 
-  async requeueDead(input: { id: string; availableAt: string }): Promise<void> {
+  async requeueDead(input: {
+    id: string;
+    accountIds: readonly string[];
+    availableAt: string;
+  }): Promise<void> {
     const result = await this.pool.query(
       `UPDATE transactional_outbox
-       SET status = 'pending', attempts = 0, available_at = $2,
+       SET status = 'pending', attempts = 0, available_at = $3,
            last_error = NULL, locked_by = NULL, locked_until = NULL, processed_at = NULL
-       WHERE id = $1 AND status = 'dead'`,
-      [input.id, input.availableAt],
+       WHERE id = $1 AND status = 'dead' AND account_id = ANY($2::text[])`,
+      [input.id, input.accountIds, input.availableAt],
     );
     if (result.rowCount !== 1) throw new Error(`Dead-letter event ${input.id} not found.`);
   }
 
-  async stats(): Promise<OutboxStats> {
+  async stats(accountIds?: readonly string[]): Promise<OutboxStats> {
     const result = await this.pool.query<{ status: string; count: string }>(
       `SELECT status, count(*)::text AS count
        FROM transactional_outbox
+       WHERE ($1::text[] IS NULL OR account_id = ANY($1::text[]))
        GROUP BY status`,
+      [accountIds ?? null],
     );
     const stats = { pending: 0, processing: 0, processed: 0, dead: 0 };
     for (const row of result.rows) {

@@ -1,7 +1,9 @@
+import { randomUUID } from "node:crypto";
 import Fastify, { type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import { z } from "zod";
 import {
+  ACTION_KINDS,
   AuthenticationError,
   AuthorizationError,
   MercadoLibreIntegrationError,
@@ -11,6 +13,7 @@ import {
   SessionRevokedError,
   UploadValidationError,
   assertAuthorized,
+  assertUsableEvidencePack,
   canAccessAccount,
   type ActorIdentity,
   type BusinessAction,
@@ -21,6 +24,7 @@ import {
 import { createAuthenticator, readBearerToken, type EnrollmentAuthenticator } from "./auth.js";
 import { registerMercadoLibreRoutes } from "./mercadoLibreRoutes.js";
 import { registerAgentOsRoutes } from "./agentOsRoutes.js";
+import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";
 import { createRuntime, type Runtime } from "./runtime.js";
 import type { AppConfig } from "./config.js";
 
@@ -45,43 +49,18 @@ const launchSchema = z.object({
     .min(1),
 });
 
-const actionSchema = z
-  .object({
-    id: z.string().min(3),
-    accountId: z.string().min(3),
-    kind: z.string().min(3),
-    target: z.string().min(1),
-    exactChanges: z
-      .array(z.object({ field: z.string(), from: z.unknown(), to: z.unknown() }))
-      .min(1),
-    rationale: z.string().min(3),
-    risk: z.enum(["low", "medium", "high", "critical"]),
-    evidenceBundle: z.object({
-      id: z.string().min(3),
-      accountId: z.string().min(3),
-      references: z
-        .array(
-          z.object({
-            id: z.string(),
-            source: z.string(),
-            sourceRecordId: z.string(),
-            observedAt: z.string(),
-            freshness: z.enum(["fresh", "stale", "unknown"]),
-            confidence: z.enum(["low", "medium", "high"]),
-            contentHash: z.string(),
-          }),
-        )
-        .min(1),
-      complete: z.literal(true),
-      missingInputs: z.array(z.string()).max(0),
-    }),
-    policyVersion: z.string().min(1),
-    expiresAt: z.string().datetime(),
-  })
-  .refine((value) => value.accountId === value.evidenceBundle.accountId, {
-    message: "Action and evidence bundle must belong to the same account.",
-    path: ["evidenceBundle", "accountId"],
-  });
+const actionSchema = z.object({
+  accountId: z.string().min(3),
+  kind: z.enum(ACTION_KINDS),
+  target: z.string().min(1),
+  exactChanges: z
+    .array(z.object({ field: z.string().min(1), from: z.unknown(), to: z.unknown() }))
+    .min(1)
+    .max(100),
+  rationale: z.string().min(3).max(5_000),
+  risk: z.enum(["low", "medium", "high", "critical"]),
+  evidencePackId: z.string().min(3),
+});
 
 class NotFoundError extends Error {
   constructor(resource: string) {
@@ -92,39 +71,23 @@ class NotFoundError extends Error {
 
 export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   const runtime = suppliedRuntime ?? createRuntime(config);
+  const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);
   const authenticator = createAuthenticator({
     mode: config.AUTH_MODE,
     identitiesJson: config.OPERATOR_TOKENS_JSON,
     nodeEnv: config.NODE_ENV,
   });
   const app = Fastify({ logger: config.NODE_ENV !== "test" });
-  await app.register(cors, { origin: config.CORS_ORIGIN === "*" ? true : config.CORS_ORIGIN });
+  const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());
+  const corsOrigin =
+    corsOrigins.length === 1 ? (corsOrigins[0] === "*" ? true : corsOrigins[0]) : corsOrigins;
+  await app.register(cors, corsOrigin === undefined ? {} : { origin: corsOrigin });
 
   app.get("/health", () => ({ ok: true, service: "eauto-api" }));
-  app.get("/ready", async () => ({
-    ok: true,
-    mode: config.NODE_ENV,
-    authentication: authenticator.mode === "disabled" ? "development-owner" : "rotating-session",
-    persistence: runtime.persistenceMode,
-    outbox: await runtime.outbox.stats(),
-    sourceImageUploads: {
-      maximumBytes: config.SOURCE_IMAGE_MAX_BYTES,
-      signedUrlTtlSeconds: config.SOURCE_IMAGE_UPLOAD_TTL_SECONDS,
-    },
-    mercadoLibreChile: {
-      enabled: runtime.mercadoLibre !== null,
-      siteId: "MLC",
-      mode: "read-only",
-    },
-    agentOs: {
-      enabled: true,
-      delegationDepth: 2,
-      externalWrites: false,
-    },
-    externalWrites: runtime.actionExecutionMode === "external",
-    actionExecution: runtime.actionExecutionMode,
-    contentGeneration: runtime.contentGenerationMode,
-  }));
+  app.get("/ready", async () => {
+    await runtime.outbox.stats([]);
+    return { ok: true };
+  });
 
   app.post("/v1/auth/session", async (request, reply) => {
     const actor = authenticator.authenticateEnrollment(request.headers.authorization);
@@ -145,6 +108,7 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
 
   registerMercadoLibreRoutes(app, {
     runtime,
+    webhookToken: config.MELI_WEBHOOK_TOKEN ?? null,
     authenticate: (request) => authenticate(request, runtime, authenticator),
     requireAccount: async (actor, accountId, permission) => {
       await requireAccount(runtime, actor, accountId, permission);
@@ -153,6 +117,8 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
 
   registerAgentOsRoutes(app, {
     runtime,
+    intelligenceRuntime,
+    manualControlEnabled: config.AGENT_MANUAL_CONTROL_ENABLED,
     authenticate: (request) => authenticate(request, runtime, authenticator),
     requireAccount: async (actor, accountId, permission) => {
       await requireAccount(runtime, actor, accountId, permission);
@@ -245,7 +211,33 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     const actor = await authenticate(request, runtime, authenticator);
     const body = actionSchema.parse(request.body);
     await requireAccount(runtime, actor, body.accountId, "action.propose");
-    const action: BusinessAction = Object.freeze({ ...body, status: "draft" });
+    const evidencePack = await intelligenceRuntime.repository.getEvidencePack({
+      id: body.evidencePackId,
+      organizationId: actor.organizationId,
+      accountId: body.accountId,
+    });
+    if (!evidencePack) throw new NotFoundError("Evidence pack");
+    const now = new Date();
+    assertUsableEvidencePack(evidencePack, now.toISOString());
+    const action: BusinessAction = Object.freeze({
+      id: `action_${randomUUID()}`,
+      accountId: body.accountId,
+      kind: body.kind,
+      target: body.target,
+      exactChanges: body.exactChanges,
+      rationale: body.rationale,
+      risk: body.risk,
+      status: "draft",
+      evidenceBundle: Object.freeze({
+        id: evidencePack.id,
+        accountId: evidencePack.accountId,
+        references: Object.freeze(evidencePack.documents.map((document) => document.reference)),
+        complete: evidencePack.complete,
+        missingInputs: evidencePack.missingInputs,
+      }),
+      policyVersion: config.ACTION_POLICY_VERSION,
+      expiresAt: new Date(now.getTime() + config.ACTION_APPROVAL_TTL_MS).toISOString(),
+    });
     const proposed = await runtime.actionService.propose(action, actor.id);
     return reply.code(201).send(proposed);
   });
@@ -278,33 +270,65 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
     return { receipts: await runtime.receipts.listForAction(params.id) };
   });
 
+  app.get("/v1/operations/readiness", async (request) => {
+    const actor = await authorize(request, runtime, authenticator, "operations.read");
+    const accounts = await authorizedAccounts(runtime, actor);
+    const accountIds = accounts.map((account) => account.id);
+    return {
+      ok: true,
+      mode: config.NODE_ENV,
+      authentication: authenticator.mode === "disabled" ? "development-owner" : "rotating-session",
+      persistence: runtime.persistenceMode,
+      outbox: await runtime.outbox.stats(accountIds),
+      mercadoLibreChile: { enabled: runtime.mercadoLibre !== null, siteId: "MLC" },
+      actionExecution: runtime.actionExecutionMode,
+      contentGeneration: runtime.contentGenerationMode,
+      agentOs: { enabled: true, delegationDepth: 2 },
+    };
+  });
+
   app.get("/v1/operations/outbox", async (request) => {
-    await authorize(request, runtime, authenticator, "operations.read");
-    return { stats: await runtime.outbox.stats() };
+    const actor = await authorize(request, runtime, authenticator, "operations.read");
+    const accounts = await authorizedAccounts(runtime, actor);
+    return { stats: await runtime.outbox.stats(accounts.map((account) => account.id)) };
   });
 
   app.get("/v1/operations/outbox/dead", async (request) => {
-    await authorize(request, runtime, authenticator, "operations.read");
+    const actor = await authorize(request, runtime, authenticator, "operations.read");
+    const accounts = await authorizedAccounts(runtime, actor);
     const query = z
       .object({ limit: z.coerce.number().int().min(1).max(100).default(20) })
       .parse(request.query);
-    return { events: await runtime.outbox.listDead(query.limit) };
+    return {
+      events: await runtime.outbox.listDead({
+        accountIds: accounts.map((account) => account.id),
+        limit: query.limit,
+      }),
+    };
   });
 
   app.post("/v1/operations/outbox/dead/:id/requeue", async (request) => {
     const actor = await authorize(request, runtime, authenticator, "operations.manage");
+    const accounts = await authorizedAccounts(runtime, actor);
     const params = z.object({ id: z.string().min(1) }).parse(request.params);
     try {
-      await runtime.outbox.requeueDead({ id: params.id, availableAt: new Date().toISOString() });
+      await runtime.outbox.requeueDead({
+        id: params.id,
+        accountIds: accounts.map((account) => account.id),
+        availableAt: new Date().toISOString(),
+      });
     } catch {
       throw new NotFoundError("Dead-letter event");
     }
     return { requeued: true, eventId: params.id, requeuedBy: actor.id };
   });
 
-  app.addHook("onClose", async () => runtime.close());
+  app.addHook("onClose", async () => {
+    await intelligenceRuntime.close();
+    await runtime.close();
+  });
 
-  app.setErrorHandler((error, _request, reply) => {
+  app.setErrorHandler((error, request, reply) => {
     if (error instanceof z.ZodError) {
       void reply.code(400).send({ error: "validation-error", issues: error.issues });
       return;
@@ -342,12 +366,19 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
       error instanceof Error &&
       /(must|required|expired|matches|verification failed)/i.test(error.message)
     ) {
-      void reply.code(409).send({ error: "action-conflict", message: error.message });
+      request.log.warn({ err: error, requestId: request.id }, "Request conflict");
+      void reply.code(409).send({
+        error: "action-conflict",
+        message: "The requested operation conflicts with the current state.",
+        requestId: request.id,
+      });
       return;
     }
+    request.log.error({ err: error, requestId: request.id }, "Unhandled request error");
     void reply.code(500).send({
       error: "internal-error",
-      message: error instanceof Error ? error.message : "Unknown error",
+      message: "Unexpected server error.",
+      requestId: request.id,
     });
   });
 

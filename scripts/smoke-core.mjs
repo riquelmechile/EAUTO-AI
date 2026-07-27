@@ -72,7 +72,7 @@ const service = new ActionService(
 const action = {
   id: "action-1",
   accountId: "plasticov",
-  kind: "listing-edit",
+  kind: "listing.update",
   target: "MLC1",
   exactChanges: [{ field: "title", from: "Anterior", to: "Nuevo" }],
   rationale: "Mejorar claridad",

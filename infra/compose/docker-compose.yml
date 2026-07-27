@@ -8,20 +8,8 @@ services:
     ports: ["127.0.0.1:5432:5432"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../postgres/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U eauto -d eauto"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  redis:
-    image: redis:8-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    ports: ["127.0.0.1:6379:6379"]
-    volumes: ["redis_data:/data"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -51,12 +39,11 @@ services:
   api:
     image: node:22-bookworm-slim
     working_dir: /workspace
-    command: sh -c "npm ci && npm run build:server && npm run start -w @eauto/api"
+    command: sh -c "npm ci && npm run build:server && npm run migrate && npm run start -w @eauto/api"
     environment: &runtime-environment
       NODE_ENV: development
       PORT: 3000
       DATABASE_URL: postgres://eauto:eauto@postgres:5432/eauto
-      REDIS_URL: redis://redis:6379
       AUTH_MODE: disabled
       OPERATOR_TOKENS_JSON: "[]"
       OBJECT_STORAGE_BUCKET: eauto-content
@@ -72,13 +59,12 @@ services:
       - ../../:/workspace
     depends_on:
       postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
       minio-init: { condition: service_completed_successfully }
 
   outbox-worker:
     image: node:22-bookworm-slim
     working_dir: /workspace
-    command: sh -c "npm ci && npm run build:server && npm run start:worker -w @eauto/api"
+    command: sh -c "npm ci && npm run build:server && npm run migrate && npm run start:worker -w @eauto/api"
     environment: *runtime-environment
     volumes:
       - ../../:/workspace
@@ -88,5 +74,4 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
   minio_data:

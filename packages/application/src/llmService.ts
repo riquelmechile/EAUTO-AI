@@ -44,7 +44,11 @@ export interface LlmRunRepository {
   create(record: LlmRunRecord): Promise<void>;
   update(record: LlmRunRecord): Promise<void>;
   get(id: string): Promise<LlmRunRecord | null>;
-  list(accountId: string, limit: number): Promise<readonly LlmRunRecord[]>;
+  list(input: {
+    organizationId: string;
+    accountId: string;
+    limit: number;
+  }): Promise<readonly LlmRunRecord[]>;
   totalActualCostMicrosUsd(input: {
     organizationId: string;
     accountId: string;
@@ -204,8 +208,12 @@ export class ShadowLlmService {
     }
   }
 
-  list(accountId: string, limit = 100): Promise<readonly LlmRunRecord[]> {
-    return this.repository.list(accountId, Math.min(500, Math.max(1, limit)));
+  list(organizationId: string, accountId: string, limit = 100): Promise<readonly LlmRunRecord[]> {
+    return this.repository.list({
+      organizationId,
+      accountId,
+      limit: Math.min(500, Math.max(1, limit)),
+    });
   }
 }
 

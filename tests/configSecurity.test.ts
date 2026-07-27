@@ -17,6 +17,7 @@ const baseProduction = {
   DATABASE_URL: "postgres://eauto:eauto@localhost:5432/eauto",
   AUTH_MODE: "static-token",
   OPERATOR_TOKENS_JSON: productionIdentity,
+  CORS_ORIGIN: "https://app.example.com",
   OBJECT_STORAGE_PUBLIC_ENDPOINT: "https://uploads.example.com",
   OBJECT_STORAGE_ACCESS_KEY: "storage-access",
   OBJECT_STORAGE_SECRET_KEY: "storage-secret",
@@ -68,6 +69,7 @@ describe("production security configuration", () => {
         DATABASE_URL: "postgres://eauto:eauto@localhost:5432/eauto",
         AUTH_MODE: "static-token",
         OPERATOR_TOKENS_JSON: productionIdentity,
+        CORS_ORIGIN: "https://app.example.com",
       }),
     ).toThrow(/OBJECT_STORAGE_PUBLIC_ENDPOINT/);
 
@@ -77,6 +79,7 @@ describe("production security configuration", () => {
         DATABASE_URL: "postgres://eauto:eauto@localhost:5432/eauto",
         AUTH_MODE: "static-token",
         OPERATOR_TOKENS_JSON: productionIdentity,
+        CORS_ORIGIN: "https://app.example.com",
         OBJECT_STORAGE_PUBLIC_ENDPOINT: "http://uploads.example.com",
       }),
     ).toThrow(/must use HTTPS/);
@@ -97,6 +100,13 @@ describe("production security configuration", () => {
     expect(config.OBJECT_STORAGE_FORCE_PATH_STYLE).toBe(false);
   });
 
+  it("rejects wildcard or non-HTTPS CORS in production", () => {
+    expect(() => loadConfig({ ...baseProduction, CORS_ORIGIN: "*" })).toThrow(/CORS_ORIGIN/);
+    expect(() => loadConfig({ ...baseProduction, CORS_ORIGIN: "http://app.example.com" })).toThrow(
+      /CORS_ORIGIN must use HTTPS/,
+    );
+  });
+
   it("accepts a hashed owner identity and HTTPS upload endpoint", () => {
     const config = loadConfig(baseProduction);
     expect(config.AUTH_MODE).toBe("static-token");
@@ -115,6 +125,21 @@ describe("production security configuration", () => {
         NODE_ENV: "production",
       }),
     ).toThrow(/CONTENT_PROVIDER_URL must use HTTPS/);
+  });
+
+  it("rejects unknown action route kinds instead of silently ignoring typos", () => {
+    expect(() =>
+      loadConfig({
+        ACTION_EXECUTION_ENABLED: "true",
+        ACTION_PROVIDER_API_KEY: "secret",
+        ACTION_PROVIDER_ROUTES_JSON: JSON.stringify({
+          "price.updtae": {
+            executeUrl: "https://actions.example.com/v1/execute",
+            verifyUrl: "https://actions.example.com/v1/verify",
+          },
+        }),
+      }),
+    ).toThrow(/Unknown action route kind/);
   });
 
   it("requires allowlisted HTTPS action routes and an API key", () => {
@@ -180,6 +205,24 @@ describe("production security configuration", () => {
         MELI_TOKEN_VAULT_KEY_BASE64: Buffer.alloc(16).toString("base64"),
       }),
     ).toThrow(/32 bytes/);
+  });
+
+  it("requires a high-entropy token when MercadoLibre webhooks are enabled", () => {
+    expect(() =>
+      loadConfig({
+        ...mercadoLibreChile,
+        MELI_WEBHOOK_ENABLED: "true",
+        MELI_APPLICATION_ID: "123",
+      }),
+    ).toThrow(/MELI_WEBHOOK_TOKEN/);
+    expect(() =>
+      loadConfig({
+        ...mercadoLibreChile,
+        MELI_WEBHOOK_ENABLED: "true",
+        MELI_APPLICATION_ID: "123",
+        MELI_WEBHOOK_TOKEN: "short",
+      }),
+    ).toThrow(/at least 32/);
   });
 
   it("accepts a complete fail-closed MercadoLibre Chile production configuration", () => {

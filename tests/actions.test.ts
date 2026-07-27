@@ -4,7 +4,7 @@ import { transitionAction, type BusinessAction } from "../packages/domain/src/ac
 const action: BusinessAction = {
   id: "a1",
   accountId: "plasticov",
-  kind: "price-change",
+  kind: "price.update",
   target: "MLC1",
   exactChanges: [{ field: "price", from: 10_000, to: 9_500 }],
   rationale: "test",

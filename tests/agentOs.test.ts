@@ -191,16 +191,71 @@ describe("Agent OS work sessions", () => {
     const first = await service.createSession(input);
     const duplicate = await service.createSession(input);
     expect(duplicate.session.id).toBe(first.session.id);
-    const running = await service.startSession(first.session.id);
+    const scope = { organizationId: "maustian", accountId: "plasticov" };
+    const running = await service.startSession({ ...scope, sessionId: first.session.id });
     expect(running.status).toBe("running");
     await expect(
-      service.heartbeat({ sessionId: running.id, iterationCount: 1, spentMinorClp: 2_000 }),
+      service.heartbeat({
+        ...scope,
+        sessionId: running.id,
+        iterationCount: 1,
+        spentMinorClp: 2_000,
+      }),
     ).rejects.toThrow(/budget exceeded/i);
     const completed = await service.completeSession({
+      ...scope,
       sessionId: running.id,
       outputRefs: ["receipt:verified:plan-1"],
       spentMinorClp: 800,
     });
     expect(completed.status).toBe("completed");
+  });
+
+  it("scopes idempotency and session mutations by organization and account", async () => {
+    let sequence = 0;
+    const service = new AgentOsService(
+      new InMemoryAgentOsRepository(),
+      { now: () => new Date("2026-07-27T01:00:00.000Z") },
+      { next: (prefix) => `${prefix}-${++sequence}` },
+    );
+    const base = {
+      objectiveId: "objective-shared",
+      agentId: "ceo",
+      parentSessionId: null,
+      requestedAction: "plan.create",
+      availableEvidenceKinds: [
+        "company-state",
+        "policy-version",
+        "source-provenance",
+        "receipt-chain",
+      ],
+      evidenceRefs: ["evidence:company-state"],
+      autonomy: "inform" as const,
+      requestedBudgetMinorClp: 0,
+      spentTodayMinorClp: 0,
+      policyAllowed: true,
+      stableContextRefs: ["contract:ceo@1.0.0"],
+      volatileContextRefs: ["objective:shared"],
+      idempotencyKey: "shared-idempotency-key",
+      deadlineAt: "2026-07-27T02:00:00.000Z",
+    };
+    const first = await service.createSession({
+      ...base,
+      organizationId: "organization-a",
+      accountId: "account-a",
+    });
+    const second = await service.createSession({
+      ...base,
+      organizationId: "organization-b",
+      accountId: "account-b",
+    });
+    expect(second.session.id).not.toBe(first.session.id);
+    await expect(
+      service.startSession({
+        organizationId: "organization-b",
+        accountId: "account-b",
+        sessionId: first.session.id,
+      }),
+    ).rejects.toThrow(/not found/i);
   });
 });

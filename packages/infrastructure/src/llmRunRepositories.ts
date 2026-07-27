@@ -21,13 +21,21 @@ export class InMemoryLlmRunRepository implements LlmRunRepository {
     return Promise.resolve(this.records.get(id) ?? null);
   }
 
-  list(accountId: string, limit: number): Promise<readonly LlmRunRecord[]> {
+  list(input: {
+    organizationId: string;
+    accountId: string;
+    limit: number;
+  }): Promise<readonly LlmRunRecord[]> {
     return Promise.resolve(
       Object.freeze(
         [...this.records.values()]
-          .filter((record) => record.accountId === accountId)
+          .filter(
+            (record) =>
+              record.organizationId === input.organizationId &&
+              record.accountId === input.accountId,
+          )
           .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-          .slice(0, limit),
+          .slice(0, input.limit),
       ),
     );
   }
@@ -129,14 +137,18 @@ export class PostgresLlmRunRepository implements LlmRunRepository {
     return result.rows[0]?.payload_json ?? null;
   }
 
-  async list(accountId: string, limit: number): Promise<readonly LlmRunRecord[]> {
+  async list(input: {
+    organizationId: string;
+    accountId: string;
+    limit: number;
+  }): Promise<readonly LlmRunRecord[]> {
     const result = await this.pool.query<RunRow>(
       `SELECT payload_json
        FROM llm_runs
-       WHERE account_id = $1
+       WHERE organization_id = $1 AND account_id = $2
        ORDER BY created_at DESC, id DESC
-       LIMIT $2`,
-      [accountId, limit],
+       LIMIT $3`,
+      [input.organizationId, input.accountId, input.limit],
     );
     return result.rows.map((row) => row.payload_json);
   }

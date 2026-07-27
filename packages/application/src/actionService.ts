@@ -5,20 +5,12 @@ import {
   type Approval,
   type BusinessAction,
 } from "@eauto/domain";
-import { createReceipt } from "@eauto/agent-kernel";
 import type { OutboxEventDraft } from "./outbox.js";
-import type {
-  ActionExecutor,
-  ActionRepository,
-  Clock,
-  IdGenerator,
-  ReceiptRepository,
-} from "./ports.js";
+import type { ActionExecutor, ActionRepository, Clock, IdGenerator } from "./ports.js";
 
 export class ActionService {
   constructor(
     private readonly actions: ActionRepository,
-    private readonly receipts: ReceiptRepository,
     private readonly executor: ActionExecutor,
     private readonly clock: Clock,
     private readonly ids: IdGenerator,
@@ -30,11 +22,11 @@ export class ActionService {
     await this.actions.save(
       proposed,
       this.lifecycleEvent(proposed, "action.proposed", { proposedBy }),
+      this.receiptDraft(proposed, "proposal", {
+        exactChanges: proposed.exactChanges,
+        proposedBy,
+      }),
     );
-    await this.appendReceipt(proposed, "proposal", {
-      exactChanges: proposed.exactChanges,
-      proposedBy,
-    });
     return proposed;
   }
 
@@ -44,8 +36,8 @@ export class ActionService {
     await this.actions.save(
       reviewed,
       this.lifecycleEvent(reviewed, "action.reviewed", { reviewedBy, risk: reviewed.risk }),
+      this.receiptDraft(reviewed, "review", { reviewedBy, risk: reviewed.risk }),
     );
-    await this.appendReceipt(reviewed, "review", { reviewedBy, risk: reviewed.risk });
     return reviewed;
   }
 
@@ -68,8 +60,8 @@ export class ActionService {
       approval,
       approved,
       this.lifecycleEvent(approved, "action.approved", { approvedBy, approvalId: approval.id }),
+      this.receiptDraft(approved, "approval", approval),
     );
-    await this.appendReceipt(approved, "approval", approval);
     return approval;
   }
 
@@ -89,38 +81,43 @@ export class ActionService {
       executing,
       this.lifecycleEvent(executing, "action.execution.started", { requestedBy }),
     );
+    let current: BusinessAction = executing;
     try {
       const result = await this.executor.execute(executing);
-      const executed = transitionAction(executing, "executed");
+      current = transitionAction(executing, "executed");
       await this.actions.save(
-        executed,
-        this.lifecycleEvent(executed, "action.executed", {
+        current,
+        this.lifecycleEvent(current, "action.executed", {
           requestedBy,
           providerReceipt: result.providerReceipt,
         }),
+        this.receiptDraft(current, "execution", result.providerReceipt),
       );
-      await this.appendReceipt(executed, "execution", result.providerReceipt);
 
-      const verification = await this.executor.verify(executed);
+      const verification = await this.executor.verify(current);
       if (!verification.verified) throw new Error("Remote verification failed.");
-      const verified = transitionAction(executed, "verified");
+      const verified = transitionAction(current, "verified");
       await this.actions.save(
         verified,
         this.lifecycleEvent(verified, "action.verified", {
           requestedBy,
           observedState: verification.observedState,
         }),
+        this.receiptDraft(verified, "verification", verification.observedState),
       );
-      await this.appendReceipt(verified, "verification", verification.observedState);
       return verified;
     } catch (error) {
-      const failed = transitionAction(executing, "failed");
+      const uncertain = transitionAction(current, "uncertain");
+      const uncertaintyPayload = {
+        requestedBy,
+        error: error instanceof Error ? error.message : "Unknown execution error",
+        remoteState: "unknown",
+        requiresReconciliation: true,
+      };
       await this.actions.save(
-        failed,
-        this.lifecycleEvent(failed, "action.failed", {
-          requestedBy,
-          error: error instanceof Error ? error.message : "Unknown execution error",
-        }),
+        uncertain,
+        this.lifecycleEvent(uncertain, "action.uncertain", uncertaintyPayload),
+        this.receiptDraft(uncertain, "outcome", uncertaintyPayload),
       );
       throw error;
     }
@@ -143,27 +140,22 @@ export class ActionService {
     });
   }
 
-  private async appendReceipt(
+  private receiptDraft(
     action: BusinessAction,
-    type: "proposal" | "review" | "approval" | "execution" | "verification",
+    type: "proposal" | "review" | "approval" | "execution" | "verification" | "outcome",
     payload: unknown,
-  ): Promise<void> {
-    const chain = await this.receipts.listForAction(action.id);
-    const previous = chain.at(-1);
-    await this.receipts.append(
-      createReceipt({
-        id: this.ids.next("receipt"),
-        type,
-        accountId: action.accountId,
-        actionId: action.id,
-        contentHash: hashAction(action),
-        policyHash: createHash("sha256").update(action.policyVersion).digest("hex"),
-        evidenceHash: action.evidenceBundle.id,
-        previousReceiptHash: previous?.chainHash ?? null,
-        payload,
-        recordedAt: this.clock.now().toISOString(),
-      }),
-    );
+  ) {
+    return Object.freeze({
+      id: this.ids.next("receipt"),
+      type,
+      accountId: action.accountId,
+      actionId: action.id,
+      contentHash: hashAction(action),
+      policyHash: createHash("sha256").update(action.policyVersion).digest("hex"),
+      evidenceHash: action.evidenceBundle.id,
+      payload,
+      recordedAt: this.clock.now().toISOString(),
+    });
   }
 
   private async requireAction(id: string): Promise<BusinessAction> {

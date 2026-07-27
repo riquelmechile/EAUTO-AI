@@ -13,6 +13,7 @@ export type VerifiableReceipt = Readonly<{
   evidenceHash: string;
   previousReceiptHash: string | null;
   payloadHash: string;
+  payload?: unknown;
   chainHash: string;
   recordedAt: string;
 }>;
@@ -47,6 +48,7 @@ export function createReceipt(
     evidenceHash: input.evidenceHash,
     previousReceiptHash: input.previousReceiptHash,
     payloadHash,
+    payload: input.payload,
     chainHash,
     recordedAt: input.recordedAt,
   });

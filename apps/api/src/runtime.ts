@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import {
+  ACTION_KINDS,
   accountId,
   organizationId,
   type BusinessAction,
@@ -19,7 +20,6 @@ import {
   SourceImageUploadService,
   type ActionExecutor,
   type ContentGenerationPort,
-  type OutboxEventHandler,
 } from "@eauto/application";
 import {
   DeterministicContentProvider,
@@ -30,6 +30,7 @@ import {
   DeepSeekGateway,
   DisabledActionExecutor,
   HttpActionExecutor,
+  InMemoryActionLifecycleEventHandler,
   InMemoryAccountRepository,
   InMemoryActionRepository,
   InMemoryAgentOsRepository,
@@ -46,6 +47,7 @@ import {
   NodeMercadoLibreSecurity,
   PostgresAccountRepository,
   PostgresActionRepository,
+  PostgresActionLifecycleEventHandler,
   PostgresAgentOsRepository,
   PostgresContentAssetRepository,
   PostgresLlmRunRepository,
@@ -106,29 +108,31 @@ class VerifiedDevelopmentExecutor implements ActionExecutor {
   }
 }
 
-const lifecycleHandler: OutboxEventHandler = () => Promise.resolve();
-const lifecycleHandlers: Readonly<Record<string, OutboxEventHandler>> = Object.freeze({
-  "action.proposed": lifecycleHandler,
-  "action.reviewed": lifecycleHandler,
-  "action.approved": lifecycleHandler,
-  "action.execution.started": lifecycleHandler,
-  "action.executed": lifecycleHandler,
-  "action.verified": lifecycleHandler,
-  "action.failed": lifecycleHandler,
-});
-
 export function createRuntime(config: AppConfig) {
   const pool = config.DATABASE_URL ? new Pool({ connectionString: config.DATABASE_URL }) : null;
   const outbox = pool ? new PostgresOutboxRepository(pool) : new InMemoryOutboxRepository();
+  const actionLifecycle = pool
+    ? new PostgresActionLifecycleEventHandler(pool)
+    : new InMemoryActionLifecycleEventHandler();
+  const lifecycleHandlers = Object.freeze({
+    "action.proposed": actionLifecycle.handle,
+    "action.reviewed": actionLifecycle.handle,
+    "action.approved": actionLifecycle.handle,
+    "action.execution.started": actionLifecycle.handle,
+    "action.executed": actionLifecycle.handle,
+    "action.verified": actionLifecycle.handle,
+    "action.failed": actionLifecycle.handle,
+    "action.uncertain": actionLifecycle.handle,
+  });
   const accountRepository = pool
     ? new PostgresAccountRepository(pool)
     : new InMemoryAccountRepository(developmentAccounts);
-  const actionRepository = pool
-    ? new PostgresActionRepository(pool)
-    : new InMemoryActionRepository(outbox);
   const receiptRepository = pool
     ? new PostgresReceiptRepository(pool)
     : new InMemoryReceiptRepository();
+  const actionRepository = pool
+    ? new PostgresActionRepository(pool)
+    : new InMemoryActionRepository(outbox, receiptRepository);
   const assetRepository = pool
     ? new PostgresContentAssetRepository(pool)
     : new InMemoryContentAssetRepository();
@@ -160,13 +164,7 @@ export function createRuntime(config: AppConfig) {
     forcePathStyle: config.OBJECT_STORAGE_FORCE_PATH_STYLE,
   });
   const actionRuntime = createActionExecutorRuntime(config);
-  const actionService = new ActionService(
-    actionRepository,
-    receiptRepository,
-    actionRuntime.executor,
-    clock,
-    ids,
-  );
+  const actionService = new ActionService(actionRepository, actionRuntime.executor, clock, ids);
   const agentOs = new AgentOsService(agentOsRepository, clock, ids);
   const shadowLlm = createShadowLlmRuntime(config, llmRuns, clock, ids);
   const contentRuntime = createContentGenerationRuntime(config, objectStorage);
@@ -227,6 +225,7 @@ export function createRuntime(config: AppConfig) {
       : null;
 
   return {
+    databasePool: pool,
     accounts: accountRepository,
     actions: actionRepository,
     receipts: receiptRepository,
@@ -314,7 +313,9 @@ function parseActionRoutes(value: string): HttpActionRoutes {
   const parsed = JSON.parse(value) as unknown;
   if (!isRecord(parsed)) throw new Error("Action provider routes must be an object.");
   const routes: Record<string, { executeUrl: string; verifyUrl: string }> = {};
+  const allowedKinds = new Set<string>(ACTION_KINDS);
   for (const [kind, route] of Object.entries(parsed)) {
+    if (!allowedKinds.has(kind)) throw new Error(`Unknown action route kind ${kind}.`);
     if (
       !isRecord(route) ||
       typeof route.executeUrl !== "string" ||

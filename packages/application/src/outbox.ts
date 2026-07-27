@@ -53,9 +53,16 @@ export type OutboxRepository = {
     retryAt: string;
     maxAttempts: number;
   }): Promise<"pending" | "dead">;
-  listDead(limit: number): Promise<readonly DeadOutboxEvent[]>;
-  requeueDead(input: { id: string; availableAt: string }): Promise<void>;
-  stats(): Promise<OutboxStats>;
+  listDead(input: {
+    accountIds: readonly string[];
+    limit: number;
+  }): Promise<readonly DeadOutboxEvent[]>;
+  requeueDead(input: {
+    id: string;
+    accountIds: readonly string[];
+    availableAt: string;
+  }): Promise<void>;
+  stats(accountIds?: readonly string[]): Promise<OutboxStats>;
 };
 
 export type OutboxEventHandler = (event: ClaimedOutboxEvent) => Promise<void>;

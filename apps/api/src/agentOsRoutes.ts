@@ -3,10 +3,13 @@ import { z } from "zod";
 import type { ActorIdentity, Permission } from "@eauto/domain";
 import { registerOperationalIntelligenceRoutes } from "./operationalIntelligenceRoutes.js";
 import { registerShadowLlmRoutes } from "./llmRoutes.js";
+import type { OperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";
 import type { Runtime } from "./runtime.js";
 
 export type AgentOsRouteDependencies = Readonly<{
   runtime: Runtime;
+  intelligenceRuntime: OperationalIntelligenceRuntime;
+  manualControlEnabled: boolean;
   authenticate(request: FastifyRequest): Promise<ActorIdentity>;
   requireAccount(actor: ActorIdentity, accountId: string, permission: Permission): Promise<void>;
 }>;
@@ -69,6 +72,7 @@ export function registerAgentOsRoutes(
   });
 
   app.post("/v1/agent-os/:accountId/preflight", async (request) => {
+    requireManualControl(dependencies);
     const actor = await dependencies.authenticate(request);
     const params = accountParams.parse(request.params);
     const body = preflightSchema().parse(request.body);
@@ -81,6 +85,7 @@ export function registerAgentOsRoutes(
   });
 
   app.post("/v1/agent-os/:accountId/sessions", async (request, reply) => {
+    requireManualControl(dependencies);
     const actor = await dependencies.authenticate(request);
     const params = accountParams.parse(request.params);
     const body = z
@@ -124,13 +129,19 @@ export function registerAgentOsRoutes(
   });
 
   app.post("/v1/agent-os/:accountId/sessions/:sessionId/start", async (request) => {
+    requireManualControl(dependencies);
     const actor = await dependencies.authenticate(request);
     const params = sessionParams.parse(request.params);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.startSession(params.sessionId);
+    return dependencies.runtime.agentOs.startSession({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+    });
   });
 
   app.post("/v1/agent-os/:accountId/sessions/:sessionId/heartbeat", async (request) => {
+    requireManualControl(dependencies);
     const actor = await dependencies.authenticate(request);
     const params = sessionParams.parse(request.params);
     const body = z
@@ -140,10 +151,16 @@ export function registerAgentOsRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.heartbeat({ sessionId: params.sessionId, ...body });
+    return dependencies.runtime.agentOs.heartbeat({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+      ...body,
+    });
   });
 
   app.post("/v1/agent-os/:accountId/sessions/:sessionId/complete", async (request) => {
+    requireManualControl(dependencies);
     const actor = await dependencies.authenticate(request);
     const params = sessionParams.parse(request.params);
     const body = z
@@ -153,7 +170,12 @@ export function registerAgentOsRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.completeSession({ sessionId: params.sessionId, ...body });
+    return dependencies.runtime.agentOs.completeSession({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+      ...body,
+    });
   });
 
   app.post("/v1/agent-os/:accountId/sessions/:sessionId/fail", async (request) => {
@@ -161,7 +183,12 @@ export function registerAgentOsRoutes(
     const params = sessionParams.parse(request.params);
     const body = z.object({ reason: z.string().min(1).max(500) }).parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.manage");
-    return dependencies.runtime.agentOs.failSession({ sessionId: params.sessionId, ...body });
+    return dependencies.runtime.agentOs.failSession({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+      ...body,
+    });
   });
 
   app.get("/v1/agent-os/:accountId/sessions", async (request) => {
@@ -172,7 +199,11 @@ export function registerAgentOsRoutes(
       .parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
-      sessions: await dependencies.runtime.agentOs.listSessions(params.accountId, query.limit),
+      sessions: await dependencies.runtime.agentOs.listSessions({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
     };
   });
 
@@ -184,7 +215,11 @@ export function registerAgentOsRoutes(
       .parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
-      preflights: await dependencies.runtime.agentOs.listPreflights(params.accountId, query.limit),
+      preflights: await dependencies.runtime.agentOs.listPreflights({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
     };
   });
 
@@ -220,4 +255,10 @@ function preflightSchema() {
     stableContextRefs: z.array(z.string().min(1)).max(100),
     volatileContextRefs: z.array(z.string().min(1)).max(100),
   });
+}
+
+function requireManualControl(dependencies: AgentOsRouteDependencies): void {
+  if (!dependencies.manualControlEnabled) {
+    throw new Error("Manual Agent OS session control must use governed work orders.");
+  }
 }

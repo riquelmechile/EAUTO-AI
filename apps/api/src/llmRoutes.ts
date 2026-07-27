@@ -48,10 +48,12 @@ export function registerShadowLlmRoutes(
         message: "Shadow LLM gateway is disabled.",
       });
     }
-    const session = (await dependencies.runtime.agentOs.listSessions(params.accountId, 500)).find(
-      (candidate) => candidate.id === params.sessionId,
-    );
-    if (!session || session.organizationId !== actor.organizationId) {
+    const session = await dependencies.runtime.agentOs.getSession({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+    });
+    if (!session) {
       return reply.code(404).send({ error: "not-found", message: "Agent session not found." });
     }
     if (session.status !== "running") {
@@ -108,7 +110,13 @@ export function registerShadowLlmRoutes(
       .object({ limit: z.coerce.number().int().min(1).max(500).default(100) })
       .parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
-    return { runs: await dependencies.runtime.llmRuns.list(params.accountId, query.limit) };
+    return {
+      runs: await dependencies.runtime.llmRuns.list({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
+    };
   });
 }
 
