@@ -3,6 +3,7 @@ import { z } from "zod";
 import { MercadoLibreIntegrationError, type ActorIdentity, type Permission } from "@eauto/domain";
 import type { MercadoLibreService } from "@eauto/application";
 import type { Runtime } from "./runtime.js";
+import { registerMercadoLibreNotificationRoutes } from "./mercadoLibreNotificationRoutes.js";
 
 export const MERCADOLIBRE_MOBILE_RETURN_URI = "eautoai://mercadolibre/oauth-complete";
 
@@ -16,6 +17,8 @@ export function registerMercadoLibreRoutes(
   app: FastifyInstance,
   dependencies: MercadoLibreRouteDependencies,
 ): void {
+  registerMercadoLibreNotificationRoutes(app, dependencies);
+
   app.post("/v1/integrations/mercadolibre/:accountId/authorize", async (request) => {
     const actor = await dependencies.authenticate(request);
     const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
