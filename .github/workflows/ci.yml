@@ -25,25 +25,25 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run format:check
-      - name: Capture typecheck diagnostics
-        id: typecheck
+      - run: npm run typecheck
+      - name: Capture lint diagnostics
+        id: lint
         shell: bash
         run: |
           set +e
-          npm run typecheck > typecheck.log 2>&1
+          npm run lint > lint.log 2>&1
           code=$?
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: llm-gateway-typecheck
-          path: typecheck.log
+          name: llm-gateway-lint
+          path: lint.log
           if-no-files-found: error
-      - name: Enforce typecheck result
-        if: steps.typecheck.outputs.exit_code != '0'
+      - name: Enforce lint result
+        if: steps.lint.outputs.exit_code != '0'
         run: exit 1
-      - run: npm run lint
       - run: npm test
       - run: npm run build
       - run: |
