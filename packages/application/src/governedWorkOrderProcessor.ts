@@ -76,7 +76,7 @@ export class GovernedWorkOrderProcessor {
       "policy-version",
       "receipt-chain",
       "source-provenance",
-      ...new Set(pack.documents.map((document) => document.kind)),
+      ...new Set(pack.documents.flatMap((document) => (document.kind ? [document.kind] : []))),
     ]);
     let parentSessionId: string | null = null;
     let runningLeafSessionId: string | null = null;
@@ -255,8 +255,9 @@ function resolveCapability(order: AgentWorkOrder, contract: AgentRoleContract): 
     contract.allowedCapabilities.includes(capability),
   );
   const fallback = contract.allowedCapabilities[0];
-  if (!selected && !fallback) throw new Error(`Agent ${contract.id} has no allowed capability.`);
-  return selected ?? fallback;
+  if (selected) return selected;
+  if (fallback) return fallback;
+  throw new Error(`Agent ${contract.id} has no allowed capability.`);
 }
 
 function buildPrompt(
