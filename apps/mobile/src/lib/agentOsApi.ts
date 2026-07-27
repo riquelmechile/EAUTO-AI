@@ -62,6 +62,50 @@ export type AgentPlanPreview = Readonly<{
   }>[];
 }>;
 
+export type EvidencePackSummary = Readonly<{
+  id: string;
+  purpose: string;
+  subject: string;
+  generatedAt: string;
+  expiresAt: string;
+  complete: boolean;
+  missingInputs: readonly string[];
+  documents: readonly Readonly<{ kind?: string; authority: string }>[];
+}>;
+
+export type WorkOrderSummary = Readonly<{
+  id: string;
+  agentId: string;
+  capability?: string;
+  requestedAction: string;
+  status: string;
+  expectedUtility: number;
+  wakeReason: string;
+  attempts: number;
+  maximumAttempts: number;
+  failureReason: string | null;
+  createdAt: string;
+}>;
+
+export type ShadowProposalSummary = Readonly<{
+  id: string;
+  agentId: string;
+  action: string;
+  rationale: string;
+  expectedImpactMinorClp: number | null;
+  risk: "low" | "medium" | "high" | "critical";
+  status: "pending-approval" | "approved" | "rejected" | "superseded";
+  requiresHumanApproval: true;
+  createdAt: string;
+}>;
+
+export type IntelligenceReadiness = Readonly<{
+  workerEnabled: boolean;
+  llmEnabled: boolean;
+  mode: "shadow";
+  externalWrites: false;
+}>;
+
 async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const session = await sessionStore.load();
   const response = await fetch(`${API_URL}${path}`, {
@@ -120,4 +164,29 @@ export const agentOsApi = {
       method: "POST",
       body: JSON.stringify({ objective, maximumTasks: 5, budgetMinorClp }),
     }),
+  intelligenceReadiness: (accountId: string) =>
+    request<IntelligenceReadiness>(
+      `/v1/intelligence/${encodeURIComponent(accountId)}/readiness`,
+    ),
+  evidencePacks: (accountId: string) =>
+    request<{ packs: readonly EvidencePackSummary[] }>(
+      `/v1/intelligence/${encodeURIComponent(accountId)}/evidence-packs?limit=50`,
+    ),
+  workOrders: (accountId: string) =>
+    request<{ workOrders: readonly WorkOrderSummary[] }>(
+      `/v1/intelligence/${encodeURIComponent(accountId)}/work-orders?limit=100`,
+    ),
+  proposals: (accountId: string) =>
+    request<{ proposals: readonly ShadowProposalSummary[] }>(
+      `/v1/intelligence/${encodeURIComponent(accountId)}/proposals?limit=100`,
+    ),
+  decideProposal: (
+    accountId: string,
+    proposalId: string,
+    status: "approved" | "rejected" | "superseded",
+  ) =>
+    request<{ proposal: ShadowProposalSummary; executionCreated: false }>(
+      `/v1/intelligence/${encodeURIComponent(accountId)}/proposals/${encodeURIComponent(proposalId)}/decision`,
+      { method: "POST", body: JSON.stringify({ status }) },
+    ),
 };
