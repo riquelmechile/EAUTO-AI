@@ -79,10 +79,9 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   });
   const app = Fastify({ logger: config.NODE_ENV !== "test" });
   const corsOrigins = config.CORS_ORIGIN.split(",").map((origin) => origin.trim());
-  await app.register(cors, {
-    origin:
-      corsOrigins.length === 1 ? (corsOrigins[0] === "*" ? true : corsOrigins[0]) : corsOrigins,
-  });
+  const corsOrigin =
+    corsOrigins.length === 1 ? (corsOrigins[0] === "*" ? true : corsOrigins[0]) : corsOrigins;
+  await app.register(cors, corsOrigin === undefined ? {} : { origin: corsOrigin });
 
   app.get("/health", () => ({ ok: true, service: "eauto-api" }));
   app.get("/ready", async () => {
