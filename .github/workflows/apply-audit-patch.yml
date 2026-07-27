@@ -21,12 +21,13 @@ jobs:
         with:
           node-version: 22.16.0
           cache: npm
-      - name: Apply audited patch
+      - name: Apply audited code patch
         shell: bash
         run: |
           cat .audit-patch/*.txt > /tmp/audit-patch.b64
           base64 --decode /tmp/audit-patch.b64 > /tmp/audit-patch.tar.gz
           tar -xzf /tmp/audit-patch.tar.gz -C .
+          git checkout HEAD -- .github/workflows/ci.yml
       - name: Install and format
         run: |
           npm ci --no-audit --no-fund
