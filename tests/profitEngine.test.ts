@@ -61,7 +61,11 @@ describe("profit engine", () => {
 
   it("fails closed when mandatory economic inputs are missing", () => {
     const snapshot = calculateProfitability(
-      input({ variableRateBps: null, variableRateEvidence: null, costs: [cost("product-cost", 5_000)] }),
+      input({
+        variableRateBps: null,
+        variableRateEvidence: null,
+        costs: [cost("product-cost", 5_000)],
+      }),
     );
     expect(snapshot).toEqual({
       status: "incomplete",
@@ -111,11 +115,7 @@ describe("profit engine", () => {
       currentMarginBps: 2_400,
       projectedMarginBps: 3_000,
       targetMarginBps: 3_000,
-      evidenceRefs: [
-        "evidence-fulfillment-cost",
-        "evidence-product-cost",
-        "marketplace-fee",
-      ],
+      evidenceRefs: ["evidence-fulfillment-cost", "evidence-product-cost", "marketplace-fee"],
       policyVersion: "pricing-v1",
       requiresApproval: true,
     });

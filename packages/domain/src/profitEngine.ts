@@ -71,9 +71,7 @@ export type CompleteProfitabilitySnapshot = Readonly<{
   calculatedAt: string;
 }>;
 
-export type ProfitabilitySnapshot =
-  | IncompleteProfitabilitySnapshot
-  | CompleteProfitabilitySnapshot;
+export type ProfitabilitySnapshot = IncompleteProfitabilitySnapshot | CompleteProfitabilitySnapshot;
 
 export type RepricingPolicy = Readonly<{
   targetMarginBps: number;
@@ -116,10 +114,7 @@ export type RepricingDecision =
       requiredPriceMinor?: number;
     }>;
 
-const REQUIRED_COST_KINDS: readonly EconomicCostKind[] = [
-  "product-cost",
-  "fulfillment-cost",
-];
+const REQUIRED_COST_KINDS: readonly EconomicCostKind[] = ["product-cost", "fulfillment-cost"];
 
 export function calculateProfitability(input: ProfitabilityInput): ProfitabilitySnapshot {
   assertSafePositiveInteger(input.salePriceMinor, "salePriceMinor");
@@ -184,11 +179,7 @@ export function calculateProfitability(input: ProfitabilityInput): Profitability
   const netProfitMinor = grossRevenueMinor - totalCostsMinor;
   const marginBps = Math.trunc((netProfitMinor * 10_000) / grossRevenueMinor);
   const status: ProfitabilityStatus =
-    netProfitMinor < 0
-      ? "loss"
-      : marginBps < input.minimumMarginBps
-        ? "below-floor"
-        : "profitable";
+    netProfitMinor < 0 ? "loss" : marginBps < input.minimumMarginBps ? "below-floor" : "profitable";
 
   return Object.freeze({
     status,
@@ -317,12 +308,14 @@ function isStale(
 
 function safeMultiply(left: number, right: number): number {
   const result = left * right;
-  if (!Number.isSafeInteger(result)) throw new Error("Economic calculation exceeded safe integer range.");
+  if (!Number.isSafeInteger(result))
+    throw new Error("Economic calculation exceeded safe integer range.");
   return result;
 }
 
 function safeAdd(left: number, right: number): number {
   const result = left + right;
-  if (!Number.isSafeInteger(result)) throw new Error("Economic calculation exceeded safe integer range.");
+  if (!Number.isSafeInteger(result))
+    throw new Error("Economic calculation exceeded safe integer range.");
   return result;
 }
