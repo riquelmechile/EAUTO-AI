@@ -7,9 +7,7 @@ import type {
 
 type NotificationRow = { payload_json: MercadoLibreNotification };
 
-export class InMemoryMercadoLibreNotificationRepository
-  implements MercadoLibreNotificationRepository
-{
+export class InMemoryMercadoLibreNotificationRepository implements MercadoLibreNotificationRepository {
   private readonly records = new Map<string, MercadoLibreNotification>();
   private readonly idempotencyKeys = new Set<string>();
 
@@ -139,9 +137,7 @@ export class InMemoryMercadoLibreNotificationRepository
   }
 }
 
-export class PostgresMercadoLibreNotificationRepository
-  implements MercadoLibreNotificationRepository
-{
+export class PostgresMercadoLibreNotificationRepository implements MercadoLibreNotificationRepository {
   constructor(private readonly pool: Pool) {}
 
   async enqueue(notification: MercadoLibreNotification): Promise<"accepted" | "duplicate"> {
@@ -288,11 +284,7 @@ export class PostgresMercadoLibreNotificationRepository
     return result.rows.map((row) => row.payload_json);
   }
 
-  async requeueDead(input: {
-    id: string;
-    accountId: string;
-    availableAt: Date;
-  }): Promise<boolean> {
+  async requeueDead(input: { id: string; accountId: string; availableAt: Date }): Promise<boolean> {
     const result = await this.pool.query(
       `UPDATE mercadolibre_notifications
        SET status = 'pending', attempts = 0, available_at = $3,
@@ -315,10 +307,7 @@ function withoutLease(record: MercadoLibreNotification): MercadoLibreNotificatio
 }
 
 function withoutOutcome(record: MercadoLibreNotification): MercadoLibreNotification {
-  return stripKeys(
-    record,
-    new Set(["leaseOwner", "leaseUntil", "lastError", "processedAt"]),
-  );
+  return stripKeys(record, new Set(["leaseOwner", "leaseUntil", "lastError", "processedAt"]));
 }
 
 function stripKeys(
