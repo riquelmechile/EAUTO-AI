@@ -8,7 +8,6 @@ services:
     ports: ["127.0.0.1:5432:5432"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../postgres/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U eauto -d eauto"]
       interval: 5s
@@ -40,7 +39,7 @@ services:
   api:
     image: node:22-bookworm-slim
     working_dir: /workspace
-    command: sh -c "npm ci && npm run build:server && npm run start -w @eauto/api"
+    command: sh -c "npm ci && npm run build:server && npm run migrate && npm run start -w @eauto/api"
     environment: &runtime-environment
       NODE_ENV: development
       PORT: 3000
@@ -65,7 +64,7 @@ services:
   outbox-worker:
     image: node:22-bookworm-slim
     working_dir: /workspace
-    command: sh -c "npm ci && npm run build:server && npm run start:worker -w @eauto/api"
+    command: sh -c "npm ci && npm run build:server && npm run migrate && npm run start:worker -w @eauto/api"
     environment: *runtime-environment
     volumes:
       - ../../:/workspace
