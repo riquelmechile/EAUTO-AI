@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 16.0.0",
+    "version": "21.2.0",
+    "requireCommit": true,
     "appVersionSource": "remote"
   },
   "build": {
@@ -14,7 +15,7 @@
       "node": "22.16.0",
       "android": {
         "buildType": "apk",
-        "image": "latest"
+        "image": "auto"
       }
     },
     "production": {
@@ -23,7 +24,7 @@
       "channel": "production",
       "android": {
         "buildType": "app-bundle",
-        "image": "latest"
+        "image": "auto"
       }
     }
   },
