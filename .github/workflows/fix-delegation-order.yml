@@ -1,0 +1,82 @@
+name: Fix governed delegation order
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.head_ref == 'fix/systematic-production-audit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: npm
+      - name: Apply delegation ordering fix
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('packages/application/src/governedWorkOrderProcessor.ts')
+          text = path.read_text()
+          old = '''      const started = await this.agentOs.startSession({
+                organizationId: order.organizationId,
+                accountId: order.accountId,
+                sessionId: created.session.id,
+              });
+              if (!leaf) {
+                const nextContract = chain[index + 1];
+                if (!nextContract) throw new Error("delegation-target-missing");
+                await this.agentOs.completeSession({
+                  organizationId: order.organizationId,
+                  accountId: order.accountId,
+                  sessionId: started.id,
+                  outputRefs: Object.freeze([`delegation:${nextContract.id}`, `evidence-pack:${pack.id}`]),
+                  spentMinorClp: 0,
+                });
+                parentSessionId = started.id;
+              } else {
+                runningLeafSessionId = started.id;
+              }'''
+          new = '''      const started = await this.agentOs.startSession({
+                organizationId: order.organizationId,
+                accountId: order.accountId,
+                sessionId: created.session.id,
+              });
+
+              if (parentSessionId) {
+                await this.agentOs.completeSession({
+                  organizationId: order.organizationId,
+                  accountId: order.accountId,
+                  sessionId: parentSessionId,
+                  outputRefs: Object.freeze([`delegation:${contract.id}`, `evidence-pack:${pack.id}`]),
+                  spentMinorClp: 0,
+                });
+              }
+
+              if (leaf) {
+                runningLeafSessionId = started.id;
+              } else {
+                parentSessionId = started.id;
+              }'''
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one legacy delegation block, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+          npm ci --no-audit --no-fund
+          npx prettier --write packages/application/src/governedWorkOrderProcessor.ts
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/application/src/governedWorkOrderProcessor.ts
+          git commit -m "fix: keep parent sessions active until delegation"
+          git push
