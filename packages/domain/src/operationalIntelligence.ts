@@ -15,6 +15,16 @@ export const EVIDENCE_SUBJECTS = [
 ] as const;
 export type EvidenceSubject = (typeof EVIDENCE_SUBJECTS)[number];
 
+export type Signal = Readonly<{
+  kind: string;
+  entityId: string;
+  observedAt: string;
+  materialValue: string | number | boolean | null;
+  urgency: number;
+  expectedImpact: number;
+  confidence: number;
+}>;
+
 export type EvidenceDocument = Readonly<{
   reference: EvidenceReference;
   subject: EvidenceSubject;
@@ -156,7 +166,9 @@ export function assertUsableEvidencePack(pack: OperationalEvidencePack, now: str
       Date.parse(document.expiresAt) <= Date.parse(now) ||
       document.reference.freshness !== "fresh",
   );
-  if (invalid) throw new Error(`Evidence document ${invalid.reference.id} is not authoritative and fresh.`);
+  if (invalid) {
+    throw new Error(`Evidence document ${invalid.reference.id} is not authoritative and fresh.`);
+  }
 }
 
 export function decideMemoryAdmission(input: {
