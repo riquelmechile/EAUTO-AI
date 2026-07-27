@@ -27,8 +27,23 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check formatting
         run: npm run format:check
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Capture typecheck
+        shell: bash
+        run: |
+          set +e
+          npm run typecheck > typecheck.log 2>&1
+          echo $? > typecheck.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: systematic-audit-typecheck
+          path: typecheck.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Enforce typecheck
+        shell: bash
+        run: exit "$(cat typecheck.status)"
       - name: Lint
         run: npm run lint
       - name: Test
