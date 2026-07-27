@@ -16,5 +16,6 @@ export * from "./postgresRepositories.js";
 export * from "./postgresSessionRepository.js";
 export * from "./postgresSourceImageUploadRepository.js";
 export * from "./s3ObjectStorage.js";
+export * from "./verifiedOperationalEvidenceReader.js";
 
 export * from "./mercadoLibreNotificationRepositories.js";
