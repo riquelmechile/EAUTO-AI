@@ -9,7 +9,7 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ["eslint.config.mjs", "scripts/*.mjs"],
+          allowDefaultProject: ["eslint.config.mjs"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -21,13 +21,32 @@ export default tseslint.config(
     },
   },
   {
-    files: ["eslint.config.mjs", "scripts/*.mjs"],
+    files: ["eslint.config.mjs"],
     languageOptions: {
       globals: {
         Buffer: "readonly",
         console: "readonly",
         fetch: "readonly",
         process: "readonly",
+        setTimeout: "readonly",
+        URL: "readonly",
+      },
+    },
+  },
+  {
+    ...tseslint.configs.disableTypeChecked,
+    files: ["scripts/*.mjs", "apps/mobile/app.config.cjs"],
+    languageOptions: {
+      globals: {
+        Buffer: "readonly",
+        console: "readonly",
+        fetch: "readonly",
+        process: "readonly",
+        setTimeout: "readonly",
+        URL: "readonly",
+        AggregateError: "readonly",
+        require: "readonly",
+        module: "readonly",
       },
     },
   },
