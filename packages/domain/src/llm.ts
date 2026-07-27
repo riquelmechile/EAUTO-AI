@@ -45,7 +45,7 @@ export type LlmRunRecord = Readonly<{
   providerRequestId: string | null;
   systemFingerprint: string | null;
   outputHash: string | null;
-  outputJson: unknown | null;
+  outputJson: unknown;
   startedAt: string | null;
   completedAt: string | null;
   failureReason: string | null;
