@@ -184,6 +184,63 @@ describe("operational intelligence governance", () => {
     expect(second.order.id).toBe(first.order.id);
   });
 
+  it("scopes work-order idempotency by organization and account", async () => {
+    const repository = new InMemoryOperationalIntelligenceRepository();
+    const packA = pricingPack();
+    const packB = Object.freeze({
+      ...pricingPack(),
+      id: "pack_other",
+      organizationId: "other-organization",
+      accountId: "other-account",
+    });
+    await repository.saveEvidencePack(packA);
+    await repository.saveEvidencePack(packB);
+    const service = new GovernedWorkOrderService(repository, clock, idFactory());
+    const shared = {
+      objectiveId: "objective-shared",
+      agentId: "pricing",
+      capability: "proposal.create",
+      taskClass: "analysis" as const,
+      instruction: "Analizar precio con clave compartida",
+      signals: [
+        {
+          kind: "margin-risk",
+          entityId: "MLC-shared",
+          observedAt: NOW,
+          materialValue: 1200,
+          urgency: 1,
+          expectedImpact: 100_000,
+          confidence: 1,
+        },
+      ],
+      estimatedCostMicrosUsd: 100,
+      budgetMicrosUsd: 10_000,
+      budgetMinorClp: 0,
+      maximumAttempts: 3,
+      idempotencyKey: "same-key-across-scopes",
+    };
+    const first = await service.enqueue({
+      ...shared,
+      organizationId: "maustian",
+      accountId: "plasticov",
+      evidencePackId: packA.id,
+    });
+    const second = await service.enqueue({
+      ...shared,
+      organizationId: "other-organization",
+      accountId: "other-account",
+      evidencePackId: packB.id,
+    });
+    expect(second.order.id).not.toBe(first.order.id);
+    expect(
+      await repository.getWorkOrder({
+        organizationId: "other-organization",
+        accountId: "other-account",
+        id: first.order.id,
+      }),
+    ).toBeNull();
+  });
+
   it("runs CEO to director to specialist and creates only approval-gated proposals", async () => {
     const repository = new InMemoryOperationalIntelligenceRepository();
     const pack = pricingPack();
@@ -277,13 +334,20 @@ describe("operational intelligence governance", () => {
     );
     const result = await processor.processBatch();
     expect(result).toEqual({ leased: 1, completed: 1, failed: 0 });
-    const sessions = await agentOs.listSessions("plasticov", 20);
+    const sessions = await agentOs.listSessions({
+      organizationId: "maustian",
+      accountId: "plasticov",
+      limit: 20,
+    });
     expect(sessions.map((session) => session.agentId)).toEqual([
       "ceo",
       "finance-director",
       "pricing",
     ]);
-    const proposals = await intelligence.listProposals("plasticov");
+    const proposals = await intelligence.listProposals({
+      organizationId: "maustian",
+      accountId: "plasticov",
+    });
     expect(proposals).toHaveLength(1);
     expect(proposals[0]).toMatchObject({
       status: "pending-approval",
@@ -291,11 +355,17 @@ describe("operational intelligence governance", () => {
     });
     const decided = await intelligence.decideProposal({
       id: proposals[0]?.id ?? "missing",
+      organizationId: "maustian",
       accountId: "plasticov",
       status: "approved",
       decidedBy: "owner-1",
     });
     expect(decided?.status).toBe("approved");
-    expect(await intelligence.listWorkOrders("plasticov")).toHaveLength(1);
+    expect(
+      await intelligence.listWorkOrders({
+        organizationId: "maustian",
+        accountId: "plasticov",
+      }),
+    ).toHaveLength(1);
   });
 });

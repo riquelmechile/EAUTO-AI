@@ -42,7 +42,11 @@ export function registerOperationalIntelligenceRoutes(
     const query = listQuery.parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
-      packs: await runtime.intelligence.listEvidencePacks(params.accountId, query.limit),
+      packs: await runtime.intelligence.listEvidencePacks({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
     };
   });
 
@@ -155,7 +159,11 @@ export function registerOperationalIntelligenceRoutes(
     const query = listQuery.parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
-      workOrders: await runtime.intelligence.listWorkOrders(params.accountId, query.limit),
+      workOrders: await runtime.intelligence.listWorkOrders({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
     };
   });
 
@@ -165,7 +173,11 @@ export function registerOperationalIntelligenceRoutes(
     const query = listQuery.parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
-      proposals: await runtime.intelligence.listProposals(params.accountId, query.limit),
+      proposals: await runtime.intelligence.listProposals({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
     };
   });
 
@@ -178,6 +190,7 @@ export function registerOperationalIntelligenceRoutes(
     await dependencies.requireAccount(actor, params.accountId, "agents.manage");
     const proposal = await runtime.intelligence.decideProposal({
       id: params.proposalId,
+      organizationId: actor.organizationId,
       accountId: params.accountId,
       status: body.status,
       decidedBy: actor.id,

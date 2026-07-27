@@ -14,14 +14,18 @@ import {
   runAgentPreflight,
 } from "@eauto/agent-kernel";
 
+export type AgentOsScope = Readonly<{ organizationId: string; accountId: string }>;
+
 export interface AgentOsRepository {
   savePreflight(report: AgentPreflightReport): Promise<void>;
-  listPreflights(accountId: string, limit: number): Promise<readonly AgentPreflightReport[]>;
+  listPreflights(input: AgentOsScope & { limit: number }): Promise<readonly AgentPreflightReport[]>;
   createSession(session: AgentWorkSession): Promise<AgentWorkSession>;
-  getSession(sessionId: string): Promise<AgentWorkSession | null>;
-  getSessionByIdempotencyKey(idempotencyKey: string): Promise<AgentWorkSession | null>;
+  getSession(input: AgentOsScope & { sessionId: string }): Promise<AgentWorkSession | null>;
+  getSessionByIdempotencyKey(
+    input: AgentOsScope & { idempotencyKey: string },
+  ): Promise<AgentWorkSession | null>;
   updateSession(session: AgentWorkSession): Promise<void>;
-  listSessions(accountId: string, limit: number): Promise<readonly AgentWorkSession[]>;
+  listSessions(input: AgentOsScope & { limit: number }): Promise<readonly AgentWorkSession[]>;
 }
 
 export class AgentOsService {
@@ -98,7 +102,11 @@ export class AgentOsService {
     idempotencyKey: string;
     deadlineAt: string;
   }): Promise<Readonly<{ session: AgentWorkSession; preflight: AgentPreflightReport }>> {
-    const existing = await this.repository.getSessionByIdempotencyKey(input.idempotencyKey);
+    const existing = await this.repository.getSessionByIdempotencyKey({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      idempotencyKey: input.idempotencyKey,
+    });
     if (existing) {
       return {
         session: existing,
@@ -110,7 +118,13 @@ export class AgentOsService {
     }
 
     const contract = requireContract(input.agentId);
-    await this.assertParentSession(contract.parentAgentId, input.parentSessionId ?? null);
+    await this.assertParentSession({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      objectiveId: input.objectiveId,
+      expectedParentAgentId: contract.parentAgentId,
+      parentSessionId: input.parentSessionId ?? null,
+    });
     const preflight = await this.preflight(input);
     if (preflight.status === "deny") {
       throw new Error(`Agent preflight denied: ${preflight.reasons.join(", ")}.`);
@@ -164,10 +178,10 @@ export class AgentOsService {
     return { session: await this.repository.createSession(session), preflight };
   }
 
-  async startSession(sessionId: string): Promise<AgentWorkSession> {
-    const session = await this.requireSession(sessionId);
+  async startSession(input: AgentOsScope & { sessionId: string }): Promise<AgentWorkSession> {
+    const session = await this.requireSession(input);
     if (session.status !== "queued") {
-      throw new Error(`Agent session ${sessionId} cannot start from ${session.status}.`);
+      throw new Error(`Agent session ${input.sessionId} cannot start from ${session.status}.`);
     }
     const now = this.clock.now().toISOString();
     return this.persist({
@@ -179,12 +193,14 @@ export class AgentOsService {
     });
   }
 
-  async heartbeat(input: {
-    sessionId: string;
-    iterationCount: number;
-    spentMinorClp: number;
-  }): Promise<AgentWorkSession> {
-    const session = await this.requireSession(input.sessionId);
+  async heartbeat(
+    input: AgentOsScope & {
+      sessionId: string;
+      iterationCount: number;
+      spentMinorClp: number;
+    },
+  ): Promise<AgentWorkSession> {
+    const session = await this.requireSession(input);
     if (session.status !== "running") throw new Error("Only running sessions accept heartbeats.");
     if (input.iterationCount > session.maximumIterations)
       throw new Error("Maximum iterations exceeded.");
@@ -199,12 +215,14 @@ export class AgentOsService {
     });
   }
 
-  async completeSession(input: {
-    sessionId: string;
-    outputRefs: readonly string[];
-    spentMinorClp: number;
-  }): Promise<AgentWorkSession> {
-    const session = await this.requireSession(input.sessionId);
+  async completeSession(
+    input: AgentOsScope & {
+      sessionId: string;
+      outputRefs: readonly string[];
+      spentMinorClp: number;
+    },
+  ): Promise<AgentWorkSession> {
+    const session = await this.requireSession(input);
     if (session.status !== "running") throw new Error("Only running sessions can complete.");
     if (input.outputRefs.length === 0)
       throw new Error("Completed sessions require output references.");
@@ -221,8 +239,10 @@ export class AgentOsService {
     });
   }
 
-  async failSession(input: { sessionId: string; reason: string }): Promise<AgentWorkSession> {
-    const session = await this.requireSession(input.sessionId);
+  async failSession(
+    input: AgentOsScope & { sessionId: string; reason: string },
+  ): Promise<AgentWorkSession> {
+    const session = await this.requireSession(input);
     if (!["queued", "running", "waiting-evidence", "waiting-approval"].includes(session.status)) {
       throw new Error(`Agent session ${input.sessionId} cannot fail from ${session.status}.`);
     }
@@ -236,12 +256,22 @@ export class AgentOsService {
     });
   }
 
-  listSessions(accountId: string, limit = 100): Promise<readonly AgentWorkSession[]> {
-    return this.repository.listSessions(accountId, Math.min(500, Math.max(1, limit)));
+  listSessions(input: AgentOsScope & { limit?: number }): Promise<readonly AgentWorkSession[]> {
+    return this.repository.listSessions({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      limit: Math.min(500, Math.max(1, input.limit ?? 100)),
+    });
   }
 
-  listPreflights(accountId: string, limit = 100): Promise<readonly AgentPreflightReport[]> {
-    return this.repository.listPreflights(accountId, Math.min(500, Math.max(1, limit)));
+  listPreflights(
+    input: AgentOsScope & { limit?: number },
+  ): Promise<readonly AgentPreflightReport[]> {
+    return this.repository.listPreflights({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      limit: Math.min(500, Math.max(1, input.limit ?? 100)),
+    });
   }
 
   async scorecards(input: {
@@ -250,7 +280,11 @@ export class AgentOsService {
     periodStart: string;
     periodEnd: string;
   }): Promise<readonly AgentScorecard[]> {
-    const sessions = await this.repository.listSessions(input.accountId, 10_000);
+    const sessions = await this.repository.listSessions({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      limit: 10_000,
+    });
     return COMPANY_AGENT_CATALOG.map((contract) => {
       const relevant = sessions.filter(
         (session) =>
@@ -288,26 +322,46 @@ export class AgentOsService {
   }
 
   private async assertParentSession(
-    expectedParentAgentId: string | null,
-    parentSessionId: string | null,
+    input: AgentOsScope & {
+      objectiveId: string;
+      expectedParentAgentId: string | null;
+      parentSessionId: string | null;
+    },
   ): Promise<void> {
-    if (expectedParentAgentId === null) {
-      if (parentSessionId !== null)
+    if (input.expectedParentAgentId === null) {
+      if (input.parentSessionId !== null) {
         throw new Error("The CEO session cannot have a parent session.");
+      }
       return;
     }
-    if (!parentSessionId) throw new Error("Delegated sessions require a parent session.");
-    const parent = await this.requireSession(parentSessionId);
-    if (parent.agentId !== expectedParentAgentId) {
+    if (!input.parentSessionId) throw new Error("Delegated sessions require a parent session.");
+    const parent = await this.requireSession({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      sessionId: input.parentSessionId,
+    });
+    if (parent.agentId !== input.expectedParentAgentId) {
       throw new Error(
-        `Expected parent agent ${expectedParentAgentId}; received ${parent.agentId}.`,
+        `Expected parent agent ${input.expectedParentAgentId}; received ${parent.agentId}.`,
       );
+    }
+    if (parent.objectiveId !== input.objectiveId) {
+      throw new Error("Delegated sessions must share the parent objective.");
+    }
+    if (!["queued", "running", "waiting-evidence", "waiting-approval"].includes(parent.status)) {
+      throw new Error(`Parent session ${parent.id} is not active.`);
     }
   }
 
-  private async requireSession(sessionId: string): Promise<AgentWorkSession> {
-    const session = await this.repository.getSession(sessionId);
-    if (!session) throw new Error(`Agent session ${sessionId} not found.`);
+  async getSession(input: AgentOsScope & { sessionId: string }): Promise<AgentWorkSession | null> {
+    return this.repository.getSession(input);
+  }
+
+  private async requireSession(
+    input: AgentOsScope & { sessionId: string },
+  ): Promise<AgentWorkSession> {
+    const session = await this.repository.getSession(input);
+    if (!session) throw new Error(`Agent session ${input.sessionId} not found.`);
     return session;
   }
 

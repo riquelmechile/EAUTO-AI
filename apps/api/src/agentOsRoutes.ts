@@ -127,7 +127,11 @@ export function registerAgentOsRoutes(
     const actor = await dependencies.authenticate(request);
     const params = sessionParams.parse(request.params);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.startSession(params.sessionId);
+    return dependencies.runtime.agentOs.startSession({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+    });
   });
 
   app.post("/v1/agent-os/:accountId/sessions/:sessionId/heartbeat", async (request) => {
@@ -140,7 +144,12 @@ export function registerAgentOsRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.heartbeat({ sessionId: params.sessionId, ...body });
+    return dependencies.runtime.agentOs.heartbeat({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+      ...body,
+    });
   });
 
   app.post("/v1/agent-os/:accountId/sessions/:sessionId/complete", async (request) => {
@@ -153,7 +162,12 @@ export function registerAgentOsRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.run");
-    return dependencies.runtime.agentOs.completeSession({ sessionId: params.sessionId, ...body });
+    return dependencies.runtime.agentOs.completeSession({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+      ...body,
+    });
   });
 
   app.post("/v1/agent-os/:accountId/sessions/:sessionId/fail", async (request) => {
@@ -161,7 +175,12 @@ export function registerAgentOsRoutes(
     const params = sessionParams.parse(request.params);
     const body = z.object({ reason: z.string().min(1).max(500) }).parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "agents.manage");
-    return dependencies.runtime.agentOs.failSession({ sessionId: params.sessionId, ...body });
+    return dependencies.runtime.agentOs.failSession({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      sessionId: params.sessionId,
+      ...body,
+    });
   });
 
   app.get("/v1/agent-os/:accountId/sessions", async (request) => {
@@ -172,7 +191,11 @@ export function registerAgentOsRoutes(
       .parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
-      sessions: await dependencies.runtime.agentOs.listSessions(params.accountId, query.limit),
+      sessions: await dependencies.runtime.agentOs.listSessions({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
     };
   });
 
@@ -184,7 +207,11 @@ export function registerAgentOsRoutes(
       .parse(request.query);
     await dependencies.requireAccount(actor, params.accountId, "agents.read");
     return {
-      preflights: await dependencies.runtime.agentOs.listPreflights(params.accountId, query.limit),
+      preflights: await dependencies.runtime.agentOs.listPreflights({
+        organizationId: actor.organizationId,
+        accountId: params.accountId,
+        limit: query.limit,
+      }),
     };
   });
 

@@ -38,7 +38,11 @@ export class GovernedWorkOrderService {
     if (contract.forbiddenCapabilities.includes(input.capability)) {
       throw new Error(`Capability ${input.capability} is forbidden for ${input.agentId}.`);
     }
-    const pack = await this.repository.getEvidencePack(input.evidencePackId);
+    const pack = await this.repository.getEvidencePack({
+      id: input.evidencePackId,
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+    });
     if (!pack) throw new Error(`Evidence pack ${input.evidencePackId} not found.`);
     if (pack.organizationId !== input.organizationId || pack.accountId !== input.accountId) {
       throw new Error("Evidence pack scope mismatch.");

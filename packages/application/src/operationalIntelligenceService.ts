@@ -31,15 +31,23 @@ export interface OperationalEvidenceReader {
   >;
 }
 
+export type OperationalScope = Readonly<{ organizationId: string; accountId: string }>;
+
 export interface OperationalIntelligenceRepository {
   saveEvidencePack(pack: OperationalEvidencePack): Promise<void>;
-  getEvidencePack(id: string): Promise<OperationalEvidencePack | null>;
-  listEvidencePacks(accountId: string, limit: number): Promise<readonly OperationalEvidencePack[]>;
+  getEvidencePack(
+    input: OperationalScope & { id: string },
+  ): Promise<OperationalEvidencePack | null>;
+  listEvidencePacks(
+    input: OperationalScope & { limit: number },
+  ): Promise<readonly OperationalEvidencePack[]>;
   saveMemory(record: ConsultativeMemoryRecord): Promise<void>;
-  listMemory(accountId: string, limit: number): Promise<readonly ConsultativeMemoryRecord[]>;
+  listMemory(
+    input: OperationalScope & { limit: number },
+  ): Promise<readonly ConsultativeMemoryRecord[]>;
   enqueueWorkOrder(order: AgentWorkOrder): Promise<AgentWorkOrder>;
-  getWorkOrder(id: string): Promise<AgentWorkOrder | null>;
-  listWorkOrders(accountId: string, limit: number): Promise<readonly AgentWorkOrder[]>;
+  getWorkOrder(input: OperationalScope & { id: string }): Promise<AgentWorkOrder | null>;
+  listWorkOrders(input: OperationalScope & { limit: number }): Promise<readonly AgentWorkOrder[]>;
   leaseWorkOrders(input: {
     owner: string;
     now: Date;
@@ -48,14 +56,17 @@ export interface OperationalIntelligenceRepository {
   }): Promise<readonly AgentWorkOrder[]>;
   updateWorkOrder(order: AgentWorkOrder): Promise<void>;
   saveProposal(proposal: ShadowProposalRecord): Promise<void>;
-  listProposals(accountId: string, limit: number): Promise<readonly ShadowProposalRecord[]>;
-  decideProposal(input: {
-    id: string;
-    accountId: string;
-    status: Exclude<ShadowProposalStatus, "pending-approval">;
-    decidedAt: string;
-    decidedBy: string;
-  }): Promise<ShadowProposalRecord | null>;
+  listProposals(
+    input: OperationalScope & { limit: number },
+  ): Promise<readonly ShadowProposalRecord[]>;
+  decideProposal(
+    input: OperationalScope & {
+      id: string;
+      status: Exclude<ShadowProposalStatus, "pending-approval">;
+      decidedAt: string;
+      decidedBy: string;
+    },
+  ): Promise<ShadowProposalRecord | null>;
 }
 
 export class OperationalIntelligenceService {
@@ -154,7 +165,11 @@ export class OperationalIntelligenceService {
     limit?: number;
   }): Promise<readonly ConsultativeMemoryRecord[]> {
     const now = this.clock.now().toISOString();
-    const records = await this.repository.listMemory(input.accountId, input.limit ?? 100);
+    const records = await this.repository.listMemory({
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+      limit: input.limit ?? 100,
+    });
     return Object.freeze(
       records.filter(
         (record) =>
@@ -188,7 +203,11 @@ export class OperationalIntelligenceService {
     manual?: boolean;
   }): Promise<Readonly<{ order: AgentWorkOrder; wake: ReturnType<typeof decideWake> }>> {
     const now = this.clock.now();
-    const pack = await this.requirePack(input.evidencePackId);
+    const pack = await this.requirePack({
+      id: input.evidencePackId,
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+    });
     assertScope(pack, input.organizationId, input.accountId);
     assertUsableEvidencePack(pack, now.toISOString());
     const wake = decideWake({
@@ -233,33 +252,36 @@ export class OperationalIntelligenceService {
     return { order: await this.repository.enqueueWorkOrder(order), wake };
   }
 
-  listEvidencePacks(accountId: string, limit = 100) {
-    return this.repository.listEvidencePacks(accountId, boundedLimit(limit));
+  listEvidencePacks(input: OperationalScope & { limit?: number }) {
+    return this.repository.listEvidencePacks({ ...input, limit: boundedLimit(input.limit ?? 100) });
   }
 
-  listWorkOrders(accountId: string, limit = 100) {
-    return this.repository.listWorkOrders(accountId, boundedLimit(limit));
+  listWorkOrders(input: OperationalScope & { limit?: number }) {
+    return this.repository.listWorkOrders({ ...input, limit: boundedLimit(input.limit ?? 100) });
   }
 
-  listProposals(accountId: string, limit = 100) {
-    return this.repository.listProposals(accountId, boundedLimit(limit));
+  listProposals(input: OperationalScope & { limit?: number }) {
+    return this.repository.listProposals({ ...input, limit: boundedLimit(input.limit ?? 100) });
   }
 
-  decideProposal(input: {
-    id: string;
-    accountId: string;
-    status: Exclude<ShadowProposalStatus, "pending-approval">;
-    decidedBy: string;
-  }) {
+  decideProposal(
+    input: OperationalScope & {
+      id: string;
+      status: Exclude<ShadowProposalStatus, "pending-approval">;
+      decidedBy: string;
+    },
+  ) {
     return this.repository.decideProposal({
       ...input,
       decidedAt: this.clock.now().toISOString(),
     });
   }
 
-  private async requirePack(id: string): Promise<OperationalEvidencePack> {
-    const pack = await this.repository.getEvidencePack(id);
-    if (!pack) throw new Error(`Evidence pack ${id} not found.`);
+  private async requirePack(
+    input: OperationalScope & { id: string },
+  ): Promise<OperationalEvidencePack> {
+    const pack = await this.repository.getEvidencePack(input);
+    if (!pack) throw new Error(`Evidence pack ${input.id} not found.`);
     return pack;
   }
 }
@@ -308,7 +330,11 @@ export class ShadowWorkOrderProcessor {
 
   private async process(order: AgentWorkOrder): Promise<void> {
     if (!this.shadowLlm) throw new Error("shadow-llm-disabled");
-    const pack = await this.repository.getEvidencePack(order.evidencePackId);
+    const pack = await this.repository.getEvidencePack({
+      id: order.evidencePackId,
+      organizationId: order.organizationId,
+      accountId: order.accountId,
+    });
     if (!pack) throw new Error("evidence-pack-not-found");
     assertScope(pack, order.organizationId, order.accountId);
     assertUsableEvidencePack(pack, this.clock.now().toISOString());
@@ -354,7 +380,11 @@ export class ShadowWorkOrderProcessor {
       );
       return;
     }
-    const session = await this.agentOs.startSession(sessionResult.session.id);
+    const session = await this.agentOs.startSession({
+      organizationId: order.organizationId,
+      accountId: order.accountId,
+      sessionId: sessionResult.session.id,
+    });
     const prompt = buildPrompt(pack, memory, order, this.config);
     const result = await this.shadowLlm.run({
       organizationId: order.organizationId,
@@ -385,6 +415,8 @@ export class ShadowWorkOrderProcessor {
     }
     const outputRefs = Object.freeze([`llm-run:${result.run.id}`, ...proposalRefs]);
     await this.agentOs.completeSession({
+      organizationId: order.organizationId,
+      accountId: order.accountId,
       sessionId: session.id,
       outputRefs,
       spentMinorClp: 0,

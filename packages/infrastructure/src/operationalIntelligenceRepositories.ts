@@ -12,7 +12,12 @@ import type {
 import type {
   OperationalEvidenceReader,
   OperationalIntelligenceRepository,
+  OperationalScope,
 } from "@eauto/application";
+
+function scopedKey(input: OperationalScope & { value: string }): string {
+  return `${input.organizationId}\u0000${input.accountId}\u0000${input.value}`;
+}
 
 export class InMemoryOperationalEvidenceReader implements OperationalEvidenceReader {
   constructor(
@@ -54,16 +59,31 @@ export class InMemoryOperationalIntelligenceRepository implements OperationalInt
     return Promise.resolve();
   }
 
-  getEvidencePack(id: string): Promise<OperationalEvidencePack | null> {
-    return Promise.resolve(this.packs.get(id) ?? null);
+  getEvidencePack(
+    input: OperationalScope & { id: string },
+  ): Promise<OperationalEvidencePack | null> {
+    const pack = this.packs.get(input.id);
+    if (
+      !pack ||
+      pack.organizationId !== input.organizationId ||
+      pack.accountId !== input.accountId
+    ) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(pack);
   }
 
-  listEvidencePacks(accountId: string, limit: number): Promise<readonly OperationalEvidencePack[]> {
+  listEvidencePacks(
+    input: OperationalScope & { limit: number },
+  ): Promise<readonly OperationalEvidencePack[]> {
     return Promise.resolve(
       sortDescending(
-        [...this.packs.values()].filter((pack) => pack.accountId === accountId),
+        [...this.packs.values()].filter(
+          (pack) =>
+            pack.organizationId === input.organizationId && pack.accountId === input.accountId,
+        ),
         "generatedAt",
-      ).slice(0, limit),
+      ).slice(0, input.limit),
     );
   }
 
@@ -76,35 +96,55 @@ export class InMemoryOperationalIntelligenceRepository implements OperationalInt
     return Promise.resolve();
   }
 
-  listMemory(accountId: string, limit: number): Promise<readonly ConsultativeMemoryRecord[]> {
+  listMemory(
+    input: OperationalScope & { limit: number },
+  ): Promise<readonly ConsultativeMemoryRecord[]> {
     return Promise.resolve(
       sortDescending(
         [...this.memory.values()].filter(
-          (record) => record.accountId === null || record.accountId === accountId,
+          (record) =>
+            record.organizationId === input.organizationId &&
+            (record.accountId === null || record.accountId === input.accountId),
         ),
         "createdAt",
-      ).slice(0, limit),
+      ).slice(0, input.limit),
     );
   }
 
   enqueueWorkOrder(order: AgentWorkOrder): Promise<AgentWorkOrder> {
-    const existingId = this.idempotency.get(order.idempotencyKey);
+    const key = scopedKey({
+      organizationId: order.organizationId,
+      accountId: order.accountId,
+      value: order.idempotencyKey,
+    });
+    const existingId = this.idempotency.get(key);
     if (existingId) return Promise.resolve(this.orders.get(existingId) ?? order);
     this.orders.set(order.id, order);
-    this.idempotency.set(order.idempotencyKey, order.id);
+    this.idempotency.set(key, order.id);
     return Promise.resolve(order);
   }
 
-  getWorkOrder(id: string): Promise<AgentWorkOrder | null> {
-    return Promise.resolve(this.orders.get(id) ?? null);
+  getWorkOrder(input: OperationalScope & { id: string }): Promise<AgentWorkOrder | null> {
+    const order = this.orders.get(input.id);
+    if (
+      !order ||
+      order.organizationId !== input.organizationId ||
+      order.accountId !== input.accountId
+    ) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(order);
   }
 
-  listWorkOrders(accountId: string, limit: number): Promise<readonly AgentWorkOrder[]> {
+  listWorkOrders(input: OperationalScope & { limit: number }): Promise<readonly AgentWorkOrder[]> {
     return Promise.resolve(
       sortDescending(
-        [...this.orders.values()].filter((order) => order.accountId === accountId),
+        [...this.orders.values()].filter(
+          (order) =>
+            order.organizationId === input.organizationId && order.accountId === input.accountId,
+        ),
         "createdAt",
-      ).slice(0, limit),
+      ).slice(0, input.limit),
     );
   }
 
@@ -140,6 +180,14 @@ export class InMemoryOperationalIntelligenceRepository implements OperationalInt
   }
 
   updateWorkOrder(order: AgentWorkOrder): Promise<void> {
+    const existing = this.orders.get(order.id);
+    if (
+      !existing ||
+      existing.organizationId !== order.organizationId ||
+      existing.accountId !== order.accountId
+    ) {
+      throw new Error(`Work order ${order.id} not found.`);
+    }
     this.orders.set(order.id, order);
     return Promise.resolve();
   }
@@ -153,25 +201,33 @@ export class InMemoryOperationalIntelligenceRepository implements OperationalInt
     return Promise.resolve();
   }
 
-  listProposals(accountId: string, limit: number): Promise<readonly ShadowProposalRecord[]> {
+  listProposals(
+    input: OperationalScope & { limit: number },
+  ): Promise<readonly ShadowProposalRecord[]> {
     return Promise.resolve(
       sortDescending(
-        [...this.proposals.values()].filter((proposal) => proposal.accountId === accountId),
+        [...this.proposals.values()].filter(
+          (proposal) =>
+            proposal.organizationId === input.organizationId &&
+            proposal.accountId === input.accountId,
+        ),
         "createdAt",
-      ).slice(0, limit),
+      ).slice(0, input.limit),
     );
   }
 
-  decideProposal(input: {
-    id: string;
-    accountId: string;
-    status: "approved" | "rejected" | "superseded";
-    decidedAt: string;
-    decidedBy: string;
-  }): Promise<ShadowProposalRecord | null> {
+  decideProposal(
+    input: OperationalScope & {
+      id: string;
+      status: "approved" | "rejected" | "superseded";
+      decidedAt: string;
+      decidedBy: string;
+    },
+  ): Promise<ShadowProposalRecord | null> {
     const current = this.proposals.get(input.id);
     if (
       !current ||
+      current.organizationId !== input.organizationId ||
       current.accountId !== input.accountId ||
       current.status !== "pending-approval"
     ) {
@@ -222,6 +278,7 @@ export class PostgresOperationalEvidenceReader implements OperationalEvidenceRea
           contentHash: payloadHash,
         }),
         subject: input.subject,
+        kind: evidenceKindFor(row.source),
         authority: "authoritative" as const,
         expiresAt,
         payload: row.payload_json,
@@ -257,19 +314,23 @@ export class PostgresOperationalIntelligenceRepository implements OperationalInt
     );
   }
 
-  async getEvidencePack(id: string): Promise<OperationalEvidencePack | null> {
+  async getEvidencePack(
+    input: OperationalScope & { id: string },
+  ): Promise<OperationalEvidencePack | null> {
     const result = await this.pool.query<{ payload_json: OperationalEvidencePack }>(
-      `SELECT payload_json FROM operational_evidence_packs WHERE id = $1`,
-      [id],
+      `SELECT payload_json FROM operational_evidence_packs
+       WHERE id = $1 AND organization_id = $2 AND account_id = $3`,
+      [input.id, input.organizationId, input.accountId],
     );
     return result.rows[0]?.payload_json ?? null;
   }
 
-  async listEvidencePacks(accountId: string, limit: number) {
+  async listEvidencePacks(input: OperationalScope & { limit: number }) {
     const result = await this.pool.query<{ payload_json: OperationalEvidencePack }>(
       `SELECT payload_json FROM operational_evidence_packs
-       WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2`,
-      [accountId, limit],
+       WHERE organization_id = $1 AND account_id = $2
+       ORDER BY created_at DESC LIMIT $3`,
+      [input.organizationId, input.accountId, input.limit],
     );
     return result.rows.map((row) => row.payload_json);
   }
@@ -292,12 +353,12 @@ export class PostgresOperationalIntelligenceRepository implements OperationalInt
     );
   }
 
-  async listMemory(accountId: string, limit: number) {
+  async listMemory(input: OperationalScope & { limit: number }) {
     const result = await this.pool.query<{ payload_json: ConsultativeMemoryRecord }>(
       `SELECT payload_json FROM consultative_memory
-       WHERE account_id IS NULL OR account_id = $1
-       ORDER BY created_at DESC LIMIT $2`,
-      [accountId, limit],
+       WHERE organization_id = $1 AND (account_id IS NULL OR account_id = $2)
+       ORDER BY created_at DESC LIMIT $3`,
+      [input.organizationId, input.accountId, input.limit],
     );
     return result.rows.map((row) => row.payload_json);
   }
@@ -308,7 +369,8 @@ export class PostgresOperationalIntelligenceRepository implements OperationalInt
        (id, idempotency_key, organization_id, account_id, agent_id, status, expected_utility,
         available_at, lease_owner, lease_until, attempts, maximum_attempts, payload_json)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)
-       ON CONFLICT (idempotency_key) DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
+       ON CONFLICT (organization_id, account_id, idempotency_key)
+       DO UPDATE SET idempotency_key = EXCLUDED.idempotency_key
        RETURNING payload_json`,
       [
         order.id,
@@ -331,19 +393,21 @@ export class PostgresOperationalIntelligenceRepository implements OperationalInt
     return persisted;
   }
 
-  async getWorkOrder(id: string): Promise<AgentWorkOrder | null> {
+  async getWorkOrder(input: OperationalScope & { id: string }): Promise<AgentWorkOrder | null> {
     const result = await this.pool.query<{ payload_json: AgentWorkOrder }>(
-      `SELECT payload_json FROM agent_work_orders WHERE id = $1`,
-      [id],
+      `SELECT payload_json FROM agent_work_orders
+       WHERE id = $1 AND organization_id = $2 AND account_id = $3`,
+      [input.id, input.organizationId, input.accountId],
     );
     return result.rows[0]?.payload_json ?? null;
   }
 
-  async listWorkOrders(accountId: string, limit: number) {
+  async listWorkOrders(input: OperationalScope & { limit: number }) {
     const result = await this.pool.query<{ payload_json: AgentWorkOrder }>(
       `SELECT payload_json FROM agent_work_orders
-       WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2`,
-      [accountId, limit],
+       WHERE organization_id = $1 AND account_id = $2
+       ORDER BY created_at DESC LIMIT $3`,
+      [input.organizationId, input.accountId, input.limit],
     );
     return result.rows.map((row) => row.payload_json);
   }
@@ -416,29 +480,31 @@ export class PostgresOperationalIntelligenceRepository implements OperationalInt
     );
   }
 
-  async listProposals(accountId: string, limit: number) {
+  async listProposals(input: OperationalScope & { limit: number }) {
     const result = await this.pool.query<{ payload_json: ShadowProposalRecord }>(
       `SELECT payload_json FROM shadow_proposals
-       WHERE account_id = $1 ORDER BY created_at DESC LIMIT $2`,
-      [accountId, limit],
+       WHERE organization_id = $1 AND account_id = $2
+       ORDER BY created_at DESC LIMIT $3`,
+      [input.organizationId, input.accountId, input.limit],
     );
     return result.rows.map((row) => row.payload_json);
   }
 
-  async decideProposal(input: {
-    id: string;
-    accountId: string;
-    status: "approved" | "rejected" | "superseded";
-    decidedAt: string;
-    decidedBy: string;
-  }): Promise<ShadowProposalRecord | null> {
+  async decideProposal(
+    input: OperationalScope & {
+      id: string;
+      status: "approved" | "rejected" | "superseded";
+      decidedAt: string;
+      decidedBy: string;
+    },
+  ): Promise<ShadowProposalRecord | null> {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
       const current = await client.query<{ payload_json: ShadowProposalRecord }>(
         `SELECT payload_json FROM shadow_proposals
-         WHERE id = $1 AND account_id = $2 FOR UPDATE`,
-        [input.id, input.accountId],
+         WHERE id = $1 AND organization_id = $2 AND account_id = $3 FOR UPDATE`,
+        [input.id, input.organizationId, input.accountId],
       );
       const proposal = current.rows[0]?.payload_json;
       if (!proposal || proposal.status !== "pending-approval") {
@@ -454,8 +520,16 @@ export class PostgresOperationalIntelligenceRepository implements OperationalInt
       await client.query(
         `UPDATE shadow_proposals
          SET status = $2, decided_at = $3, decided_by = $4, payload_json = $5::jsonb
-         WHERE id = $1`,
-        [input.id, input.status, input.decidedAt, input.decidedBy, JSON.stringify(decided)],
+         WHERE id = $1 AND organization_id = $6 AND account_id = $7`,
+        [
+          input.id,
+          input.status,
+          input.decidedAt,
+          input.decidedBy,
+          JSON.stringify(decided),
+          input.organizationId,
+          input.accountId,
+        ],
       );
       await client.query("COMMIT");
       return decided;
@@ -509,11 +583,12 @@ async function readSubjectRows(
                   FROM mercadolibre_reputation_snapshots
                   WHERE organization_id = $1 AND account_id = $2 AND observed_at >= $3
                   ORDER BY observed_at DESC LIMIT 1`,
-    content: `SELECT 'content-asset' AS source, id AS source_id,
-              created_at::text AS observed_at, metadata_json AS payload_json
-              FROM content_assets
-              WHERE account_id = $2 AND created_at >= $3
-              ORDER BY created_at DESC LIMIT 500`,
+    content: `SELECT 'content-asset' AS source, ca.id AS source_id,
+              ca.created_at::text AS observed_at, ca.metadata_json AS payload_json
+              FROM content_assets ca
+              JOIN commerce_accounts account ON account.id = ca.account_id
+              WHERE account.organization_id = $1 AND ca.account_id = $2 AND ca.created_at >= $3
+              ORDER BY ca.created_at DESC LIMIT 500`,
   };
   const sql = queryBySubject[subject];
   if (!sql) return [];
@@ -527,7 +602,7 @@ async function updateOrder(client: Pick<Pool, "query"> | PoolClient, order: Agen
      SET status = $2, expected_utility = $3, available_at = $4,
          lease_owner = $5, lease_until = $6, attempts = $7,
          payload_json = $8::jsonb, updated_at = now()
-     WHERE id = $1`,
+     WHERE id = $1 AND organization_id = $9 AND account_id = $10`,
     [
       order.id,
       order.status,
@@ -537,8 +612,22 @@ async function updateOrder(client: Pick<Pool, "query"> | PoolClient, order: Agen
       order.leaseUntil,
       order.attempts,
       JSON.stringify(order),
+      order.organizationId,
+      order.accountId,
     ],
   );
+}
+
+function evidenceKindFor(source: string): string {
+  const kinds: Readonly<Record<string, string>> = Object.freeze({
+    "mercadolibre-listing": "listing-snapshot",
+    "mercadolibre-claim": "claim-snapshot",
+    "mercadolibre-question": "question-snapshot",
+    "mercadolibre-order": "order-snapshot",
+    "mercadolibre-reputation": "reputation-snapshot",
+    "content-asset": "content-asset",
+  });
+  return kinds[source] ?? "operational-snapshot";
 }
 
 function sortDescending<T extends Record<K, string>, K extends keyof T>(values: T[], key: K): T[] {

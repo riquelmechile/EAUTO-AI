@@ -60,7 +60,11 @@ export class GovernedWorkOrderProcessor {
 
   private async process(order: AgentWorkOrder): Promise<void> {
     if (!this.shadowLlm) throw new Error("shadow-llm-disabled");
-    const pack = await this.repository.getEvidencePack(order.evidencePackId);
+    const pack = await this.repository.getEvidencePack({
+      id: order.evidencePackId,
+      organizationId: order.organizationId,
+      accountId: order.accountId,
+    });
     if (!pack) throw new Error("evidence-pack-not-found");
     assertScope(pack, order.organizationId, order.accountId);
     assertUsableEvidencePack(pack, this.clock.now().toISOString());
@@ -128,11 +132,17 @@ export class GovernedWorkOrderProcessor {
         );
         return;
       }
-      const started = await this.agentOs.startSession(created.session.id);
+      const started = await this.agentOs.startSession({
+        organizationId: order.organizationId,
+        accountId: order.accountId,
+        sessionId: created.session.id,
+      });
       if (!leaf) {
         const nextContract = chain[index + 1];
         if (!nextContract) throw new Error("delegation-target-missing");
         await this.agentOs.completeSession({
+          organizationId: order.organizationId,
+          accountId: order.accountId,
           sessionId: started.id,
           outputRefs: Object.freeze([`delegation:${nextContract.id}`, `evidence-pack:${pack.id}`]),
           spentMinorClp: 0,
@@ -175,6 +185,8 @@ export class GovernedWorkOrderProcessor {
       }
       const outputRefs = Object.freeze([`llm-run:${result.run.id}`, ...proposalRefs]);
       await this.agentOs.completeSession({
+        organizationId: order.organizationId,
+        accountId: order.accountId,
         sessionId: runningLeafSessionId,
         outputRefs,
         spentMinorClp: 0,
@@ -193,6 +205,8 @@ export class GovernedWorkOrderProcessor {
       );
     } catch (error) {
       await this.agentOs.failSession({
+        organizationId: order.organizationId,
+        accountId: order.accountId,
         sessionId: runningLeafSessionId,
         reason: error instanceof Error ? error.message : "Unknown governed run failure",
       });

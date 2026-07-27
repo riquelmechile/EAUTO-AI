@@ -44,7 +44,11 @@ export interface LlmRunRepository {
   create(record: LlmRunRecord): Promise<void>;
   update(record: LlmRunRecord): Promise<void>;
   get(id: string): Promise<LlmRunRecord | null>;
-  list(accountId: string, limit: number): Promise<readonly LlmRunRecord[]>;
+  list(input: {
+    organizationId: string;
+    accountId: string;
+    limit: number;
+  }): Promise<readonly LlmRunRecord[]>;
   totalActualCostMicrosUsd(input: {
     organizationId: string;
     accountId: string;
