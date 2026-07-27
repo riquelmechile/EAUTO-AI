@@ -25,51 +25,45 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
+          import re
           path = Path('packages/application/src/governedWorkOrderProcessor.ts')
           text = path.read_text()
-          old = '''      const started = await this.agentOs.startSession({
-                organizationId: order.organizationId,
-                accountId: order.accountId,
-                sessionId: created.session.id,
-              });
-              if (!leaf) {
-                const nextContract = chain[index + 1];
-                if (!nextContract) throw new Error("delegation-target-missing");
-                await this.agentOs.completeSession({
-                  organizationId: order.organizationId,
-                  accountId: order.accountId,
-                  sessionId: started.id,
-                  outputRefs: Object.freeze([`delegation:${nextContract.id}`, `evidence-pack:${pack.id}`]),
-                  spentMinorClp: 0,
-                });
-                parentSessionId = started.id;
-              } else {
-                runningLeafSessionId = started.id;
-              }'''
-          new = '''      const started = await this.agentOs.startSession({
-                organizationId: order.organizationId,
-                accountId: order.accountId,
-                sessionId: created.session.id,
-              });
+          pattern = re.compile(
+              r'      const started = await this\.agentOs\.startSession\(\{\n'
+              r'.*?'
+              r'      \}\);\n'
+              r'      if \(!leaf\) \{\n'
+              r'.*?'
+              r'      \} else \{\n'
+              r'        runningLeafSessionId = started\.id;\n'
+              r'      \}',
+              re.DOTALL,
+          )
+          replacement = '''      const started = await this.agentOs.startSession({
+            organizationId: order.organizationId,
+            accountId: order.accountId,
+            sessionId: created.session.id,
+          });
 
-              if (parentSessionId) {
-                await this.agentOs.completeSession({
-                  organizationId: order.organizationId,
-                  accountId: order.accountId,
-                  sessionId: parentSessionId,
-                  outputRefs: Object.freeze([`delegation:${contract.id}`, `evidence-pack:${pack.id}`]),
-                  spentMinorClp: 0,
-                });
-              }
+          if (parentSessionId) {
+            await this.agentOs.completeSession({
+              organizationId: order.organizationId,
+              accountId: order.accountId,
+              sessionId: parentSessionId,
+              outputRefs: Object.freeze([`delegation:${contract.id}`, `evidence-pack:${pack.id}`]),
+              spentMinorClp: 0,
+            });
+          }
 
-              if (leaf) {
-                runningLeafSessionId = started.id;
-              } else {
-                parentSessionId = started.id;
-              }'''
-          if text.count(old) != 1:
-              raise SystemExit(f'Expected one legacy delegation block, found {text.count(old)}')
-          path.write_text(text.replace(old, new, 1))
+          if (leaf) {
+            runningLeafSessionId = started.id;
+          } else {
+            parentSessionId = started.id;
+          }'''
+          updated, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected one legacy delegation block, found {count}')
+          path.write_text(updated)
           PY
           npm ci --no-audit --no-fund
           npx prettier --write packages/application/src/governedWorkOrderProcessor.ts
