@@ -6,14 +6,21 @@ import { createRuntime } from "../apps/api/dist/runtime.js";
 const compose = ["compose", "-p", "eauto-postgres-smoke", "-f", "infra/compose/docker-compose.yml"];
 const databaseUrl = "postgres://eauto:eauto@127.0.0.1:5432/eauto";
 let runtime = null;
+let stage = "initialize";
 
 try {
+  stage = "start-postgres";
   run("docker", [...compose, "up", "-d", "postgres"]);
+  stage = "wait-for-postgres";
   await waitForPostgres();
+  stage = "apply-migrations";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
+  stage = "verify-postgres-schema";
   run("node", ["scripts/smoke-postgres-schema.mjs"], { DATABASE_URL: databaseUrl });
+  stage = "verify-migration-idempotency";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
 
+  stage = "parse-production-template";
   const template = parseEnvironment(
     await readFile(new URL("../.env.production.example", import.meta.url), "utf8"),
   );
@@ -46,6 +53,7 @@ try {
     MELI_WEBHOOK_TOKEN: "smoke-webhook-token-0123456789abcdef",
   });
 
+  stage = "create-production-runtime";
   runtime = await createRuntime(config);
   assert(runtime.persistenceMode === "postgres", "production runtime must use Postgres");
   assert(runtime.contentGenerationMode === "external", "content provider must be external");
@@ -64,6 +72,13 @@ try {
   console.log("✓ Scoped repositories and action lifecycle verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");
+  console.log("EAUTO_PRODUCTION_SMOKE_OK");
+} catch (error) {
+  const message = error instanceof Error ? error.message : "Unknown production smoke failure";
+  console.error(
+    `EAUTO_PRODUCTION_SMOKE_FAILURE stage=${stage} message=${message.replace(/[\r\n\t]+/g, " ").slice(0, 1_000)}`,
+  );
+  throw error;
 } finally {
   await runtime?.close();
   run("docker", [...compose, "down", "--volumes", "--remove-orphans"], {}, true);
