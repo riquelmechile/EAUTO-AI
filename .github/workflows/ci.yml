@@ -31,8 +31,23 @@ jobs:
         run: npm run typecheck
       - name: Lint
         run: npm run lint
-      - name: Test
-        run: npm test
+      - name: Capture tests
+        shell: bash
+        run: |
+          set +e
+          npm test > test.log 2>&1
+          echo $? > test.status
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: systematic-audit-tests
+          path: test.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: Enforce tests
+        shell: bash
+        run: exit "$(cat test.status)"
       - name: Build application
         run: npm run build
       - name: Verify Postgres migrations and scoped repositories
