@@ -49,6 +49,7 @@ export class InMemoryActionRepository implements ActionRepository {
         executed: ["executing"],
         verified: ["executed"],
         failed: ["executing", "executed"],
+        uncertain: ["executing", "executed"],
         rejected: ["proposed", "reviewed"],
         expired: ["proposed", "reviewed", "approved"],
       };
