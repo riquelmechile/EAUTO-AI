@@ -10,8 +10,7 @@ export const MERCADOLIBRE_NOTIFICATION_TOPICS = [
   "payments",
 ] as const;
 
-export type MercadoLibreNotificationTopic =
-  (typeof MERCADOLIBRE_NOTIFICATION_TOPICS)[number];
+export type MercadoLibreNotificationTopic = (typeof MERCADOLIBRE_NOTIFICATION_TOPICS)[number];
 export type MercadoLibreNotificationStatus = "pending" | "processing" | "processed" | "dead";
 
 export type MercadoLibreNotification = Readonly<{
@@ -62,11 +61,7 @@ export interface MercadoLibreNotificationRepository {
     leaseUntil: Date;
     limit: number;
   }): Promise<readonly MercadoLibreNotification[]>;
-  markProcessed(input: {
-    ids: readonly string[];
-    owner: string;
-    processedAt: Date;
-  }): Promise<void>;
+  markProcessed(input: { ids: readonly string[]; owner: string; processedAt: Date }): Promise<void>;
   markFailed(input: {
     id: string;
     owner: string;
