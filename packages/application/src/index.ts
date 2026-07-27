@@ -3,6 +3,7 @@ export * from "./agentOsService.js";
 export * from "./contentStudioService.js";
 export * from "./llmService.js";
 export * from "./mercadoLibreService.js";
+export * from "./operationalIntelligenceService.js";
 export * from "./outbox.js";
 export * from "./ports.js";
 export * from "./sessionService.js";
