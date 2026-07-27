@@ -52,8 +52,18 @@ describe("ProfitEngineService", () => {
     const proposals: RepricingProposal[] = [];
     const service = new ProfitEngineService(
       { read: () => Promise.resolve(input) },
-      { save: (snapshot) => void snapshots.push(snapshot) || Promise.resolve() },
-      { save: (proposal) => void proposals.push(proposal) || Promise.resolve() },
+      {
+        save: (snapshot) => {
+          snapshots.push(snapshot);
+          return Promise.resolve();
+        },
+      },
+      {
+        save: (proposal) => {
+          proposals.push(proposal);
+          return Promise.resolve();
+        },
+      },
     );
 
     const decision = await service.prepareRepricing("plasticov", "MLC123", {
@@ -91,7 +101,12 @@ describe("ProfitEngineService", () => {
           }),
       },
       { save: () => Promise.resolve() },
-      { save: (proposal) => void proposals.push(proposal) || Promise.resolve() },
+      {
+        save: (proposal) => {
+          proposals.push(proposal);
+          return Promise.resolve();
+        },
+      },
     );
 
     const decision = await service.prepareRepricing("plasticov", "MLC123", {
