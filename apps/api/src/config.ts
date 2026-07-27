@@ -67,12 +67,7 @@ const configSchema = z.object({
     .min(1_000)
     .max(1_000_000)
     .default(100_000),
-  LLM_DEFAULT_MAXIMUM_OUTPUT_TOKENS: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .max(384_000)
-    .default(8_000),
+  LLM_DEFAULT_MAXIMUM_OUTPUT_TOKENS: z.coerce.number().int().min(100).max(384_000).default(8_000),
   LLM_DAILY_ACCOUNT_BUDGET_MICROS_USD: z.coerce
     .number()
     .int()

@@ -1,10 +1,4 @@
-export const LLM_RUN_STATUSES = [
-  "prepared",
-  "running",
-  "completed",
-  "failed",
-  "blocked",
-] as const;
+export const LLM_RUN_STATUSES = ["prepared", "running", "completed", "failed", "blocked"] as const;
 export type LlmRunStatus = (typeof LLM_RUN_STATUSES)[number];
 
 export const LLM_TASK_CLASSES = [

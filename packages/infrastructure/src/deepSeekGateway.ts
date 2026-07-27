@@ -1,7 +1,4 @@
-import type {
-  LlmModelId,
-  LlmTokenUsage,
-} from "@eauto/domain";
+import type { LlmModelId, LlmTokenUsage } from "@eauto/domain";
 import type {
   LlmProviderGateway,
   LlmProviderRequest,
@@ -114,8 +111,7 @@ function parseResponse(raw: string): ParsedResponse {
   return Object.freeze({
     id,
     model,
-    systemFingerprint:
-      typeof root.system_fingerprint === "string" ? root.system_fingerprint : null,
+    systemFingerprint: typeof root.system_fingerprint === "string" ? root.system_fingerprint : null,
     content,
     usage: Object.freeze({
       promptTokens,
@@ -162,5 +158,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function sanitizeProviderError(raw: string): string {
-  return raw.replace(/[\r\n\t]+/g, " ").replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]").slice(0, 500);
+  return raw
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, "Bearer [redacted]")
+    .slice(0, 500);
 }

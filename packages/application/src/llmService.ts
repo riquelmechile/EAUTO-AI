@@ -180,9 +180,7 @@ export class ShadowLlmService {
         cacheHitRatioBps:
           response.usage.promptTokens === 0
             ? 0
-            : Math.round(
-                (response.usage.cacheHitTokens * 10_000) / response.usage.promptTokens,
-              ),
+            : Math.round((response.usage.cacheHitTokens * 10_000) / response.usage.promptTokens),
         providerRequestId: response.providerRequestId,
         systemFingerprint: response.systemFingerprint,
         outputHash: hash(response.content),

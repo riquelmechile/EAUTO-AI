@@ -10,17 +10,17 @@ El gateway implementa inicialmente DeepSeek V4 mediante su API compatible con Op
 
 Pricing version: `2026-07-26`.
 
-| Task class | Modelo |
-|---|---|
+| Task class                                | Modelo              |
+| ----------------------------------------- | ------------------- |
 | classification, extraction, summarization | `deepseek-v4-flash` |
-| planning, analysis, critical-review | `deepseek-v4-pro` |
+| planning, analysis, critical-review       | `deepseek-v4-pro`   |
 
 Precios guardados en micro-USD por un millón de tokens:
 
-| Modelo | Cache hit | Cache miss | Output |
-|---|---:|---:|---:|
-| Flash | 2.800 | 140.000 | 280.000 |
-| Pro | 3.625 | 435.000 | 870.000 |
+| Modelo | Cache hit | Cache miss |  Output |
+| ------ | --------: | ---------: | ------: |
+| Flash  |     2.800 |    140.000 | 280.000 |
+| Pro    |     3.625 |    435.000 | 870.000 |
 
 Los precios son una política versionada y deben compararse regularmente con la documentación oficial antes de desplegar una versión nueva.
 
