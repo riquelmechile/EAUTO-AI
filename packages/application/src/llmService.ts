@@ -208,8 +208,12 @@ export class ShadowLlmService {
     }
   }
 
-  list(accountId: string, limit = 100): Promise<readonly LlmRunRecord[]> {
-    return this.repository.list(accountId, Math.min(500, Math.max(1, limit)));
+  list(organizationId: string, accountId: string, limit = 100): Promise<readonly LlmRunRecord[]> {
+    return this.repository.list({
+      organizationId,
+      accountId,
+      limit: Math.min(500, Math.max(1, limit)),
+    });
   }
 }
 
