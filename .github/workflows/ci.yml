@@ -29,8 +29,24 @@ jobs:
         run: npm run format:check
       - name: Typecheck
         run: npm run typecheck
-      - name: Lint
-        run: npm run lint
+      - name: Capture lint
+        id: lint
+        shell: bash
+        run: |
+          set +e
+          npm run lint > lint.log 2>&1
+          code=$?
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: production-release-lint-final
+          path: lint.log
+          if-no-files-found: error
+      - name: Enforce lint
+        if: steps.lint.outputs.exit_code != '0'
+        run: exit 1
       - name: Test
         run: npm test
       - name: Build application
