@@ -10,24 +10,28 @@ const configured = existsSync(envPath) ? parseEnvironment(await readFile(envPath
 const files = [
   "Dockerfile",
   ".dockerignore",
+  ".env.production.example",
   "infra/compose/docker-compose.production.yml",
   "infra/caddy/Caddyfile",
+  "infra/minio/Dockerfile",
   "infra/backup/Dockerfile",
   "infra/backup/backup.sh",
   "infra/backup/restore.sh",
+  "scripts/init-object-storage.mjs",
   "scripts/migrate.mjs",
+  "scripts/deploy-production.sh",
   "scripts/production-doctor.mjs",
   "infra/postgres/migrations/012_operational_intelligence.sql",
+  "apps/mobile/app.config.cjs",
   "apps/mobile/eas.json",
   ".github/workflows/release.yml",
+  "docs/runbooks/production-release.md",
 ];
 const secrets = [
   "POSTGRES_PASSWORD",
   "REDIS_PASSWORD",
   "MINIO_ROOT_USER",
   "MINIO_ROOT_PASSWORD",
-  "OBJECT_STORAGE_ACCESS_KEY",
-  "OBJECT_STORAGE_SECRET_KEY",
   "OPERATOR_TOKENS_JSON",
   "LLM_API_KEY",
   "MELI_CLIENT_ID",
@@ -38,6 +42,9 @@ const secrets = [
   "MELI_APPLICATION_ID",
   "RESTIC_REPOSITORY",
   "RESTIC_PASSWORD",
+  "RESTIC_AWS_ACCESS_KEY_ID",
+  "RESTIC_AWS_SECRET_ACCESS_KEY",
+  "EAS_PROJECT_ID",
 ];
 const failures = [];
 const pending = [];
@@ -62,6 +69,7 @@ expectValue("MELI_ENABLED", "true");
 expectValue("MELI_WEBHOOK_ENABLED", "true");
 expectHttps("EXPO_PUBLIC_API_URL");
 expectHttps("MELI_REDIRECT_URI");
+expectHttps("OBJECT_STORAGE_PUBLIC_ENDPOINT");
 expectHostname("API_DOMAIN");
 expectHostname("S3_DOMAIN");
 
@@ -89,6 +97,22 @@ if (
   Buffer.from(configured.MELI_TOKEN_VAULT_KEY_BASE64, "base64").byteLength !== 32
 ) {
   failures.push("MELI_TOKEN_VAULT_KEY_BASE64 must decode to 32 bytes.");
+}
+if (
+  configured.OBJECT_STORAGE_ACCESS_KEY &&
+  configured.MINIO_ROOT_USER &&
+  !isPlaceholder(configured.OBJECT_STORAGE_ACCESS_KEY) &&
+  configured.OBJECT_STORAGE_ACCESS_KEY !== configured.MINIO_ROOT_USER
+) {
+  failures.push("Self-hosted MinIO requires OBJECT_STORAGE_ACCESS_KEY to match MINIO_ROOT_USER.");
+}
+if (
+  configured.OBJECT_STORAGE_SECRET_KEY &&
+  configured.MINIO_ROOT_PASSWORD &&
+  !isPlaceholder(configured.OBJECT_STORAGE_SECRET_KEY) &&
+  configured.OBJECT_STORAGE_SECRET_KEY !== configured.MINIO_ROOT_PASSWORD
+) {
+  failures.push("Self-hosted MinIO requires OBJECT_STORAGE_SECRET_KEY to match MINIO_ROOT_PASSWORD.");
 }
 
 console.log(`\nImplementation failures: ${failures.length}`);
