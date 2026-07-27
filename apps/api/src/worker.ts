@@ -15,22 +15,41 @@ async function run(): Promise<void> {
   console.log(
     JSON.stringify({
       level: "info",
-      message: "outbox-worker-started",
-      workerId: `${config.OUTBOX_WORKER_ID}-${process.pid}`,
+      message: "worker-started",
+      outboxWorkerId: `${config.OUTBOX_WORKER_ID}-${process.pid}`,
+      mercadoLibreNotifications: runtime.mercadoLibreNotificationProcessor !== null,
       persistence: runtime.persistenceMode,
     }),
   );
 
+  const pollInterval = Math.min(
+    config.OUTBOX_POLL_INTERVAL_MS,
+    runtime.mercadoLibreNotificationProcessor
+      ? config.MELI_NOTIFICATION_POLL_INTERVAL_MS
+      : config.OUTBOX_POLL_INTERVAL_MS,
+  );
+
   while (!stopping) {
-    const result = await runtime.outboxProcessor.runOnce(config.OUTBOX_BATCH_SIZE);
-    if (result.claimed > 0) {
-      console.log(JSON.stringify({ level: "info", message: "outbox-batch", ...result }));
+    const outbox = await runtime.outboxProcessor.runOnce(config.OUTBOX_BATCH_SIZE);
+    const notifications = runtime.mercadoLibreNotificationProcessor
+      ? await runtime.mercadoLibreNotificationProcessor.processBatch()
+      : { leased: 0, processed: 0, failed: 0 };
+
+    if (outbox.claimed > 0 || notifications.leased > 0) {
+      console.log(
+        JSON.stringify({
+          level: "info",
+          message: "worker-cycle",
+          outbox,
+          mercadoLibreNotifications: notifications,
+        }),
+      );
     }
-    if (result.claimed === 0) await delay(config.OUTBOX_POLL_INTERVAL_MS);
+    if (outbox.claimed === 0 && notifications.leased === 0) await delay(pollInterval);
   }
 
   await runtime.close();
-  console.log(JSON.stringify({ level: "info", message: "outbox-worker-stopped" }));
+  console.log(JSON.stringify({ level: "info", message: "worker-stopped" }));
 }
 
 function delay(milliseconds: number): Promise<void> {
@@ -41,7 +60,7 @@ void run().catch(async (error: unknown) => {
   console.error(
     JSON.stringify({
       level: "error",
-      message: "outbox-worker-crashed",
+      message: "worker-crashed",
       error: error instanceof Error ? error.message : "Unknown worker error",
     }),
   );

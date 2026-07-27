@@ -72,6 +72,20 @@ const configSchema = z.object({
   MELI_REFRESH_LEASE_MS: z.coerce.number().int().min(5_000).max(300_000).default(30_000),
   MELI_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(15_000),
   MELI_MAXIMUM_SCAN_PAGES: z.coerce.number().int().min(1).max(1_000).default(100),
+  MELI_WEBHOOK_ENABLED: environmentBoolean.default(false),
+  MELI_APPLICATION_ID: optionalString,
+  MELI_NOTIFICATION_WORKER_ID: z.string().min(1).default("eauto-meli-notifications"),
+  MELI_NOTIFICATION_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
+  MELI_NOTIFICATION_BATCH_SIZE: z.coerce.number().int().min(1).max(200).default(100),
+  MELI_NOTIFICATION_LEASE_MS: z.coerce.number().int().min(1_000).max(300_000).default(30_000),
+  MELI_NOTIFICATION_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(100).default(8),
+  MELI_NOTIFICATION_BASE_RETRY_MS: z.coerce.number().int().min(100).max(300_000).default(1_000),
+  MELI_NOTIFICATION_MAX_RETRY_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(86_400_000)
+    .default(300_000),
 });
 
 export type AppConfig = z.infer<typeof configSchema>;
@@ -118,6 +132,11 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
 }
 
 function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {
+  if (config.MELI_WEBHOOK_ENABLED) {
+    if (!config.MELI_ENABLED || !config.MELI_APPLICATION_ID) {
+      throw new Error("MELI_WEBHOOK_ENABLED requires MELI_ENABLED and MELI_APPLICATION_ID.");
+    }
+  }
   if (!config.MELI_ENABLED) return;
   if (
     !config.MELI_CLIENT_ID ||
