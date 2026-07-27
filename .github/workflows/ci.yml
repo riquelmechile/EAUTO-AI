@@ -39,6 +39,7 @@ jobs:
         run: |
           cp .env.production.example .env.production
           npm run doctor:production -- --template --env=.env.production
+          npm run smoke:production-runtime
           docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
           docker run --rm \
             -e API_DOMAIN=api.example.cl \
