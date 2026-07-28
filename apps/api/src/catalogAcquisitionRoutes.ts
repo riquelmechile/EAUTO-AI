@@ -1,7 +1,9 @@
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
+  CatalogAcquisitionConflictError,
   CatalogAcquisitionUnavailableError,
+  CatalogAcquisitionValidationError,
   type ActorIdentity,
   type Permission,
 } from "@eauto/domain";
@@ -30,19 +32,24 @@ export function registerCatalogAcquisitionRoutes(
       .parse(request.body);
     await dependencies.requireAccount(actor, body.accountId, "catalog.acquire");
     if (dependencies.runtime.catalogAcquisitionMode !== "external") {
-      throw new CatalogAcquisitionUnavailableError();
+      return sendCatalogError(new CatalogAcquisitionUnavailableError(), reply);
     }
-    const candidates = await dependencies.runtime.catalogAcquisition.discover({
-      organizationId: actor.organizationId,
-      accountId: body.accountId,
-      sourceImageUploadId: body.sourceImageUploadId,
-      policy: dependencies.runtime.catalogAcquisitionPolicy,
-    });
-    return reply.code(201).send({
-      candidates,
-      policyVersion: dependencies.runtime.catalogAcquisitionPolicy.policyVersion,
-      externalSearchPerformed: true,
-    });
+    try {
+      const candidates = await dependencies.runtime.catalogAcquisition.discover({
+        organizationId: actor.organizationId,
+        accountId: body.accountId,
+        sourceImageUploadId: body.sourceImageUploadId,
+        policy: dependencies.runtime.catalogAcquisitionPolicy,
+      });
+      return reply.code(201).send({
+        candidates,
+        policyVersion: dependencies.runtime.catalogAcquisitionPolicy.policyVersion,
+        externalSearchPerformed: true,
+      });
+    } catch (error) {
+      if (isCatalogError(error)) return sendCatalogError(error, reply);
+      throw error;
+    }
   });
 
   app.get("/v1/catalog-acquisition/candidates", async (request) => {
@@ -78,20 +85,54 @@ export function registerCatalogAcquisitionRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, body.accountId, "catalog.review");
-    const candidate = await dependencies.runtime.catalogAcquisition.reviewCandidate({
-      id: params.id,
-      organizationId: actor.organizationId,
-      accountId: body.accountId,
-      decision: body.decision,
-      reviewedBy: actor.id,
-      ...(body.note === undefined ? {} : { note: body.note }),
-    });
-    if (!candidate) {
-      return reply.code(404).send({
-        error: "not-found",
-        message: "Catalog acquisition candidate not found.",
+    try {
+      const candidate = await dependencies.runtime.catalogAcquisition.reviewCandidate({
+        id: params.id,
+        organizationId: actor.organizationId,
+        accountId: body.accountId,
+        decision: body.decision,
+        reviewedBy: actor.id,
+        ...(body.note === undefined ? {} : { note: body.note }),
       });
+      if (!candidate) {
+        return reply.code(404).send({
+          error: "not-found",
+          message: "Catalog acquisition candidate not found.",
+        });
+      }
+      return candidate;
+    } catch (error) {
+      if (isCatalogError(error)) return sendCatalogError(error, reply);
+      throw error;
     }
-    return candidate;
   });
+}
+
+function isCatalogError(
+  error: unknown,
+): error is
+  | CatalogAcquisitionValidationError
+  | CatalogAcquisitionConflictError
+  | CatalogAcquisitionUnavailableError {
+  return (
+    error instanceof CatalogAcquisitionValidationError ||
+    error instanceof CatalogAcquisitionConflictError ||
+    error instanceof CatalogAcquisitionUnavailableError
+  );
+}
+
+function sendCatalogError(
+  error:
+    | CatalogAcquisitionValidationError
+    | CatalogAcquisitionConflictError
+    | CatalogAcquisitionUnavailableError,
+  reply: FastifyReply,
+) {
+  const status =
+    error instanceof CatalogAcquisitionUnavailableError
+      ? 503
+      : error instanceof CatalogAcquisitionConflictError
+        ? 409
+        : 400;
+  return reply.code(status).send({ error: error.code, message: error.message });
 }
