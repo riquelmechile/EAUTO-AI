@@ -11,10 +11,7 @@ export type MercadoLibreAttributeDraft = Readonly<{
   valueName: string;
 }>;
 
-export function createMercadoLibreAttributeDraft(
-  key: string,
-  id = "",
-): MercadoLibreAttributeDraft {
+export function createMercadoLibreAttributeDraft(key: string, id = ""): MercadoLibreAttributeDraft {
   return Object.freeze({ key, id, valueId: "", valueName: "" });
 }
 
