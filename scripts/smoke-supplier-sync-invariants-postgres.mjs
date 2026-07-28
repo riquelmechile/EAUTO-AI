@@ -23,6 +23,21 @@ const mirror = new SupplierMirrorService(repository);
 try {
   await seedScope();
 
+  await assertRejects(
+    mirror.recordObservation(
+      observation({
+        sku: `${sku}-unverified`,
+        stockQuantity: 99,
+        unitCostMinor: 1,
+        syncSucceeded: false,
+        observedAt: "2026-07-27T11:00:00.000Z",
+        evidenceHash: "0".repeat(64),
+      }),
+    ),
+    /first supplier product observation must be successful/,
+    "a failed first sync must not create current supplier state",
+  );
+
   const initial = await mirror.recordObservation(
     observation({
       stockQuantity: 0,
@@ -34,11 +49,12 @@ try {
   );
   assert(initial.product.currentStock === 0, "initial stock was not recorded");
   assert(
-    initial.product.consecutiveSuccessfulSyncs === 0,
-    "zero stock must reset the recovery counter",
+    initial.product.consecutiveSuccessfulSyncs === 1,
+    "product telemetry must count the first successful sync",
   );
 
   await seedListingLink();
+  assert((await recoveryConfirmationCount()) === 0, "new links must start unconfirmed");
 
   const failed = await mirror.recordObservation(
     observation({
@@ -54,8 +70,9 @@ try {
   assert(failed.product.currentUnitCostMinor === 5_000, "failed sync overwrote verified cost");
   assert(
     failed.product.consecutiveSuccessfulSyncs === 0,
-    "failed sync did not reset recovery debounce",
+    "failed sync did not reset product success telemetry",
   );
+  assert((await recoveryConfirmationCount()) === 0, "failed sync did not reset link debounce");
 
   const firstRecovery = await mirror.recordObservation(
     observation({
@@ -70,27 +87,33 @@ try {
   assert(firstRecovery.product.currentStock === 5, "first recovery stock was not stored");
   assert(
     firstRecovery.product.consecutiveSuccessfulSyncs === 1,
-    "first recovery must start debounce at one",
+    "first successful sync after failure must restart product telemetry",
   );
+  assert((await recoveryConfirmationCount()) === 1, "first recovery must start link debounce");
 
-  const delayed = await mirror.recordObservation(
-    observation({
-      stockQuantity: 50,
-      unitCostMinor: 100,
-      syncSucceeded: true,
-      observedAt: "2026-07-27T13:30:00.000Z",
-      evidenceHash: "4".repeat(64),
-    }),
+  await assertRejects(
+    mirror.recordObservation(
+      observation({
+        stockQuantity: 50,
+        unitCostMinor: 100,
+        syncSucceeded: true,
+        observedAt: "2026-07-27T13:30:00.000Z",
+        evidenceHash: "4".repeat(64),
+      }),
+    ),
+    /must be newer/,
+    "out-of-order evidence must be rejected",
   );
-  assert(delayed.recorded, "delayed evidence must remain append-only");
-  assert(delayed.product.currentStock === 5, "out-of-order evidence regressed current stock");
+  const afterDelayed = await currentProduct();
+  assert(afterDelayed.stock_qty === "5", "out-of-order evidence regressed current stock");
+  assert(afterDelayed.unit_cost_minor === "5000", "out-of-order evidence regressed current cost");
   assert(
-    delayed.product.currentUnitCostMinor === 5_000,
-    "out-of-order evidence regressed current cost",
+    afterDelayed.consecutive_successful_syncs === 1,
+    "out-of-order evidence changed product telemetry",
   );
   assert(
-    delayed.product.consecutiveSuccessfulSyncs === 1,
-    "out-of-order evidence changed recovery debounce",
+    (await recoveryConfirmationCount()) === 1,
+    "out-of-order evidence changed link debounce",
   );
 
   const secondRecovery = await mirror.recordObservation(
@@ -104,16 +127,34 @@ try {
   );
   assert(
     secondRecovery.product.consecutiveSuccessfulSyncs === 2,
-    "second post-failure recovery sync must confirm debounce",
+    "second post-failure success must advance product telemetry",
+  );
+  assert(
+    (await recoveryConfirmationCount()) === 2,
+    "second unique available observation must confirm link debounce",
   );
 
-  console.log("✓ Supplier failed-sync, monotonic-time and recovery-debounce invariants verified");
+  const observationCount = await pool.query(
+    `SELECT count(*)::int AS count
+     FROM supplier_product_observations
+     WHERE account_id = $1 AND supplier_source_id = $2 AND sku = $3`,
+    [accountId, supplierSourceId, sku],
+  );
+  assert(
+    observationCount.rows[0]?.count === 4,
+    "failed, successful and recovery observations must be durable but delayed evidence must roll back",
+  );
+
+  console.log(
+    "✓ Supplier failed-sync preservation, monotonic state and per-link recovery debounce verified",
+  );
 } finally {
   await cleanup();
   await pool.end();
 }
 
 function observation({
+  sku: observationSku = sku,
   stockQuantity,
   unitCostMinor,
   syncSucceeded,
@@ -125,7 +166,7 @@ function observation({
     accountId,
     supplierSourceId,
     sourceType: "online",
-    sku,
+    sku: observationSku,
     name: "Supplier Invariant Product",
     stockQuantity,
     unitCostMinor,
@@ -197,6 +238,26 @@ async function seedListingLink() {
   );
 }
 
+async function recoveryConfirmationCount() {
+  const result = await pool.query(
+    `SELECT recovery_confirmation_count
+     FROM supplier_listing_links
+     WHERE account_id = $1 AND listing_id = $2 AND supplier_source_id = $3`,
+    [accountId, listingId, supplierSourceId],
+  );
+  return result.rows[0]?.recovery_confirmation_count;
+}
+
+async function currentProduct() {
+  const result = await pool.query(
+    `SELECT stock_qty::text, unit_cost_minor::text, consecutive_successful_syncs
+     FROM supplier_products
+     WHERE account_id = $1 AND supplier_source_id = $2 AND sku = $3`,
+    [accountId, supplierSourceId, sku],
+  );
+  return result.rows[0];
+}
+
 async function cleanup() {
   for (const table of [
     "supplier_availability_proposals",
@@ -217,6 +278,17 @@ async function cleanup() {
   await pool
     .query(`DELETE FROM organizations WHERE id = $1`, [organizationId])
     .catch(() => undefined);
+}
+
+async function assertRejects(promise, pattern, message) {
+  try {
+    await promise;
+  } catch (error) {
+    const rendered = error instanceof Error ? error.message : String(error);
+    assert(pattern.test(rendered), `${message}: unexpected error ${rendered}`);
+    return;
+  }
+  throw new Error(message);
 }
 
 function assert(condition, message) {
