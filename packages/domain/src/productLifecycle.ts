@@ -53,7 +53,6 @@ export function classifyProductLifecycle(
       input.availableQuantity === null ? "available-quantity" : null,
       input.soldUnits30d === null ? "sales-30d" : null,
       input.soldUnits90d === null ? "sales-90d" : null,
-      input.visits30d === null ? "visits-30d" : null,
       input.marginBps === null ? "margin" : null,
     ].filter((value): value is string => value !== null),
   );
