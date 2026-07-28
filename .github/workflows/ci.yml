@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
+      - name: Audit high and critical vulnerabilities
+        run: npm audit --audit-level=high
       - name: Check formatting
         run: npm run format:check
       - name: Typecheck
@@ -35,6 +37,8 @@ jobs:
         run: npm test
       - name: Build application
         run: npm run build
+      - name: Verify MercadoLibre question answer contract
+        run: npm run smoke:mercadolibre-question-answer
       - name: Prepare production template
         run: cp .env.production.example .env.production
       - name: Validate production and release contracts
