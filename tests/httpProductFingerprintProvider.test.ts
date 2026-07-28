@@ -143,9 +143,11 @@ describe("HttpProductFingerprintProvider", () => {
           }),
       ),
     );
-    const promise = provider({ timeoutMs: 1_000 }).compute(input);
+    const rejection = expect(provider({ timeoutMs: 1_000 }).compute(input)).rejects.toThrow(
+      /timed out after 1000 ms/,
+    );
     await vi.advanceTimersByTimeAsync(1_001);
-    await expect(promise).rejects.toThrow(/timed out after 1000 ms/);
+    await rejection;
   });
 
   it("rejects unsafe endpoint and malformed source evidence", async () => {
