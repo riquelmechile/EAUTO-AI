@@ -91,43 +91,23 @@ export function createCompanyIntelligenceRuntime(
       leaseMs: config.COMPANY_INTELLIGENCE_LEASE_MS,
     },
   );
-  const economic = baseRuntime.databasePool
-    ? createEconomicOperations(baseRuntime)
-    : null;
+  const economic = baseRuntime.databasePool ? createEconomicOperations(baseRuntime) : null;
+  const creativeStorage = appConfig ? createCreativeStorage(appConfig) : null;
   const creativeStudio =
-    config.CONTENT_PROVIDER_KIND === "minimax" && appConfig
+    config.CONTENT_PROVIDER_KIND === "minimax" && appConfig && creativeStorage
       ? new ContentStudioService(
-          new MiniMaxContentProvider(
-            new S3ObjectStorage({
-              bucket: appConfig.OBJECT_STORAGE_BUCKET,
-              region: appConfig.OBJECT_STORAGE_REGION,
-              ...(appConfig.OBJECT_STORAGE_PUBLIC_ENDPOINT
-                ? { publicEndpoint: appConfig.OBJECT_STORAGE_PUBLIC_ENDPOINT }
-                : {}),
-              ...(appConfig.OBJECT_STORAGE_INTERNAL_ENDPOINT
-                ? { internalEndpoint: appConfig.OBJECT_STORAGE_INTERNAL_ENDPOINT }
-                : {}),
-              ...(appConfig.OBJECT_STORAGE_ACCESS_KEY
-                ? { accessKeyId: appConfig.OBJECT_STORAGE_ACCESS_KEY }
-                : {}),
-              ...(appConfig.OBJECT_STORAGE_SECRET_KEY
-                ? { secretAccessKey: appConfig.OBJECT_STORAGE_SECRET_KEY }
-                : {}),
-              forcePathStyle: appConfig.OBJECT_STORAGE_FORCE_PATH_STYLE,
-            }),
-            {
-              apiKey: config.MINIMAX_API_KEY ?? "",
-              imageModel: config.MINIMAX_IMAGE_MODEL,
-              videoModel: config.MINIMAX_VIDEO_MODEL,
-              promptVersion: config.MINIMAX_PROMPT_VERSION,
-              generateVideo: config.MINIMAX_GENERATE_VIDEO,
-              timeoutMs: appConfig.CONTENT_PROVIDER_TIMEOUT_MS,
-              pollIntervalMs: config.MINIMAX_POLL_INTERVAL_MS,
-              maximumPolls: config.MINIMAX_MAXIMUM_POLLS,
-              maximumResponseBytes: appConfig.CONTENT_PROVIDER_MAX_RESPONSE_BYTES,
-              maximumAssetBytes: appConfig.CONTENT_MAX_ASSET_BYTES,
-            },
-          ),
+          new MiniMaxContentProvider(creativeStorage, {
+            apiKey: config.MINIMAX_API_KEY ?? "",
+            imageModel: config.MINIMAX_IMAGE_MODEL,
+            videoModel: config.MINIMAX_VIDEO_MODEL,
+            promptVersion: config.MINIMAX_PROMPT_VERSION,
+            generateVideo: config.MINIMAX_GENERATE_VIDEO,
+            timeoutMs: appConfig.CONTENT_PROVIDER_TIMEOUT_MS,
+            pollIntervalMs: config.MINIMAX_POLL_INTERVAL_MS,
+            maximumPolls: config.MINIMAX_MAXIMUM_POLLS,
+            maximumResponseBytes: appConfig.CONTENT_PROVIDER_MAX_RESPONSE_BYTES,
+            maximumAssetBytes: appConfig.CONTENT_MAX_ASSET_BYTES,
+          }),
           baseRuntime.assets,
         )
       : null;
@@ -144,6 +124,7 @@ export function createCompanyIntelligenceRuntime(
     lifecycle,
     economic,
     creativeStudio,
+    creativeStorage,
     sourceImageUploads: baseRuntime.sourceImageUploads,
     enabled: config.COMPANY_INTELLIGENCE_ENABLED,
     async initialize(): Promise<void> {
@@ -152,10 +133,12 @@ export function createCompanyIntelligenceRuntime(
         await daemons.initialize({ organizationId: "maustian", accountId });
       }
     },
-    async processBatch(): Promise<Readonly<{
-      evidence: Awaited<ReturnType<EvidenceResponseRouter["processBatch"]>>;
-      daemons: Awaited<ReturnType<SpecialistDaemonScheduler["runOnce"]>>;
-    }>> {
+    async processBatch(): Promise<
+      Readonly<{
+        evidence: Awaited<ReturnType<EvidenceResponseRouter["processBatch"]>>;
+        daemons: Awaited<ReturnType<SpecialistDaemonScheduler["runOnce"]>>;
+      }>
+    > {
       if (!config.COMPANY_INTELLIGENCE_ENABLED) {
         return Object.freeze({
           evidence: { leased: 0, fulfilled: 0, failed: 0 },
@@ -183,6 +166,26 @@ function createEconomicOperations(baseRuntime: Runtime): EconomicOperationsServi
     new PostgresEconomicOperationsRepository(pool),
     new ProfitEngineService(profitRepository, profitRepository, profitRepository),
   );
+}
+
+function createCreativeStorage(config: AppConfig): S3ObjectStorage {
+  return new S3ObjectStorage({
+    bucket: config.OBJECT_STORAGE_BUCKET,
+    region: config.OBJECT_STORAGE_REGION,
+    ...(config.OBJECT_STORAGE_PUBLIC_ENDPOINT
+      ? { publicEndpoint: config.OBJECT_STORAGE_PUBLIC_ENDPOINT }
+      : {}),
+    ...(config.OBJECT_STORAGE_INTERNAL_ENDPOINT
+      ? { internalEndpoint: config.OBJECT_STORAGE_INTERNAL_ENDPOINT }
+      : {}),
+    ...(config.OBJECT_STORAGE_ACCESS_KEY
+      ? { accessKeyId: config.OBJECT_STORAGE_ACCESS_KEY }
+      : {}),
+    ...(config.OBJECT_STORAGE_SECRET_KEY
+      ? { secretAccessKey: config.OBJECT_STORAGE_SECRET_KEY }
+      : {}),
+    forcePathStyle: config.OBJECT_STORAGE_FORCE_PATH_STYLE,
+  });
 }
 
 class EmptyProductLifecycleSource implements ProductLifecycleSource {
