@@ -13,6 +13,7 @@ export * from "./outbox.js";
 export * from "./ports.js";
 export * from "./productIdentificationReviewService.js";
 export * from "./productIdentificationService.js";
+export * from "./productTaxonomyService.js";
 export * from "./profitEngineService.js";
 export * from "./sessionService.js";
 export * from "./sourceImageUploadService.js";
