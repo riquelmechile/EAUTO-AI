@@ -6,6 +6,7 @@ const productionArguments = process.argv.slice(2);
 const requiredProductIdentificationFiles = [
   "infra/postgres/migrations/028_product_identification_persistence.sql",
   "infra/postgres/migrations/029_product_identification_scope_and_similarity.sql",
+  "infra/postgres/migrations/030_product_fingerprint_semantics.sql",
   "scripts/smoke-product-identification-postgres.mjs",
 ];
 

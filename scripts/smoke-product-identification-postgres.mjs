@@ -5,7 +5,7 @@ import {
   ProductIdentificationService,
 } from "@eauto/application";
 import { DeterministicProductVisionProvider } from "@eauto/content";
-import { calculateVisualSimilarityBps } from "@eauto/domain";
+import { calculateProductFingerprintSimilarityBps } from "@eauto/domain";
 import {
   PostgresProductIdentificationRepository,
   PostgresSourceImageUploadRepository,
@@ -130,6 +130,10 @@ try {
   const stored = await repository.get({ organizationId, accountId, identificationId });
   if (!stored) throw new Error("Persisted product identification could not be read.");
   assert(stored.result.selectedCandidate?.id === "candidate-shears", "selected candidate was lost");
+  assert(
+    stored.fingerprint.algorithm === "sha256-prefix-64",
+    "deterministic development fingerprints must declare exact-content semantics",
+  );
 
   const reviewService = new ProductIdentificationReviewService(repository, repository);
   const reviewInput = Object.freeze({
@@ -190,8 +194,16 @@ try {
   });
   assert(
     nearDuplicates[0]?.similarityBps ===
-      calculateVisualSimilarityBps(stored.fingerprint.value, oneBitDifferent.value),
-    "PostgreSQL and domain visual similarity must use the same basis-point rounding",
+      calculateProductFingerprintSimilarityBps(
+        stored.fingerprint.algorithm,
+        stored.fingerprint.value,
+        oneBitDifferent.value,
+      ),
+    "PostgreSQL and domain fingerprint semantics must match",
+  );
+  assert(
+    nearDuplicates[0]?.similarityBps === 0,
+    "cryptographic content fingerprints must not imply visual similarity",
   );
 
   await reviewService
@@ -209,7 +221,7 @@ try {
       if (!String(error).includes("already terminal")) throw error;
     });
 
-  console.log("✓ Product identification persistence, review and visual similarity verified");
+  console.log("✓ Product identification persistence, review and safe fingerprint semantics verified");
 } finally {
   await pool
     .query(
