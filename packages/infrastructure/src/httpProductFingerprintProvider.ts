@@ -3,10 +3,7 @@ import type {
   ForComputingProductVisualFingerprints,
   ProductSourceImageRequest,
 } from "@eauto/application";
-import {
-  validateProductVisualFingerprint,
-  type ProductVisualFingerprint,
-} from "@eauto/domain";
+import { validateProductVisualFingerprint, type ProductVisualFingerprint } from "@eauto/domain";
 
 export class ProductFingerprintProviderValidationError extends Error {
   readonly code = "product-fingerprint-provider-invalid-response";
@@ -131,9 +128,7 @@ export class HttpProductFingerprintProvider implements ForComputingProductVisual
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(
-          `${this.config.providerName} timed out after ${this.config.timeoutMs} ms.`,
-        );
+        throw new Error(`${this.config.providerName} timed out after ${this.config.timeoutMs} ms.`);
       }
       throw error;
     } finally {
@@ -191,7 +186,9 @@ function assertRequired(value: string, label: string): void {
 }
 
 function hashCanonical(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(value)))
+    .digest("hex");
 }
 
 function canonicalize(value: unknown): unknown {
