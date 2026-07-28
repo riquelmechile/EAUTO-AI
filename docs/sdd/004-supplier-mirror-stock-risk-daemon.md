@@ -20,7 +20,9 @@ Owns supplier-product links, per-link recovery confirmation, bounded leases, det
 
 ### Profit Engine integration
 
-Supplier cost changes schedule an existing economic policy for immediate margin reaudit. Stock recovery cannot bypass economic verification.
+A successful supplier cost observation becomes the authoritative `product-cost` for every active linked listing when it is newer than the existing economic observation. The same transaction schedules the existing economic policy for immediate margin reaudit. Creating a link after catalog ingestion also backfills the latest verified supplier cost.
+
+Failed sync values never feed Profit Engine. Stock recovery cannot bypass economic verification.
 
 ## Observation contract
 
@@ -50,9 +52,9 @@ Under a PostgreSQL advisory transaction lock scoped to `supplierSourceId + SKU`:
 7. product-level successful-sync telemetry advances only for new successful observations;
 8. each linked listing keeps its own recovery confirmation count;
 9. that count advances only for a new successful observation above the link's recovery threshold and resets otherwise;
-10. linked stock audits become due.
+10. linked stock and margin audits become due.
 
-The repository performs scope, duplicate and temporal checks. PostgreSQL migration 019 adds a trigger-level fail-closed boundary so future adapters cannot overwrite verified supplier state with a failed or temporally regressive sync.
+The repository performs scope, duplicate and temporal checks. PostgreSQL migration 019 adds a trigger-level fail-closed boundary so future adapters cannot overwrite verified supplier state with a failed or temporally regressive sync. Migration 020 owns the supplier-cost-to-Profit-Engine feed for both product changes and newly created links.
 
 ## Link scope
 
@@ -113,6 +115,7 @@ The daemon:
 - current supplier products;
 - append-only observations;
 - listing links, confirmation counters and policies;
+- economic product-cost observations;
 - stock assessments with policy version;
 - approval-gated availability proposals.
 
@@ -124,9 +127,10 @@ Assessments and proposals are idempotent by canonical content hash. Assessment t
 - Online sources still require fresh evidence and policy gates.
 - All pause/reactivation proposals remain `pending-approval`.
 - Supplier observations cannot directly mutate MercadoLibre.
+- Only successful, ordered supplier evidence can update economic product cost.
 - Cost changes force Profit Engine reevaluation before reactivation.
 - Old, mismatched or incomplete profitability snapshots cannot authorize reactivation.
-- Failed syncs cannot overwrite verified supplier state.
+- Failed syncs cannot overwrite verified supplier state or economic cost.
 - Out-of-order observations cannot replace current state.
 - Cross-account and cross-source data are rejected.
 
@@ -139,10 +143,13 @@ Assessments and proposals are idempotent by canonical content hash. Assessment t
 - First unique successful observation above a link threshold records confirmation `1` and creates no reactivation proposal when policy requires two.
 - Second unique successful observation above the threshold records confirmation `2`.
 - Stock at/below threshold resets the link confirmation count.
+- Creating a link backfills the latest successful supplier product cost.
+- A newer successful supplier cost updates `product-cost` and schedules margin audit.
+- Failed supplier cost cannot overwrite the economic cost.
 - Profitability that does not match current listing price, product cost and evidence is treated as unknown.
 - Competing workers cannot lease the same link.
 - Verified confirmed recovery creates one idempotent reactivation proposal.
 - Proposal remains pending approval and preserves policy version.
 - Repeated identical audits create no duplicate assessment or proposal.
-- Production smoke executes migrations, ordered ingestion, failure preservation, economic verification, leasing and evaluation against PostgreSQL.
+- Production smoke executes migrations, ordered ingestion, failure preservation, cost feed, economic verification, leasing and evaluation against PostgreSQL.
 - Worker runs stock audit independently from other processors.
