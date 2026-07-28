@@ -21,13 +21,7 @@ import { api } from "./src/lib/api";
 import { sessionStore, type MobileSession } from "./src/lib/session";
 
 type Tab =
-  | "dashboard"
-  | "agents"
-  | "intelligence"
-  | "mercadolibre"
-  | "product"
-  | "inbox"
-  | "studio";
+  "dashboard" | "agents" | "intelligence" | "mercadolibre" | "product" | "inbox" | "studio";
 
 const TABS: readonly { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Empresa" },
