@@ -1,4 +1,5 @@
 import {
+  GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -53,6 +54,22 @@ export class S3ObjectStorage implements ObjectStoragePort {
         "x-amz-checksum-sha256": input.checksumSha256Base64,
       }),
     });
+  }
+
+  async createPresignedDownload(input: {
+    objectKey: string;
+    expiresInSeconds: number;
+  }): Promise<string> {
+    if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 60 || input.expiresInSeconds > 3_600) {
+      throw new Error("Presigned download expiry must be between 60 and 3600 seconds.");
+    }
+    const inspected = await this.inspectObject(input.objectKey);
+    if (!inspected.exists) throw new Error(`Object ${input.objectKey} was not found.`);
+    return getSignedUrl(
+      this.signingClient,
+      new GetObjectCommand({ Bucket: this.config.bucket, Key: input.objectKey }),
+      { expiresIn: input.expiresInSeconds },
+    );
   }
 
   async putGeneratedObject(input: {
