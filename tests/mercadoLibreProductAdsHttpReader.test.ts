@@ -127,19 +127,21 @@ describe("MercadoLibreProductAdsHttpReader", () => {
 
     const calls = fetchMock.mock.calls;
     expect(calls).toHaveLength(4);
-    expect(new URL(calls[0]?.[0] as URL).pathname).toBe("/advertising/advertisers");
+    expect(requestUrl(calls[0]?.[0]).pathname).toBe("/advertising/advertisers");
     expect(new Headers(calls[0]?.[1]?.headers).get("api-version")).toBe("1");
     for (const call of calls.slice(1)) {
       expect(new Headers(call[1]?.headers).get("api-version")).toBe("2");
-      expect(String(call[0])).not.toContain("/advertising/product_ads/metrics");
+      expect(requestUrl(call[0]).pathname).not.toBe("/advertising/product_ads/metrics");
     }
-    expect(String(calls[1]?.[0])).toContain(
+    expect(requestUrl(calls[1]?.[0]).pathname).toBe(
       "/advertising/MLC/advertisers/456/product_ads/campaigns/search",
     );
-    expect(String(calls[2]?.[0])).toContain(
+    expect(requestUrl(calls[2]?.[0]).pathname).toBe(
       "/advertising/MLC/product_ads/campaigns/11/ad_groups/metrics",
     );
-    expect(String(calls[3]?.[0])).toContain("/advertising/MLC/product_ads/ad_groups/22/ads");
+    expect(requestUrl(calls[3]?.[0]).pathname).toBe(
+      "/advertising/MLC/product_ads/ad_groups/22/ads",
+    );
   });
 
   it("fails closed on a non-official API host", () => {
@@ -160,4 +162,11 @@ function jsonResponse(payload: unknown): Response {
     status: 200,
     headers: { "content-type": "application/json" },
   });
+}
+
+function requestUrl(input: RequestInfo | URL | undefined): URL {
+  if (input instanceof URL) return input;
+  if (typeof input === "string") return new URL(input);
+  if (input instanceof Request) return new URL(input.url);
+  throw new Error("Expected a captured fetch request URL.");
 }
