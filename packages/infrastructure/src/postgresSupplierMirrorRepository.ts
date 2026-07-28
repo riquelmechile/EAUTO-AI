@@ -436,8 +436,17 @@ export class PostgresSupplierMirrorRepository
   }
 
   private async persistAssessment(assessment: SupplierStockAssessment): Promise<void> {
-    const { evaluatedAt: _evaluatedAt, ...material } = assessment;
-    const contentHash = hashCanonical(material);
+    const contentHash = hashCanonical({
+      organizationId: assessment.organizationId,
+      accountId: assessment.accountId,
+      listingId: assessment.listingId,
+      supplierSourceId: assessment.supplierSourceId,
+      sourceType: assessment.sourceType,
+      stockDelta: assessment.stockDelta,
+      evidenceRefs: assessment.evidenceRefs,
+      availabilityProposal: assessment.availabilityProposal,
+      signals: assessment.signals,
+    });
     await this.pool.query(
       `INSERT INTO supplier_stock_assessments
         (id, organization_id, account_id, supplier_source_id, listing_id,
