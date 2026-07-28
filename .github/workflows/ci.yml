@@ -23,17 +23,15 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install dependencies quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: List files requiring Prettier
-        run: >-
-          npx prettier --check
-          docs/sdd/011-perceptual-fingerprint-provider.md
-          packages/infrastructure/src/httpProductFingerprintProvider.ts
-          packages/infrastructure/src/index.ts
-          apps/api/src/config.ts
-          apps/api/src/runtime.ts
-          apps/api/src/productIdentificationRoutes.ts
-          tests/httpProductFingerprintProvider.test.ts
-          tests/catalogAcquisitionConfig.test.ts
-          tests/productIdentificationApi.test.ts
-          scripts/smoke-production-runtime.mjs
-          .env.production.example
+      - name: Show exact Prettier diff
+        run: |
+          npx prettier --write \
+            packages/infrastructure/src/httpProductFingerprintProvider.ts \
+            apps/api/src/config.ts \
+            tests/httpProductFingerprintProvider.test.ts \
+            tests/catalogAcquisitionConfig.test.ts >/dev/null
+          git diff --unified=3 -- \
+            packages/infrastructure/src/httpProductFingerprintProvider.ts \
+            apps/api/src/config.ts \
+            tests/httpProductFingerprintProvider.test.ts \
+            tests/catalogAcquisitionConfig.test.ts
