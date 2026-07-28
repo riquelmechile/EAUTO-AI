@@ -59,12 +59,14 @@ export class MarginAuditDaemon {
     private readonly options: MarginAuditDaemonOptions,
   ) {}
 
-  async runOnce(limit: number): Promise<Readonly<{
-    leased: number;
-    audited: number;
-    findings: number;
-    failed: number;
-  }>> {
+  async runOnce(limit: number): Promise<
+    Readonly<{
+      leased: number;
+      audited: number;
+      findings: number;
+      failed: number;
+    }>
+  > {
     if (!Number.isSafeInteger(limit) || limit < 1) {
       throw new Error("Margin audit limit must be a positive safe integer.");
     }
@@ -85,7 +87,11 @@ export class MarginAuditDaemon {
           candidate.accountId,
           candidate.listingId,
         );
-        const finding = createMarginAuditFinding(candidate, snapshot, this.options.now().toISOString());
+        const finding = createMarginAuditFinding(
+          candidate,
+          snapshot,
+          this.options.now().toISOString(),
+        );
         await this.findings.save(finding);
         await this.candidates.complete({
           candidate,

@@ -12,11 +12,7 @@ const marginAuditRepository = runtime.databasePool
   : null;
 const marginAuditDaemon = marginAuditRepository
   ? new MarginAuditDaemon(
-      new ProfitEngineService(
-        marginAuditRepository,
-        marginAuditRepository,
-        marginAuditRepository,
-      ),
+      new ProfitEngineService(marginAuditRepository, marginAuditRepository, marginAuditRepository),
       marginAuditRepository,
       marginAuditRepository,
       {

@@ -116,10 +116,7 @@ export class PostgresProfitEngineRepository
       costs,
       minimumMarginBps: row.minimum_margin_bps,
       asOf: this.now().toISOString(),
-      maximumEvidenceAgeMs: toSafeInteger(
-        row.maximum_evidence_age_ms,
-        "maximumEvidenceAgeMs",
-      ),
+      maximumEvidenceAgeMs: toSafeInteger(row.maximum_evidence_age_ms, "maximumEvidenceAgeMs"),
     });
   }
 
@@ -209,7 +206,8 @@ export class PostgresProfitEngineRepository
         input.error,
       ],
     );
-    if (result.rowCount !== 1) throw new Error("Margin audit lease was lost before failure release.");
+    if (result.rowCount !== 1)
+      throw new Error("Margin audit lease was lost before failure release.");
   }
 
   private async persistSnapshot(snapshot: ProfitabilitySnapshot): Promise<void> {

@@ -129,7 +129,14 @@ async function seed() {
        maximum_increase_bps, maximum_evidence_age_ms, policy_version, next_audit_at)
      VALUES ($1, $2, $3, 1600, $4, 'mercadolibre', $5, $6, 3000, 2000,
        86400000, 'profit-smoke-v1', $5)`,
-    [accountId === organizationId ? organizationId : organizationId, accountId, listingId, `fee-${suffix}`, now.toISOString(), "b".repeat(64)],
+    [
+      accountId === organizationId ? organizationId : organizationId,
+      accountId,
+      listingId,
+      `fee-${suffix}`,
+      now.toISOString(),
+      "b".repeat(64),
+    ],
   );
   for (const cost of [
     ["product-cost", 5_000, "supplier", "c".repeat(64)],
@@ -164,10 +171,16 @@ async function cleanup() {
     "economic_listing_policies",
     "mercadolibre_listing_snapshots",
   ]) {
-    await pool.query(`DELETE FROM ${table} WHERE account_id = $1`, [accountId]).catch(() => undefined);
+    await pool
+      .query(`DELETE FROM ${table} WHERE account_id = $1`, [accountId])
+      .catch(() => undefined);
   }
-  await pool.query(`DELETE FROM commerce_accounts WHERE id = $1`, [accountId]).catch(() => undefined);
-  await pool.query(`DELETE FROM organizations WHERE id = $1`, [organizationId]).catch(() => undefined);
+  await pool
+    .query(`DELETE FROM commerce_accounts WHERE id = $1`, [accountId])
+    .catch(() => undefined);
+  await pool
+    .query(`DELETE FROM organizations WHERE id = $1`, [organizationId])
+    .catch(() => undefined);
 }
 
 function assert(condition, message) {

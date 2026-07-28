@@ -89,11 +89,11 @@ Identical evidence and policy must not create duplicate durable artifacts.
 ## Margin finding mapping
 
 | Profitability status | Finding severity |
-| --- | --- |
-| `profitable` | `none` |
-| `below-floor` | `warning` |
-| `loss` | `critical` |
-| `incomplete` | `blocked` |
+| -------------------- | ---------------- |
+| `profitable`         | `none`           |
+| `below-floor`        | `warning`        |
+| `loss`               | `critical`       |
+| `incomplete`         | `blocked`        |
 
 Healthy findings are persisted to prove that a listing was evaluated, not merely ignored.
 
