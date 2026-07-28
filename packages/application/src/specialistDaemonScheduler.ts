@@ -203,9 +203,7 @@ export class SpecialistDaemonScheduler {
     });
   }
 
-  async runOnce(
-    limit = 16,
-  ): Promise<
+  async runOnce(limit = 16): Promise<
     Readonly<{
       leased: number;
       queued: number;
