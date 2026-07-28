@@ -71,12 +71,7 @@ describe("SupplierStockService", () => {
       },
     );
 
-    const assessment = await service.evaluateListing(
-      "plasticov",
-      "MLC123",
-      "supplier-1",
-      policy,
-    );
+    const assessment = await service.evaluateListing("plasticov", "MLC123", "supplier-1", policy);
 
     expect(assessments).toHaveLength(1);
     expect(proposals).toHaveLength(0);

@@ -122,8 +122,14 @@ try {
      FROM supplier_availability_proposals WHERE account_id = $1 LIMIT 1`,
     [accountId],
   );
-  assert(proposal.rows[0]?.proposal_kind === "listing.reactivate", "recovery must propose reactivation");
-  assert(proposal.rows[0]?.status === "pending-approval", "reactivation must remain approval-gated");
+  assert(
+    proposal.rows[0]?.proposal_kind === "listing.reactivate",
+    "recovery must propose reactivation",
+  );
+  assert(
+    proposal.rows[0]?.status === "pending-approval",
+    "reactivation must remain approval-gated",
+  );
   assert(
     proposal.rows[0]?.payload_json?.requiresApproval === true,
     "the durable proposal must preserve approval requirement",

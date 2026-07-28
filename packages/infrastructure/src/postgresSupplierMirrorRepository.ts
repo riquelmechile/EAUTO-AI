@@ -101,7 +101,8 @@ export class PostgresSupplierMirrorRepository
           observation.supplierSourceId,
           observation.sku,
         );
-        if (!existing) throw new Error("Supplier observation exists without current product state.");
+        if (!existing)
+          throw new Error("Supplier observation exists without current product state.");
         await client.query("COMMIT");
         return Object.freeze({ recorded: false, product: mapRecordedProduct(existing) });
       }
@@ -258,7 +259,9 @@ export class PostgresSupplierMirrorRepository
       throw new Error("MercadoLibre listing snapshot is outside the supplier link scope.");
     }
     if (listing.status !== "active" && listing.status !== "paused") {
-      throw new Error(`MercadoLibre listing status ${listing.status} is not eligible for stock audit.`);
+      throw new Error(
+        `MercadoLibre listing status ${listing.status} is not eligible for stock audit.`,
+      );
     }
     const evidence = Object.freeze({
       id: row.evidence_id,
@@ -266,10 +269,7 @@ export class PostgresSupplierMirrorRepository
       observedAt: toIso(row.observed_at),
       contentHash: row.evidence_content_hash,
     });
-    const currentUnitCostMinor = toNullableSafeInteger(
-      row.unit_cost_minor,
-      "currentUnitCostMinor",
-    );
+    const currentUnitCostMinor = toNullableSafeInteger(row.unit_cost_minor, "currentUnitCostMinor");
 
     return Object.freeze({
       organizationId: row.organization_id,
@@ -291,10 +291,7 @@ export class PostgresSupplierMirrorRepository
       stockEvidence: evidence,
       costEvidence: currentUnitCostMinor === null ? null : evidence,
       asOf: this.now().toISOString(),
-      maximumEvidenceAgeMs: toSafeInteger(
-        row.maximum_evidence_age_ms,
-        "maximumEvidenceAgeMs",
-      ),
+      maximumEvidenceAgeMs: toSafeInteger(row.maximum_evidence_age_ms, "maximumEvidenceAgeMs"),
     });
   }
 
@@ -308,13 +305,15 @@ export class PostgresSupplierMirrorRepository
     await this.persistAssessment(value);
   }
 
-  async schedule(input: Readonly<{
-    organizationId: string;
-    accountId: string;
-    listingId: string;
-    reason: string;
-    evidenceRefs: readonly string[];
-  }>): Promise<void> {
+  async schedule(
+    input: Readonly<{
+      organizationId: string;
+      accountId: string;
+      listingId: string;
+      reason: string;
+      evidenceRefs: readonly string[];
+    }>,
+  ): Promise<void> {
     const result = await this.pool.query(
       `UPDATE economic_listing_policies
        SET next_audit_at = LEAST(next_audit_at, now()), updated_at = now()
