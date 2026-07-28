@@ -105,9 +105,9 @@ describe("MercadoLibre taxonomy preflight", () => {
   });
 
   it("blocks evidence from another site", () => {
-    expect(
-      evaluate({ category: { ...category, siteId: "MLA", id: "MLA1234" } }).reasons,
-    ).toContain("category-site-mismatch");
+    expect(evaluate({ category: { ...category, siteId: "MLA", id: "MLA1234" } }).reasons).toContain(
+      "category-site-mismatch",
+    );
   });
 
   it("returns incomplete for stale evidence", () => {
