@@ -38,6 +38,7 @@ const files = [
   "infra/postgres/migrations/019_supplier_product_sync_invariants.sql",
   "infra/postgres/migrations/020_supplier_cost_profit_engine_feed.sql",
   "infra/postgres/migrations/021_supplier_authority_and_freshness_guards.sql",
+  "infra/postgres/migrations/022_supplier_authoritative_audit_scheduling.sql",
   "packages/content/src/httpContentProvider.ts",
   "packages/infrastructure/src/httpActionExecutor.ts",
   "apps/mobile/app.config.cjs",
