@@ -389,7 +389,7 @@ export class SpecialistDaemonScheduler {
       organizationId: state.organizationId,
       accountId: state.accountId,
       daemonId: state.daemonId,
-      signals: Object.freeze([]) as readonly Signal[],
+      signals: Object.freeze([]),
       evidencePackId: state.lastEvidencePackId,
       workOrderId: state.lastWorkOrderId,
       status: "failed" as const,

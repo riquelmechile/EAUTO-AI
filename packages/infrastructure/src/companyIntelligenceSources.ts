@@ -5,7 +5,6 @@ import type {
   EvidenceDocument,
   EvidenceSubject,
   MercadoLibreListingSnapshot,
-  MercadoLibreOrderSnapshot,
   ProductLifecycleInput,
   SemanticMemorySearchResult,
   Signal,
