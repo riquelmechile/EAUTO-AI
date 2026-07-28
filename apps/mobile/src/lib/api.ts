@@ -32,11 +32,7 @@ export type RequestedSourceImageUpload = Readonly<{
 }>;
 
 export type ProductIdentificationStatus =
-  | "identified-pending-confirmation"
-  | "ambiguous"
-  | "no-match"
-  | "duplicate-blocked"
-  | "incomplete";
+  "identified-pending-confirmation" | "ambiguous" | "no-match" | "duplicate-blocked" | "incomplete";
 
 export type ProductIdentificationCandidate = Readonly<{
   id: string;
