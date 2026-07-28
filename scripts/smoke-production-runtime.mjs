@@ -33,6 +33,10 @@ try {
   run("node", ["scripts/smoke-supplier-cost-feed-postgres.mjs"], {
     DATABASE_URL: databaseUrl,
   });
+  stage = "verify-catalog-acquisition";
+  run("node", ["scripts/smoke-catalog-acquisition-postgres.mjs"], {
+    DATABASE_URL: databaseUrl,
+  });
   stage = "verify-migration-idempotency";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
 
@@ -58,6 +62,8 @@ try {
       },
     ]),
     CONTENT_PROVIDER_API_KEY: "content-smoke-key",
+    CATALOG_VISUAL_PROVIDER_API_KEY: "catalog-visual-smoke-key",
+    CATALOG_SUPPLIER_API_KEY: "catalog-supplier-smoke-key",
     ACTION_PROVIDER_API_KEY: "action-smoke-key",
     LLM_API_KEY: "llm-smoke-key",
     MELI_CLIENT_ID: "meli-smoke-client",
@@ -73,6 +79,14 @@ try {
   runtime = await createRuntime(config);
   assert(runtime.persistenceMode === "postgres", "production runtime must use Postgres");
   assert(runtime.contentGenerationMode === "external", "content provider must be external");
+  assert(
+    runtime.catalogAcquisitionMode === "external",
+    "catalog acquisition providers must be external",
+  );
+  assert(
+    runtime.catalogAcquisitionPolicy.supplierSourceIds.includes("supplier-production"),
+    "catalog acquisition policy must use configured supplier routes",
+  );
   assert(runtime.actionExecutionMode === "external", "action provider must be external");
   assert(runtime.shadowLlm !== null, "DeepSeek shadow runtime must be enabled");
   assert(runtime.mercadoLibre !== null, "MercadoLibre Chile runtime must be enabled");
@@ -91,6 +105,7 @@ try {
   console.log("✓ Multi-provider supplier authority and lease isolation verified");
   console.log("✓ Failed sync preservation and monotonic supplier state verified");
   console.log("✓ Verified supplier product cost feeds Profit Engine");
+  console.log("✓ Catalog acquisition persistence and review lifecycle verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");
   console.log("EAUTO_PRODUCTION_SMOKE_OK");
