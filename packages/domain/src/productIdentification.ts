@@ -101,7 +101,9 @@ export function evaluateProductIdentification(
     });
   }
 
-  if (orderedCandidates.some((candidate) => !candidate.evidenceRefs.includes(input.sourceImage.id))) {
+  if (
+    orderedCandidates.some((candidate) => !candidate.evidenceRefs.includes(input.sourceImage.id))
+  ) {
     return result(input, policy, {
       status: "incomplete",
       reasons: ["candidate-evidence-missing"],
@@ -218,7 +220,10 @@ function validateInput(input: ProductIdentificationInput): void {
       if (!value.trim()) throw new Error(`${field} is required.`);
     }
     assertBasisPoints(candidate.confidenceBps, "candidate.confidenceBps");
-    if (candidate.evidenceRefs.length === 0 || candidate.evidenceRefs.some((value) => !value.trim())) {
+    if (
+      candidate.evidenceRefs.length === 0 ||
+      candidate.evidenceRefs.some((value) => !value.trim())
+    ) {
       throw new Error("candidate.evidenceRefs must contain non-empty references.");
     }
     if (candidateIds.has(candidate.id)) throw new Error(`Duplicate candidate id ${candidate.id}.`);
@@ -249,7 +254,10 @@ function compareCandidates(
   return right.confidenceBps - left.confidenceBps || left.id.localeCompare(right.id);
 }
 
-function compareDuplicates(left: VisualDuplicateCandidate, right: VisualDuplicateCandidate): number {
+function compareDuplicates(
+  left: VisualDuplicateCandidate,
+  right: VisualDuplicateCandidate,
+): number {
   return right.similarityBps - left.similarityBps || left.productId.localeCompare(right.productId);
 }
 

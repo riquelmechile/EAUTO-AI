@@ -3,10 +3,7 @@ import type {
   ForSearchingVisualDuplicates,
   ProductVisionRequest,
 } from "@eauto/application";
-import type {
-  ProductIdentificationCandidate,
-  VisualDuplicateCandidate,
-} from "@eauto/domain";
+import type { ProductIdentificationCandidate, VisualDuplicateCandidate } from "@eauto/domain";
 
 export type DeterministicProductVisionFixture = Readonly<{
   contentHash: string;
