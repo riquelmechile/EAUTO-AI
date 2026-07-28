@@ -19,13 +19,15 @@ export type ForSavingStockAvailabilityProposals = {
 };
 
 export type ForSchedulingMarginReaudits = {
-  schedule(input: Readonly<{
-    organizationId: string;
-    accountId: string;
-    listingId: string;
-    reason: string;
-    evidenceRefs: readonly string[];
-  }>): Promise<void>;
+  schedule(
+    input: Readonly<{
+      organizationId: string;
+      accountId: string;
+      listingId: string;
+      reason: string;
+      evidenceRefs: readonly string[];
+    }>,
+  ): Promise<void>;
 };
 
 export class SupplierStockService {

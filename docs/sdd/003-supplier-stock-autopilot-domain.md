@@ -19,12 +19,12 @@ This slice contains domain and application contracts only.
 
 ## Source types
 
-| Source | Automatic availability proposal allowed |
-| --- | --- |
-| `online` | Yes, when all evidence and policy gates pass |
-| `manual` | No |
-| `own` | No |
-| `unverified` | No |
+| Source       | Automatic availability proposal allowed      |
+| ------------ | -------------------------------------------- |
+| `online`     | Yes, when all evidence and policy gates pass |
+| `manual`     | No                                           |
+| `own`        | No                                           |
+| `unverified` | No                                           |
 
 This preserves the kiiess guard that manual, own and unverified sources must never toggle marketplace availability automatically.
 
