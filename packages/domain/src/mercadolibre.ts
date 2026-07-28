@@ -124,7 +124,8 @@ export class MercadoLibreIntegrationError extends Error {
       | "mercadolibre-seller-mismatch"
       | "mercadolibre-refresh-in-progress"
       | "mercadolibre-reauthorization-required"
-      | "mercadolibre-taxonomy-unavailable",
+      | "mercadolibre-taxonomy-unavailable"
+      | "mercadolibre-item-validation-unavailable",
     message: string,
   ) {
     super(message);
