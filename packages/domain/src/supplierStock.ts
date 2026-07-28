@@ -64,6 +64,7 @@ export type SupplierStockAssessment = Readonly<{
   listingId: string;
   supplierSourceId: string;
   sourceType: StockSourceType;
+  policyVersion: string;
   stockDelta: number;
   evidenceRefs: readonly string[];
   availabilityProposal: StockAvailabilityProposal | null;
@@ -172,7 +173,7 @@ export function evaluateSupplierStock(
   }
 
   const recoveryConfirmed =
-    stockRecovered &&
+    input.currentStock > policy.recoveryStockThreshold &&
     input.consecutiveSuccessfulSyncs >= policy.recoveryConsecutiveSyncs &&
     input.listingStatus === "paused";
   if (automaticSourceEligible && input.syncSucceeded && stockEvidenceFresh && recoveryConfirmed) {
@@ -200,6 +201,7 @@ export function evaluateSupplierStock(
     listingId: input.listingId,
     supplierSourceId: input.supplierSourceId,
     sourceType: input.sourceType,
+    policyVersion: policy.policyVersion,
     stockDelta: input.currentStock - input.previousStock,
     evidenceRefs,
     availabilityProposal,
