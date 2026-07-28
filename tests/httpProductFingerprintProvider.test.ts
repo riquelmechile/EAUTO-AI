@@ -79,7 +79,11 @@ describe("HttpProductFingerprintProvider", () => {
   it.each([
     ["schema version", { schemaVersion: "future-response-v2" }, /unsupported schema version/],
     ["upload scope", { sourceImageUploadId: "foreign-upload" }, /another source image upload/],
-    ["checksum", { checksumSha256Base64: "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=" }, /another image checksum/],
+    [
+      "checksum",
+      { checksumSha256Base64: "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=" },
+      /another image checksum/,
+    ],
     ["algorithm", { algorithm: "sha256-prefix-64" }, /must return algorithm phash-64/],
     ["version", { version: "phash-64-v2" }, /allowlisted version phash-64-v1/],
     ["value length", { value: "0".repeat(63) }, /exactly 64 binary digits/],
@@ -87,9 +91,11 @@ describe("HttpProductFingerprintProvider", () => {
   ])("rejects a response with invalid %s", async (_label, patch, expected) => {
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(
-        new Response(JSON.stringify({ ...validResponse, ...patch }), { status: 200 }),
-      ),
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          new Response(JSON.stringify({ ...validResponse, ...patch }), { status: 200 }),
+        ),
     );
     await expect(provider().compute(input)).rejects.toThrow(expected as RegExp);
   });
