@@ -123,7 +123,8 @@ export class MercadoLibreIntegrationError extends Error {
       | "mercadolibre-site-mismatch"
       | "mercadolibre-seller-mismatch"
       | "mercadolibre-refresh-in-progress"
-      | "mercadolibre-reauthorization-required",
+      | "mercadolibre-reauthorization-required"
+      | "mercadolibre-taxonomy-unavailable",
     message: string,
   ) {
     super(message);
