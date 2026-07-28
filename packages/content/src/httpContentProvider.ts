@@ -80,7 +80,9 @@ export class HttpContentProvider implements ContentGenerationPort {
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`Content provider timed out after ${this.config.timeoutMs} ms.`);
+        throw new Error(`Content provider timed out after ${this.config.timeoutMs} ms.`, {
+          cause: error,
+        });
       }
       throw error;
     } finally {
@@ -170,7 +172,9 @@ export class HttpContentProvider implements ContentGenerationPort {
       return Object.freeze({ body, contentType });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`Generated asset download timed out after ${this.config.timeoutMs} ms.`);
+        throw new Error(`Generated asset download timed out after ${this.config.timeoutMs} ms.`, {
+          cause: error,
+        });
       }
       throw error;
     } finally {

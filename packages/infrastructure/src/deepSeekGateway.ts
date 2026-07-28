@@ -54,7 +54,7 @@ export class DeepSeekGateway implements LlmProviderGateway {
       });
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error("DeepSeek request timed out.");
+        throw new Error("DeepSeek request timed out.", { cause: error });
       }
       throw error;
     } finally {

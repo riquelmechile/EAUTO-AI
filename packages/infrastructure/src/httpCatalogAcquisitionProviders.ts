@@ -255,7 +255,9 @@ async function postJson(
     }
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`${config.providerName} timed out after ${config.timeoutMs} ms.`);
+      throw new Error(`${config.providerName} timed out after ${config.timeoutMs} ms.`, {
+        cause: error,
+      });
     }
     throw error;
   } finally {

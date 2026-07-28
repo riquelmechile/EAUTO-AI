@@ -33,6 +33,7 @@ export default tseslint.config(
       globals: {
         AggregateError: "readonly",
         Buffer: "readonly",
+        Response: "readonly",
         URL: "readonly",
         console: "readonly",
         fetch: "readonly",

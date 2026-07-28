@@ -128,7 +128,10 @@ export class HttpProductFingerprintProvider implements ForComputingProductVisual
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`${this.config.providerName} timed out after ${this.config.timeoutMs} ms.`);
+        throw new Error(
+          `${this.config.providerName} timed out after ${this.config.timeoutMs} ms.`,
+          { cause: error },
+        );
       }
       throw error;
     } finally {

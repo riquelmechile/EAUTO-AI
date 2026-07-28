@@ -115,6 +115,7 @@ export class HttpActionExecutor implements ActionExecutor {
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error(
           `Action provider ${operation} timed out after ${this.config.timeoutMs} ms.`,
+          { cause: error },
         );
       }
       throw error;

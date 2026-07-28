@@ -241,6 +241,7 @@ export class MercadoLibreQuestionAnswerExecutor implements ActionExecutor {
       if (error instanceof Error && error.name === "AbortError") {
         throw new Error(
           `MercadoLibre question request timed out after ${this.config.timeoutMs} ms.`,
+          { cause: error },
         );
       }
       throw error;
