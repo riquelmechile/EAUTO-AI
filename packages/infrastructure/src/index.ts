@@ -14,6 +14,7 @@ export * from "./inMemorySourceImageUploadRepository.js";
 export * from "./llmRunRepositories.js";
 export * from "./mercadoLibreHttpClient.js";
 export * from "./mercadoLibreNotificationRepositories.js";
+export * from "./mercadoLibreQuestionAnswerExecutor.js";
 export * from "./mercadoLibreTaxonomyHttpReader.js";
 export * from "./nodeMercadoLibreSecurity.js";
 export * from "./operationalIntelligenceRepositories.js";
