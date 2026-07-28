@@ -16,12 +16,13 @@ export type ForRecordingSupplierProductObservations = {
 export class SupplierMirrorService {
   constructor(private readonly observations: ForRecordingSupplierProductObservations) {}
 
-  recordObservation(observation: SupplierProductObservation): Promise<
+  async recordObservation(observation: SupplierProductObservation): Promise<
     Readonly<{
       recorded: boolean;
       product: RecordedSupplierProduct;
     }>
   > {
-    return this.observations.record(validateSupplierProductObservation(observation));
+    const validated = validateSupplierProductObservation(observation);
+    return await this.observations.record(validated);
   }
 }
