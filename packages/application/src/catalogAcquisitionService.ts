@@ -177,6 +177,10 @@ function buildCandidate(
     policyVersion: request.policy.policyVersion,
   };
   const contentHash = createHash("sha256").update(JSON.stringify(material)).digest("hex");
+  const evidenceRefs: readonly [string, string] = Object.freeze([
+    match.evidence.id,
+    offer.evidence.id,
+  ]);
   return Object.freeze({
     id: `acquisition-${contentHash.slice(0, 32)}`,
     contentHash,
@@ -193,7 +197,7 @@ function buildCandidate(
     unitCostMinor: offer.unitCostMinor,
     stockQuantity: offer.stockQuantity,
     currencyId: offer.currencyId,
-    evidenceRefs: Object.freeze([match.evidence.id, offer.evidence.id]),
+    evidenceRefs,
     policyVersion: request.policy.policyVersion,
     status: "needs-review",
     requiresHumanApproval: true,
