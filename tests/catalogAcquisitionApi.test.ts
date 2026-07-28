@@ -59,7 +59,7 @@ const candidate: AcquisitionCandidate = Object.freeze({
   policyVersion: "catalog-acquisition-v1",
   status: "needs-review",
   requiresHumanApproval: true,
-  createdAt: "2026-07-28T15:00:00.000Z",
+  createdAt: "2026-07-28T00:00:00.000Z",
   reviewedAt: null,
   reviewedBy: null,
   reviewNote: null,
