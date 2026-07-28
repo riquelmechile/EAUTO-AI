@@ -21,6 +21,10 @@ try {
   run("node", ["scripts/smoke-profit-engine-postgres.mjs"], { DATABASE_URL: databaseUrl });
   stage = "verify-supplier-mirror";
   run("node", ["scripts/smoke-supplier-mirror-postgres.mjs"], { DATABASE_URL: databaseUrl });
+  stage = "verify-supplier-sync-invariants";
+  run("node", ["scripts/smoke-supplier-sync-invariants-postgres.mjs"], {
+    DATABASE_URL: databaseUrl,
+  });
   stage = "verify-migration-idempotency";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
 
@@ -76,6 +80,7 @@ try {
   console.log("✓ Scoped repositories and action lifecycle verified");
   console.log("✓ Profit Engine persistence and margin-audit leases verified");
   console.log("✓ Supplier Mirror ingestion, debounce and stock-risk leases verified");
+  console.log("✓ Failed sync preservation and monotonic supplier state verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");
   console.log("EAUTO_PRODUCTION_SMOKE_OK");
