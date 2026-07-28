@@ -168,4 +168,36 @@ ON supplier_listing_links
 FOR EACH ROW
 EXECUTE FUNCTION feed_supplier_product_cost_after_link_change();
 
+DO $$
+DECLARE
+  product supplier_products%ROWTYPE;
+BEGIN
+  FOR product IN
+    SELECT DISTINCT supplier_product.*
+    FROM supplier_products supplier_product
+    JOIN supplier_listing_links link
+      ON link.organization_id = supplier_product.organization_id
+     AND link.account_id = supplier_product.account_id
+     AND link.supplier_source_id = supplier_product.supplier_source_id
+     AND link.sku = supplier_product.sku
+     AND link.active = true
+     AND link.cost_authoritative = true
+    WHERE supplier_product.sync_succeeded = true
+      AND supplier_product.unit_cost_minor IS NOT NULL
+  LOOP
+    PERFORM upsert_supplier_product_cost_for_links(
+      product.organization_id,
+      product.account_id,
+      product.supplier_source_id,
+      product.sku,
+      product.unit_cost_minor,
+      product.evidence_id,
+      product.evidence_source,
+      product.observed_at,
+      product.evidence_content_hash
+    );
+  END LOOP;
+END;
+$$;
+
 COMMIT;
