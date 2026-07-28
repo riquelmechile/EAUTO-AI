@@ -52,7 +52,9 @@ const attributes: MercadoLibreCategoryAttributesContract = Object.freeze({
   evidence: Object.freeze({ observedAt, sourceHash: "b".repeat(64) }),
 });
 
-function evaluate(overrides: Partial<Parameters<typeof evaluateMercadoLibreTaxonomyPreflight>[0]> = {}) {
+function evaluate(
+  overrides: Partial<Parameters<typeof evaluateMercadoLibreTaxonomyPreflight>[0]> = {},
+) {
   return evaluateMercadoLibreTaxonomyPreflight({
     category,
     attributes,
@@ -76,7 +78,9 @@ describe("MercadoLibre taxonomy preflight", () => {
       category: { ...category, childrenCategoryIds: ["MLC9999"], listingAllowed: false },
     });
     expect(result.status).toBe("blocked");
-    expect(result.reasons).toEqual(expect.arrayContaining(["category-not-leaf", "category-not-listable"]));
+    expect(result.reasons).toEqual(
+      expect.arrayContaining(["category-not-leaf", "category-not-listable"]),
+    );
   });
 
   it("blocks missing required and invalid list attributes", () => {
@@ -101,9 +105,9 @@ describe("MercadoLibre taxonomy preflight", () => {
   });
 
   it("blocks evidence from another site", () => {
-    expect(evaluate({ category: { ...category, siteId: "MLA", id: "MLA1234" } }).reasons).toContain(
-      "category-site-mismatch",
-    );
+    expect(
+      evaluate({ category: { ...category, siteId: "MLA", id: "MLA1234" } }).reasons,
+    ).toContain("category-site-mismatch");
   });
 
   it("returns incomplete for stale evidence", () => {
