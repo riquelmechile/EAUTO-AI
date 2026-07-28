@@ -129,14 +129,7 @@ async function seed() {
        maximum_increase_bps, maximum_evidence_age_ms, policy_version, next_audit_at)
      VALUES ($1, $2, $3, 1600, $4, 'mercadolibre', $5, $6, 3000, 2000,
        86400000, 'profit-smoke-v1', $5)`,
-    [
-      accountId === organizationId ? organizationId : organizationId,
-      accountId,
-      listingId,
-      `fee-${suffix}`,
-      now.toISOString(),
-      "b".repeat(64),
-    ],
+    [organizationId, accountId, listingId, `fee-${suffix}`, now.toISOString(), "b".repeat(64)],
   );
   for (const cost of [
     ["product-cost", 5_000, "supplier", "c".repeat(64)],
