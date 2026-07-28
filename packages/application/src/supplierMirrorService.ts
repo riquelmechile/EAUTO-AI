@@ -23,6 +23,6 @@ export class SupplierMirrorService {
     }>
   > {
     const validated = validateSupplierProductObservation(observation);
-    return await this.observations.record(validated);
+    return this.observations.record(validated);
   }
 }
