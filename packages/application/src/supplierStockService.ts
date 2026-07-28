@@ -7,7 +7,7 @@ import {
 } from "@eauto/domain";
 
 export type ForReadingSupplierStockInputs = {
-  read(accountId: string, listingId: string): Promise<SupplierStockInput>;
+  read(accountId: string, listingId: string, supplierSourceId: string): Promise<SupplierStockInput>;
 };
 
 export type ForSavingSupplierStockAssessments = {
@@ -41,10 +41,15 @@ export class SupplierStockService {
   async evaluateListing(
     accountId: string,
     listingId: string,
+    supplierSourceId: string,
     policy: SupplierStockPolicy,
   ): Promise<SupplierStockAssessment> {
-    const input = await this.inputs.read(accountId, listingId);
-    if (input.accountId !== accountId || input.listingId !== listingId) {
+    const input = await this.inputs.read(accountId, listingId, supplierSourceId);
+    if (
+      input.accountId !== accountId ||
+      input.listingId !== listingId ||
+      input.supplierSourceId !== supplierSourceId
+    ) {
       throw new Error("Supplier stock reader returned data outside the requested scope.");
     }
 

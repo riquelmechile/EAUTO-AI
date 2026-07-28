@@ -54,6 +54,7 @@ describe("supplier stock domain", () => {
       reason: "supplier-out-of-stock",
       requiresApproval: true,
     });
+    expect(assessment.policyVersion).toBe("supplier-stock-v1");
   });
 
   it.each(["manual", "own", "unverified"] as const)(
@@ -68,11 +69,29 @@ describe("supplier stock domain", () => {
     },
   );
 
-  it("reactivates only after two recovery syncs and verified economics", () => {
+  it("reports the first recovered observation without reactivating", () => {
     const assessment = evaluateSupplierStock(
       {
         ...baseInput,
         previousStock: 2,
+        currentStock: 5,
+        consecutiveSuccessfulSyncs: 1,
+        listingStatus: "paused",
+      },
+      policy,
+    );
+
+    expect(assessment.availabilityProposal).toBeNull();
+    expect(assessment.signals).toContainEqual(
+      expect.objectContaining({ kind: "stock.recovered", severity: "info" }),
+    );
+  });
+
+  it("reactivates only after a second available observation and verified economics", () => {
+    const assessment = evaluateSupplierStock(
+      {
+        ...baseInput,
+        previousStock: 5,
         currentStock: 5,
         consecutiveSuccessfulSyncs: 2,
         listingStatus: "paused",
@@ -85,16 +104,13 @@ describe("supplier stock domain", () => {
       reason: "stock-recovered-and-margin-verified",
       requiresApproval: true,
     });
-    expect(assessment.signals).toContainEqual(
-      expect.objectContaining({ kind: "stock.recovered", severity: "info" }),
-    );
   });
 
   it("blocks reactivation and requests a margin reaudit after a material cost increase", () => {
     const assessment = evaluateSupplierStock(
       {
         ...baseInput,
-        previousStock: 2,
+        previousStock: 5,
         currentStock: 5,
         consecutiveSuccessfulSyncs: 2,
         listingStatus: "paused",
