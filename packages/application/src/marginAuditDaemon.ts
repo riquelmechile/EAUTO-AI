@@ -1,5 +1,5 @@
 import type { ProfitabilitySnapshot } from "@eauto/domain";
-import { ProfitEngineService } from "./profitEngineService.js";
+import type { ProfitEngineService } from "./profitEngineService.js";
 
 export type MarginAuditCandidate = Readonly<{
   organizationId: string;
