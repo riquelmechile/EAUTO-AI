@@ -25,6 +25,10 @@ try {
   run("node", ["scripts/smoke-supplier-sync-invariants-postgres.mjs"], {
     DATABASE_URL: databaseUrl,
   });
+  stage = "verify-supplier-cost-feed";
+  run("node", ["scripts/smoke-supplier-cost-feed-postgres.mjs"], {
+    DATABASE_URL: databaseUrl,
+  });
   stage = "verify-migration-idempotency";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
 
@@ -81,6 +85,7 @@ try {
   console.log("✓ Profit Engine persistence and margin-audit leases verified");
   console.log("✓ Supplier Mirror ingestion, debounce and stock-risk leases verified");
   console.log("✓ Failed sync preservation and monotonic supplier state verified");
+  console.log("✓ Verified supplier product cost feeds Profit Engine");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");
   console.log("EAUTO_PRODUCTION_SMOKE_OK");
