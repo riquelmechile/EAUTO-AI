@@ -50,9 +50,7 @@ try {
      ORDER BY supplier_source_id`,
     [accountId, listingId],
   );
-  const primary = initialAuthority.rows.find(
-    (row) => row.supplier_source_id === primarySourceId,
-  );
+  const primary = initialAuthority.rows.find((row) => row.supplier_source_id === primarySourceId);
   const secondary = initialAuthority.rows.find(
     (row) => row.supplier_source_id === secondarySourceId,
   );
