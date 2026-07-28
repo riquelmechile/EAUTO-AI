@@ -66,7 +66,9 @@ describe("HttpProductFingerprintProvider", () => {
     const headers = new Headers(request?.[1]?.headers);
     expect(headers.get("authorization")).toBe("Bearer fingerprint-secret");
     expect(headers.get("idempotency-key")).toMatch(/^fingerprint:[a-f0-9]{64}$/);
-    expect(JSON.parse(String(request?.[1]?.body))).toEqual({
+    const requestBody = request?.[1]?.body;
+    if (typeof requestBody !== "string") throw new Error("Expected a JSON string request body.");
+    expect(JSON.parse(requestBody)).toEqual({
       schemaVersion: "eauto-product-fingerprint-request-v1",
       organizationId: "maustian",
       accountId: "plasticov",
@@ -97,7 +99,7 @@ describe("HttpProductFingerprintProvider", () => {
           new Response(JSON.stringify({ ...validResponse, ...patch }), { status: 200 }),
         ),
     );
-    await expect(provider().compute(input)).rejects.toThrow(expected as RegExp);
+    await expect(provider().compute(input)).rejects.toThrow(expected);
   });
 
   it("rejects invalid JSON and controlled HTTP errors", async () => {
