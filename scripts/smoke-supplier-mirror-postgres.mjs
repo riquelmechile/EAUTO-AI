@@ -1,11 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import {
+  ProfitEngineService,
   SupplierMirrorService,
   SupplierStockAuditDaemon,
   SupplierStockService,
 } from "@eauto/application";
-import { PostgresSupplierMirrorRepository } from "@eauto/infrastructure";
+import {
+  PostgresProfitEngineRepository,
+  PostgresSupplierMirrorRepository,
+} from "@eauto/infrastructure";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required for the supplier-mirror smoke.");
@@ -18,14 +22,25 @@ const supplierSourceId = `supplier-source-${suffix}`;
 const sku = `SKU-${suffix.slice(0, 12)}`;
 const listingId = `MLC${suffix.slice(0, 12)}`;
 const sellerId = `seller-${suffix}`;
+const productCostEvidenceId = `supplier-product-cost-${suffix}`;
+const fulfillmentCostEvidenceId = `supplier-fulfillment-cost-${suffix}`;
 const firstObservedAt = "2026-07-27T12:00:00.000Z";
-const secondObservedAt = "2026-07-27T13:00:00.000Z";
+const firstRecoveryObservedAt = "2026-07-27T13:00:00.000Z";
+const confirmedRecoveryObservedAt = "2026-07-27T13:30:00.000Z";
 const now = new Date("2026-07-27T14:00:00.000Z");
 const repository = new PostgresSupplierMirrorRepository(pool, () => now);
 const mirror = new SupplierMirrorService(repository);
+const profitRepository = new PostgresProfitEngineRepository(pool, () => now);
+const profitEngine = new ProfitEngineService(
+  profitRepository,
+  profitRepository,
+  profitRepository,
+);
 
 try {
   await seedScope();
+  const profitability = await profitEngine.auditListing(accountId, listingId);
+  assert(profitability.status === "profitable", "seed economics must be profitable");
 
   const initial = observation({
     stockQuantity: 0,
@@ -36,30 +51,46 @@ try {
   assert(initialRecord.recorded, "the first supplier observation must be recorded");
   assert(
     initialRecord.product.consecutiveSuccessfulSyncs === 1,
-    "the first successful sync must start the recovery counter",
+    "the first successful supplier sync must be counted",
   );
 
   await seedListingLink();
 
-  const recovered = observation({
+  const firstRecovery = observation({
     stockQuantity: 5,
-    observedAt: secondObservedAt,
+    observedAt: firstRecoveryObservedAt,
     evidenceHash: "b".repeat(64),
   });
-  const recoveryRecord = await mirror.recordObservation(recovered);
-  assert(recoveryRecord.recorded, "the recovery observation must be recorded");
-  assert(recoveryRecord.product.previousStock === 0, "the mirror must retain previous stock");
-  assert(recoveryRecord.product.currentStock === 5, "the mirror must expose current stock");
+  const firstRecoveryRecord = await mirror.recordObservation(firstRecovery);
+  assert(firstRecoveryRecord.recorded, "the first recovery observation must be recorded");
   assert(
-    recoveryRecord.product.consecutiveSuccessfulSyncs === 2,
-    "the second successful sync must satisfy recovery debounce",
+    firstRecoveryRecord.product.previousStock === 0,
+    "the mirror must retain previous stock",
+  );
+  assert(firstRecoveryRecord.product.currentStock === 5, "the mirror must expose current stock");
+
+  await assertRejects(
+    mirror.recordObservation(
+      observation({
+        stockQuantity: 9,
+        observedAt: "2026-07-27T12:30:00.000Z",
+        evidenceHash: "f".repeat(64),
+      }),
+    ),
+    /must be newer/,
+    "an out-of-order observation must not replace current state",
   );
 
-  const duplicate = await mirror.recordObservation(recovered);
-  assert(!duplicate.recorded, "an identical supplier observation must be idempotent");
+  const duplicateFirstRecovery = await mirror.recordObservation(firstRecovery);
+  assert(!duplicateFirstRecovery.recorded, "an identical observation must be idempotent");
+  const firstRecoveryInput = await repository.read(accountId, listingId, supplierSourceId);
   assert(
-    duplicate.product.consecutiveSuccessfulSyncs === 2,
-    "a duplicate observation must not increment the recovery counter",
+    firstRecoveryInput.consecutiveSuccessfulSyncs === 1,
+    "the first available observation must not satisfy recovery debounce",
+  );
+  assert(
+    firstRecoveryInput.profitabilityStatus === "profitable",
+    "profitability must match the current listing price and economic product cost",
   );
 
   const firstLease = await repository.claim({
@@ -90,9 +121,40 @@ try {
     retryIntervalMs: 60_000,
     now: () => now,
   });
-  const audit = await daemon.runOnce(10);
-  assert(audit.leased === 1 && audit.evaluated === 1 && audit.failed === 0, "stock audit failed");
-  assert(audit.proposals === 1, "verified stock recovery must create one proposal");
+  const firstAudit = await daemon.runOnce(10);
+  assert(
+    firstAudit.leased === 1 && firstAudit.evaluated === 1 && firstAudit.failed === 0,
+    "first stock recovery audit failed",
+  );
+  assert(
+    firstAudit.proposals === 0,
+    "one available observation must not create a reactivation proposal",
+  );
+
+  const confirmedRecovery = observation({
+    stockQuantity: 5,
+    observedAt: confirmedRecoveryObservedAt,
+    evidenceHash: "c".repeat(64),
+  });
+  const confirmedRecoveryRecord = await mirror.recordObservation(confirmedRecovery);
+  assert(confirmedRecoveryRecord.recorded, "the confirmation observation must be recorded");
+  const duplicateConfirmedRecovery = await mirror.recordObservation(confirmedRecovery);
+  assert(!duplicateConfirmedRecovery.recorded, "the confirmation duplicate must be idempotent");
+  const confirmedInput = await repository.read(accountId, listingId, supplierSourceId);
+  assert(
+    confirmedInput.consecutiveSuccessfulSyncs === 2,
+    "two unique available observations must satisfy recovery debounce",
+  );
+
+  const confirmedAudit = await daemon.runOnce(10);
+  assert(
+    confirmedAudit.leased === 1 && confirmedAudit.evaluated === 1 && confirmedAudit.failed === 0,
+    "confirmed stock recovery audit failed",
+  );
+  assert(
+    confirmedAudit.proposals === 1,
+    "verified and confirmed stock recovery must create one proposal",
+  );
 
   await pool.query(
     `UPDATE supplier_listing_links
@@ -113,12 +175,18 @@ try {
          WHERE account_id = $1) AS proposals`,
     [accountId],
   );
-  assert(counts.rows[0]?.observations === 2, "duplicate observations must not be appended");
-  assert(counts.rows[0]?.assessments === 1, "identical assessments must be idempotent");
+  assert(
+    counts.rows[0]?.observations === 3,
+    "duplicates and out-of-order observations must not be appended",
+  );
+  assert(
+    counts.rows[0]?.assessments === 2,
+    "only materially different assessments must be persisted",
+  );
   assert(counts.rows[0]?.proposals === 1, "identical proposals must be idempotent");
 
   const proposal = await pool.query(
-    `SELECT proposal_kind, status, payload_json
+    `SELECT proposal_kind, status, policy_version, payload_json
      FROM supplier_availability_proposals WHERE account_id = $1 LIMIT 1`,
     [accountId],
   );
@@ -131,11 +199,17 @@ try {
     "reactivation must remain approval-gated",
   );
   assert(
+    proposal.rows[0]?.policy_version === "supplier-stock-v1",
+    "the durable proposal must preserve its policy version",
+  );
+  assert(
     proposal.rows[0]?.payload_json?.requiresApproval === true,
     "the durable proposal must preserve approval requirement",
   );
 
-  console.log("✓ Supplier Mirror ingestion, debounce, leases and governed reactivation verified");
+  console.log(
+    "✓ Supplier Mirror ordering, debounce, economic evidence, leases and governed reactivation verified",
+  );
 } finally {
   await cleanup();
   await pool.end();
@@ -186,33 +260,18 @@ async function seedScope() {
     itemId: listingId,
     title: "Supplier Mirror Smoke Listing",
     status: "paused",
-    priceMinor: 10_000,
+    priceMinor: 12_000,
     currencyId: "CLP",
     availableQuantity: 0,
     soldQuantity: 2,
     observedAt: now.toISOString(),
-    sourceHash: "c".repeat(64),
+    sourceHash: "d".repeat(64),
   });
   await pool.query(
     `INSERT INTO mercadolibre_listing_snapshots
       (account_id, organization_id, seller_id, item_id, observed_at, payload_json)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
     [accountId, organizationId, sellerId, listingId, now.toISOString(), JSON.stringify(listing)],
-  );
-  await pool.query(
-    `INSERT INTO profitability_snapshots
-      (id, organization_id, account_id, listing_id, status, calculated_at,
-       content_hash, payload_json)
-     VALUES ($1, $2, $3, $4, 'profitable', $5, $6, $7::jsonb)`,
-    [
-      `supplier-profit-${suffix}`,
-      organizationId,
-      accountId,
-      listingId,
-      now.toISOString(),
-      "d".repeat(64),
-      JSON.stringify({ status: "profitable", accountId, listingId }),
-    ],
   );
   await pool.query(
     `INSERT INTO economic_listing_policies
@@ -229,6 +288,24 @@ async function seedScope() {
       `supplier-fee-${suffix}`,
       now.toISOString(),
       "e".repeat(64),
+    ],
+  );
+  await pool.query(
+    `INSERT INTO economic_cost_observations
+      (organization_id, account_id, listing_id, cost_kind, amount_minor,
+       evidence_id, evidence_source, observed_at, content_hash)
+     VALUES
+       ($1, $2, $3, 'product-cost', 5000, $4, 'supplier-smoke', $6, $7),
+       ($1, $2, $3, 'fulfillment-cost', 500, $5, 'fulfillment-smoke', $6, $8)`,
+    [
+      organizationId,
+      accountId,
+      listingId,
+      productCostEvidenceId,
+      fulfillmentCostEvidenceId,
+      now.toISOString(),
+      "1".repeat(64),
+      "2".repeat(64),
     ],
   );
 }
@@ -252,8 +329,9 @@ async function cleanup() {
     "supplier_product_observations",
     "supplier_products",
     "supplier_sources",
-    "economic_listing_policies",
     "profitability_snapshots",
+    "economic_cost_observations",
+    "economic_listing_policies",
     "mercadolibre_listing_snapshots",
   ]) {
     await pool
@@ -266,6 +344,17 @@ async function cleanup() {
   await pool
     .query(`DELETE FROM organizations WHERE id = $1`, [organizationId])
     .catch(() => undefined);
+}
+
+async function assertRejects(promise, pattern, message) {
+  try {
+    await promise;
+  } catch (error) {
+    const rendered = error instanceof Error ? error.message : String(error);
+    assert(pattern.test(rendered), `${message}: unexpected error ${rendered}`);
+    return;
+  }
+  throw new Error(message);
 }
 
 function assert(condition, message) {
