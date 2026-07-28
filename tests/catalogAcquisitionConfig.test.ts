@@ -64,8 +64,7 @@ describe("catalog acquisition configuration", () => {
 
     expect(() =>
       loadConfig({
-        PRODUCT_FINGERPRINT_PROVIDER_URL:
-          "https://user:secret@fingerprint.example.com/v1/phash",
+        PRODUCT_FINGERPRINT_PROVIDER_URL: "https://user:secret@fingerprint.example.com/v1/phash",
         PRODUCT_FINGERPRINT_PROVIDER_API_KEY: "fingerprint-secret",
       }),
     ).toThrow(/cannot embed credentials/);
