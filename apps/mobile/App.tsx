@@ -16,16 +16,19 @@ import { LoginScreen } from "./src/features/auth/LoginScreen";
 import { AgentOsScreen } from "./src/features/agents/AgentOsScreen";
 import { OperationalIntelligenceScreen } from "./src/features/agents/OperationalIntelligenceScreen";
 import { MercadoLibreScreen } from "./src/features/mercadolibre/MercadoLibreScreen";
+import { ProductIdentificationScreen } from "./src/features/product-identification/ProductIdentificationScreen";
 import { api } from "./src/lib/api";
 import { sessionStore, type MobileSession } from "./src/lib/session";
 
-type Tab = "dashboard" | "agents" | "intelligence" | "mercadolibre" | "inbox" | "studio";
+type Tab =
+  "dashboard" | "agents" | "intelligence" | "mercadolibre" | "product" | "inbox" | "studio";
 
 const TABS: readonly { id: Tab; label: string }[] = [
   { id: "dashboard", label: "Empresa" },
   { id: "agents", label: "Agentes" },
   { id: "intelligence", label: "Inteligencia" },
   { id: "mercadolibre", label: "MercadoLibre" },
+  { id: "product", label: "Producto" },
   { id: "inbox", label: "Decisiones" },
   { id: "studio", label: "Contenido" },
 ];
@@ -112,6 +115,7 @@ export default function App() {
           <OperationalIntelligenceScreen roles={session.actor.roles} />
         ) : null}
         {tab === "mercadolibre" ? <MercadoLibreScreen roles={session.actor.roles} /> : null}
+        {tab === "product" ? <ProductIdentificationScreen roles={session.actor.roles} /> : null}
         {tab === "inbox" ? <InboxScreen /> : null}
         {tab === "studio" ? <ContentStudioScreen /> : null}
       </ScrollView>

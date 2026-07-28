@@ -217,6 +217,7 @@ describe("ProductIdentificationService", () => {
           return Promise.resolve();
         },
       },
+      () => new Date("2026-07-27T13:00:00.000Z"),
     );
 
     await expect(
