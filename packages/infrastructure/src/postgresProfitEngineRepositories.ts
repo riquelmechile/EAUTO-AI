@@ -104,7 +104,7 @@ export class PostgresProfitEngineRepository
       currency: "CLP" as const,
       salePriceMinor: listing.priceMinor,
       quantity: 1,
-      variableRateBps: hasVariableRateEvidence ? row.variable_rate_bps : null,
+      variableRateBps: hasVariableRateEvidence ? (row.variable_rate_bps as number) : null,
       variableRateEvidence: hasVariableRateEvidence
         ? Object.freeze({
             id: row.variable_rate_evidence_id as string,
@@ -123,76 +123,19 @@ export class PostgresProfitEngineRepository
     });
   }
 
-  async save(snapshot: ProfitabilitySnapshot): Promise<void> {
-    const organizationId = await this.organizationFor(snapshot.accountId);
-    const contentHash = hashCanonical(snapshotMaterial(snapshot));
-    await this.pool.query(
-      `INSERT INTO profitability_snapshots
-        (id, organization_id, account_id, listing_id, status, calculated_at,
-         content_hash, payload_json)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-       ON CONFLICT (content_hash) DO NOTHING`,
-      [
-        `profit_${contentHash}`,
-        organizationId,
-        snapshot.accountId,
-        snapshot.listingId,
-        snapshot.status,
-        this.now().toISOString(),
-        contentHash,
-        JSON.stringify(snapshot),
-      ],
-    );
-  }
-
-  async saveProposal(proposal: RepricingProposal): Promise<void> {
-    await this.save(proposal);
-  }
-
-  async save(proposal: RepricingProposal): Promise<void>;
-  async save(value: ProfitabilitySnapshot | RepricingProposal): Promise<void> {
-    if ("proposedPriceMinor" in value) {
-      const organizationId = await this.organizationFor(value.accountId);
-      const contentHash = hashCanonical(value);
-      await this.pool.query(
-        `INSERT INTO repricing_proposals
-          (id, organization_id, account_id, listing_id, status, current_price_minor,
-           proposed_price_minor, policy_version, content_hash, payload_json)
-         VALUES ($1, $2, $3, $4, 'pending-approval', $5, $6, $7, $8, $9::jsonb)
-         ON CONFLICT (content_hash) DO NOTHING`,
-        [
-          `reprice_${contentHash}`,
-          organizationId,
-          value.accountId,
-          value.listingId,
-          value.currentPriceMinor,
-          value.proposedPriceMinor,
-          value.policyVersion,
-          contentHash,
-          JSON.stringify(value),
-        ],
-      );
+  async save(value: ProfitabilitySnapshot): Promise<void>;
+  async save(value: RepricingProposal): Promise<void>;
+  async save(value: MarginAuditFinding): Promise<void>;
+  async save(value: ProfitabilitySnapshot | RepricingProposal | MarginAuditFinding): Promise<void> {
+    if ("severity" in value) {
+      await this.persistFinding(value);
       return;
     }
-    const organizationId = await this.organizationFor(value.accountId);
-    const contentHash = hashCanonical(snapshotMaterial(value));
-    await this.pool.query(
-      `INSERT INTO profitability_snapshots
-        (id, organization_id, account_id, listing_id, status, calculated_at,
-         content_hash, payload_json)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-       ON CONFLICT (content_hash) DO NOTHING`,
-      [
-        `profit_${contentHash}`,
-        organizationId,
-        value.accountId,
-        value.listingId,
-        value.status,
-        this.now().toISOString(),
-        contentHash,
-        JSON.stringify(value),
-      ],
-    );
+    if ("proposedPriceMinor" in value) {
+      await this.persistProposal(value);
+      return;
+    }
+    await this.persistSnapshot(value);
   }
 
   async claim(input: {
@@ -269,66 +212,11 @@ export class PostgresProfitEngineRepository
     if (result.rowCount !== 1) throw new Error("Margin audit lease was lost before failure release.");
   }
 
-  async saveFinding(finding: MarginAuditFinding): Promise<void> {
-    await this.save(finding);
-  }
-
-  async save(finding: MarginAuditFinding): Promise<void>;
-  async save(value: ProfitabilitySnapshot | RepricingProposal | MarginAuditFinding): Promise<void> {
-    if ("severity" in value) {
-      const contentHash = hashCanonical({
-        organizationId: value.organizationId,
-        accountId: value.accountId,
-        listingId: value.listingId,
-        status: value.status,
-        severity: value.severity,
-        snapshot: snapshotMaterial(value.snapshot),
-      });
-      await this.pool.query(
-        `INSERT INTO margin_audit_findings
-          (id, organization_id, account_id, listing_id, status, severity,
-           observed_at, content_hash, payload_json)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
-         ON CONFLICT (content_hash) DO NOTHING`,
-        [
-          `margin_${contentHash}`,
-          value.organizationId,
-          value.accountId,
-          value.listingId,
-          value.status,
-          value.severity,
-          value.observedAt,
-          contentHash,
-          JSON.stringify(value),
-        ],
-      );
-      return;
-    }
-    if ("proposedPriceMinor" in value) {
-      const organizationId = await this.organizationFor(value.accountId);
-      const contentHash = hashCanonical(value);
-      await this.pool.query(
-        `INSERT INTO repricing_proposals
-          (id, organization_id, account_id, listing_id, status, current_price_minor,
-           proposed_price_minor, policy_version, content_hash, payload_json)
-         VALUES ($1, $2, $3, $4, 'pending-approval', $5, $6, $7, $8, $9::jsonb)
-         ON CONFLICT (content_hash) DO NOTHING`,
-        [
-          `reprice_${contentHash}`,
-          organizationId,
-          value.accountId,
-          value.listingId,
-          value.currentPriceMinor,
-          value.proposedPriceMinor,
-          value.policyVersion,
-          contentHash,
-          JSON.stringify(value),
-        ],
-      );
-      return;
-    }
-    const organizationId = await this.organizationFor(value.accountId);
-    const contentHash = hashCanonical(snapshotMaterial(value));
+  private async persistSnapshot(snapshot: ProfitabilitySnapshot): Promise<void> {
+    const organizationId = await this.organizationFor(snapshot.accountId);
+    const contentHash = hashCanonical(snapshot);
+    const calculatedAt =
+      snapshot.status === "incomplete" ? this.now().toISOString() : snapshot.calculatedAt;
     await this.pool.query(
       `INSERT INTO profitability_snapshots
         (id, organization_id, account_id, listing_id, status, calculated_at,
@@ -338,12 +226,64 @@ export class PostgresProfitEngineRepository
       [
         `profit_${contentHash}`,
         organizationId,
-        value.accountId,
-        value.listingId,
-        value.status,
-        this.now().toISOString(),
+        snapshot.accountId,
+        snapshot.listingId,
+        snapshot.status,
+        calculatedAt,
         contentHash,
-        JSON.stringify(value),
+        JSON.stringify(snapshot),
+      ],
+    );
+  }
+
+  private async persistProposal(proposal: RepricingProposal): Promise<void> {
+    const organizationId = await this.organizationFor(proposal.accountId);
+    const contentHash = hashCanonical(proposal);
+    await this.pool.query(
+      `INSERT INTO repricing_proposals
+        (id, organization_id, account_id, listing_id, status, current_price_minor,
+         proposed_price_minor, policy_version, content_hash, payload_json)
+       VALUES ($1, $2, $3, $4, 'pending-approval', $5, $6, $7, $8, $9::jsonb)
+       ON CONFLICT (content_hash) DO NOTHING`,
+      [
+        `reprice_${contentHash}`,
+        organizationId,
+        proposal.accountId,
+        proposal.listingId,
+        proposal.currentPriceMinor,
+        proposal.proposedPriceMinor,
+        proposal.policyVersion,
+        contentHash,
+        JSON.stringify(proposal),
+      ],
+    );
+  }
+
+  private async persistFinding(finding: MarginAuditFinding): Promise<void> {
+    const contentHash = hashCanonical({
+      organizationId: finding.organizationId,
+      accountId: finding.accountId,
+      listingId: finding.listingId,
+      status: finding.status,
+      severity: finding.severity,
+      snapshot: finding.snapshot,
+    });
+    await this.pool.query(
+      `INSERT INTO margin_audit_findings
+        (id, organization_id, account_id, listing_id, status, severity,
+         observed_at, content_hash, payload_json)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+       ON CONFLICT (content_hash) DO NOTHING`,
+      [
+        `margin_${contentHash}`,
+        finding.organizationId,
+        finding.accountId,
+        finding.listingId,
+        finding.status,
+        finding.severity,
+        finding.observedAt,
+        contentHash,
+        JSON.stringify(finding),
       ],
     );
   }
@@ -357,12 +297,6 @@ export class PostgresProfitEngineRepository
     if (!organizationId) throw new Error(`Commerce account ${accountId} was not found.`);
     return organizationId;
   }
-}
-
-function snapshotMaterial(snapshot: ProfitabilitySnapshot): unknown {
-  if (snapshot.status === "incomplete") return snapshot;
-  const { calculatedAt: _calculatedAt, ...material } = snapshot;
-  return material;
 }
 
 function hashCanonical(value: unknown): string {
