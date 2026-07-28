@@ -71,11 +71,11 @@ export class FreshMercadoLibreTaxonomyReader implements ForReadingMercadoLibreTa
     const key = scopedKey("category", input);
     const existing = this.categoryRefreshes.get(key);
     if (existing) return existing;
-    const refresh = this.loadAndSaveCategory(input).finally(() => {
+    const refresh = this.loadAndSaveCategory(input);
+    this.categoryRefreshes.set(key, refresh);
+    return refresh.finally(() => {
       if (this.categoryRefreshes.get(key) === refresh) this.categoryRefreshes.delete(key);
     });
-    this.categoryRefreshes.set(key, refresh);
-    return refresh;
   }
 
   private refreshCategoryAttributes(
@@ -84,11 +84,11 @@ export class FreshMercadoLibreTaxonomyReader implements ForReadingMercadoLibreTa
     const key = scopedKey("attributes", input);
     const existing = this.attributeRefreshes.get(key);
     if (existing) return existing;
-    const refresh = this.loadAndSaveCategoryAttributes(input).finally(() => {
+    const refresh = this.loadAndSaveCategoryAttributes(input);
+    this.attributeRefreshes.set(key, refresh);
+    return refresh.finally(() => {
       if (this.attributeRefreshes.get(key) === refresh) this.attributeRefreshes.delete(key);
     });
-    this.attributeRefreshes.set(key, refresh);
-    return refresh;
   }
 
   private async loadAndSaveCategory(
