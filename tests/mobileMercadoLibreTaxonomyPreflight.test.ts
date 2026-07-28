@@ -56,9 +56,7 @@ describe("Android MercadoLibre taxonomy preflight helpers", () => {
     expect(mercadoLibreTaxonomyReasonLabel("missing-required-attribute")).toMatch(
       /Faltan atributos obligatorios/,
     );
-    expect(mercadoLibreTaxonomyReasonLabel("category-not-listable")).toMatch(
-      /no permite publicar/,
-    );
+    expect(mercadoLibreTaxonomyReasonLabel("category-not-listable")).toMatch(/no permite publicar/);
     expect(mercadoLibreTaxonomyReasonLabel("evidence-stale")).toMatch(/evidencia oficial/);
   });
 });
