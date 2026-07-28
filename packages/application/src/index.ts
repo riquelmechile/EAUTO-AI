@@ -1,5 +1,6 @@
 export * from "./actionService.js";
 export * from "./agentOsService.js";
+export * from "./catalogAcquisitionService.js";
 export * from "./contentStudioService.js";
 export * from "./governedWorkOrderProcessor.js";
 export * from "./governedWorkOrderService.js";
