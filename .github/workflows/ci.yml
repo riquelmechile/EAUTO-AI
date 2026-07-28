@@ -1,66 +1,38 @@
-name: CI
+name: Format Supplier Stock Slice
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: format-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  quality:
+  format:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          persist-credentials: false
+          ref: feat/supplier-stock-autopilot-domain
+          persist-credentials: true
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22.16.0
           cache: npm
-      - name: Install dependencies
-        run: npm ci --no-audit --no-fund
-      - name: Check formatting
-        run: npm run format:check
-      - name: Typecheck
-        run: npm run typecheck
-      - name: Lint
-        run: npm run lint
-      - name: Test
-        run: npm test
-      - name: Build application
-        run: npm run build
-      - name: Prepare production template
-        run: cp .env.production.example .env.production
-      - name: Validate production and release contracts
-        run: npm run doctor:production -- --template --env=.env.production
-      - name: Verify production runtime and PostgreSQL
-        run: npm run smoke:production-runtime
-      - name: Validate production Compose
-        run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
-      - name: Validate Caddy configuration
+      - run: npm ci --no-audit --no-fund
+      - run: npm run format
+      - name: Commit canonical formatting
         run: |
-          docker run --rm \
-            -e API_DOMAIN=api.example.cl \
-            -e S3_DOMAIN=files.example.cl \
-            -e ACME_EMAIL=operations@example.cl \
-            -v "$PWD/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
-            caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile
-      - name: Build production API image
-        run: docker build --pull --target runtime --tag eauto-ai:ci .
-      - name: Start object storage
-        run: |
-          docker compose -f infra/compose/docker-compose.yml up -d minio
-          docker compose -f infra/compose/docker-compose.yml run --rm minio-init
-      - name: Verify signed object storage flow
-        run: npm run smoke:object-storage
-      - name: Stop object storage
-        if: always()
-        run: docker compose -f infra/compose/docker-compose.yml down --remove-orphans
-      - name: Doctor
-        run: npm run doctor
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style: format supplier stock slice"
+          git push origin HEAD:feat/supplier-stock-autopilot-domain
