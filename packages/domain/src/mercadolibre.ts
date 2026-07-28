@@ -2,6 +2,18 @@ import type { ActionKind } from "./actions.js";
 
 export const MERCADOLIBRE_CHILE_SITE_ID = "MLC" as const;
 
+export const MERCADOLIBRE_ACTION_KINDS = [
+  "listing.publish",
+  "listing.update",
+  "price.update",
+  "stock.update",
+  "question.answer",
+  "claim.respond",
+  "ads.update",
+] as const satisfies readonly ActionKind[];
+
+export type MercadoLibreActionKind = (typeof MERCADOLIBRE_ACTION_KINDS)[number];
+
 export const MERCADOLIBRE_CONNECTION_STATUSES = [
   "active",
   "refreshing",
