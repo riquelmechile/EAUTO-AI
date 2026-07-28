@@ -1,3 +1,4 @@
+export * from "./actionLifecycleEventHandlers.js";
 export * from "./agentOsRepositories.js";
 export * from "./deepSeekGateway.js";
 export * from "./httpActionExecutor.js";
@@ -8,16 +9,15 @@ export * from "./inMemorySessionRepository.js";
 export * from "./inMemorySourceImageUploadRepository.js";
 export * from "./llmRunRepositories.js";
 export * from "./mercadoLibreHttpClient.js";
+export * from "./mercadoLibreNotificationRepositories.js";
 export * from "./nodeMercadoLibreSecurity.js";
 export * from "./operationalIntelligenceRepositories.js";
 export * from "./postgresActionRepository.js";
 export * from "./postgresMercadoLibreRepositories.js";
 export * from "./postgresOutboxRepository.js";
+export * from "./postgresProfitEngineRepositories.js";
 export * from "./postgresRepositories.js";
 export * from "./postgresSessionRepository.js";
 export * from "./postgresSourceImageUploadRepository.js";
 export * from "./s3ObjectStorage.js";
 export * from "./verifiedOperationalEvidenceReader.js";
-
-export * from "./mercadoLibreNotificationRepositories.js";
-export * from "./actionLifecycleEventHandlers.js";
