@@ -151,7 +151,10 @@ function createService(options?: {
     {
       listListingSnapshots: () =>
         Promise.resolve([
-          Object.freeze({ ...listing, priceMinor: options?.listingPriceMinor ?? listing.priceMinor }),
+          Object.freeze({
+            ...listing,
+            priceMinor: options?.listingPriceMinor ?? listing.priceMinor,
+          }),
         ]),
     },
     repository,

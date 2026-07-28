@@ -34,14 +34,16 @@ describe("MercadoLibreProductAdsHttpReader", () => {
   it("uses advertiser discovery v1 and supported Product Ads v2 endpoints", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(jsonResponse([
-        {
-          advertiser_id: 456,
-          site_id: "MLC",
-          advertiser_name: "Plasticov Ads",
-          account_name: "Plasticov",
-        },
-      ]))
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            advertiser_id: 456,
+            site_id: "MLC",
+            advertiser_name: "Plasticov Ads",
+            account_name: "Plasticov",
+          },
+        ]),
+      )
       .mockResolvedValueOnce(
         jsonResponse({
           results: [
@@ -137,9 +139,7 @@ describe("MercadoLibreProductAdsHttpReader", () => {
     expect(String(calls[2]?.[0])).toContain(
       "/advertising/MLC/product_ads/campaigns/11/ad_groups/metrics",
     );
-    expect(String(calls[3]?.[0])).toContain(
-      "/advertising/MLC/product_ads/ad_groups/22/ads",
-    );
+    expect(String(calls[3]?.[0])).toContain("/advertising/MLC/product_ads/ad_groups/22/ads");
   });
 
   it("fails closed on a non-official API host", () => {

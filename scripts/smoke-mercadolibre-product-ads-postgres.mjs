@@ -151,7 +151,10 @@ try {
     items: [],
     reconciliations: [],
   });
-  assert((await repository.listCampaigns(accountId))[0]?.name === "Updated campaign", "replace failed");
+  assert(
+    (await repository.listCampaigns(accountId))[0]?.name === "Updated campaign",
+    "replace failed",
+  );
   assert((await repository.listAdGroups(accountId)).length === 0, "stale Ad Groups were retained");
   assert((await repository.listItems(accountId)).length === 0, "stale items were retained");
   assert(
@@ -260,12 +263,16 @@ async function cleanup() {
     "profitability_snapshots",
     "mercadolibre_listing_snapshots",
   ]) {
-    await pool.query(`DELETE FROM ${table} WHERE account_id = $1`, [accountId]).catch(() => undefined);
+    await pool
+      .query(`DELETE FROM ${table} WHERE account_id = $1`, [accountId])
+      .catch(() => undefined);
   }
   await pool
     .query(`DELETE FROM commerce_accounts WHERE organization_id = $1`, [organizationId])
     .catch(() => undefined);
-  await pool.query(`DELETE FROM organizations WHERE id = $1`, [organizationId]).catch(() => undefined);
+  await pool
+    .query(`DELETE FROM organizations WHERE id = $1`, [organizationId])
+    .catch(() => undefined);
 }
 
 function hash(value) {
