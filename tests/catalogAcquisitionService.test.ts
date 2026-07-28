@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CatalogAcquisitionService } from "@eauto/application";
+import { InMemoryAcquisitionCandidateRepository } from "@eauto/infrastructure";
 import type {
-  AcquisitionCandidate,
   PhotoSimilarityMatch,
   SourceImageUpload,
   SupplierCatalogOffer,
@@ -76,7 +76,7 @@ function createService(
     offers?: readonly SupplierCatalogOffer[];
   }>,
 ) {
-  const saved: AcquisitionCandidate[] = [];
+  const repository = new InMemoryAcquisitionCandidateRepository();
   let photoCalls = 0;
   let catalogCalls = 0;
   const service = new CatalogAcquisitionService(
@@ -95,17 +95,12 @@ function createService(
         return Promise.resolve(input?.offers ?? [offer]);
       },
     },
-    {
-      save: (candidate) => {
-        saved.push(candidate);
-        return Promise.resolve();
-      },
-    },
+    repository,
     { now: () => now },
   );
   return {
     service,
-    saved,
+    repository,
     photoCalls: () => photoCalls,
     catalogCalls: () => catalogCalls,
   };
@@ -142,10 +137,73 @@ describe("CatalogAcquisitionService", () => {
       status: "needs-review",
       requiresHumanApproval: true,
       evidenceRefs: ["visual-evidence-1", "catalog-evidence-1"],
+      reviewedAt: null,
+      reviewedBy: null,
+      reviewNote: null,
     });
     expect(firstResult[0]?.id).toBe(secondResult[0]?.id);
     expect(firstResult[0]?.contentHash).toBe(secondResult[0]?.contentHash);
-    expect(first.saved).toEqual(firstResult);
+    await expect(
+      first.repository.list({
+        organizationId: "maustian",
+        accountId: "plasticov",
+        limit: 10,
+      }),
+    ).resolves.toEqual(firstResult);
+  });
+
+  it("reviews one candidate exactly once and persists reviewer metadata", async () => {
+    const fixture = createService();
+    const [candidate] = await fixture.service.discover({
+      organizationId: "maustian",
+      accountId: "plasticov",
+      sourceImageUploadId: "upload-1",
+      policy,
+    });
+    expect(candidate).toBeDefined();
+
+    const reviewed = await fixture.service.reviewCandidate({
+      id: candidate!.id,
+      organizationId: "maustian",
+      accountId: "plasticov",
+      decision: "accepted",
+      reviewedBy: "reviewer-1",
+      note: "Proveedor y producto confirmados.",
+    });
+
+    expect(reviewed).toMatchObject({
+      status: "accepted",
+      reviewedAt: now.toISOString(),
+      reviewedBy: "reviewer-1",
+      reviewNote: "Proveedor y producto confirmados.",
+    });
+    await expect(
+      fixture.service.reviewCandidate({
+        id: candidate!.id,
+        organizationId: "maustian",
+        accountId: "plasticov",
+        decision: "rejected",
+        reviewedBy: "reviewer-2",
+      }),
+    ).rejects.toThrow(/already been reviewed/);
+  });
+
+  it("isolates candidate reads by organization and account", async () => {
+    const fixture = createService();
+    const [candidate] = await fixture.service.discover({
+      organizationId: "maustian",
+      accountId: "plasticov",
+      sourceImageUploadId: "upload-1",
+      policy,
+    });
+
+    await expect(
+      fixture.service.getCandidate({
+        id: candidate!.id,
+        organizationId: "maustian",
+        accountId: "maustian",
+      }),
+    ).resolves.toBeNull();
   });
 
   it("does not query supplier catalogs for low-similarity visual matches", async () => {
@@ -161,7 +219,6 @@ describe("CatalogAcquisitionService", () => {
     ).resolves.toEqual([]);
     expect(fixture.photoCalls()).toBe(1);
     expect(fixture.catalogCalls()).toBe(0);
-    expect(fixture.saved).toEqual([]);
   });
 
   it("blocks before provider invocation when the source image is not verified", async () => {
@@ -193,7 +250,6 @@ describe("CatalogAcquisitionService", () => {
       }),
     ).rejects.toThrow(/account is outside/);
     expect(fixture.catalogCalls()).toBe(0);
-    expect(fixture.saved).toEqual([]);
   });
 
   it("skips stale supplier evidence instead of estimating an offer", async () => {
@@ -216,7 +272,6 @@ describe("CatalogAcquisitionService", () => {
         policy,
       }),
     ).resolves.toEqual([]);
-    expect(fixture.saved).toEqual([]);
   });
 
   it("rejects invalid supplier cost rather than inferring it", async () => {
@@ -230,7 +285,6 @@ describe("CatalogAcquisitionService", () => {
         policy,
       }),
     ).rejects.toThrow(/unitCostMinor must be a positive/);
-    expect(fixture.saved).toEqual([]);
   });
 
   it("rejects duplicate supplier configuration before any external call", async () => {

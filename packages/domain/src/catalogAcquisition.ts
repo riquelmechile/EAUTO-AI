@@ -35,6 +35,9 @@ export type CatalogAcquisitionPolicy = Readonly<{
   policyVersion: string;
 }>;
 
+export type AcquisitionCandidateStatus = "needs-review" | "accepted" | "rejected";
+export type AcquisitionReviewDecision = Exclude<AcquisitionCandidateStatus, "needs-review">;
+
 export type AcquisitionCandidate = Readonly<{
   id: string;
   contentHash: string;
@@ -53,9 +56,12 @@ export type AcquisitionCandidate = Readonly<{
   currencyId: string;
   evidenceRefs: readonly [string, string];
   policyVersion: string;
-  status: "needs-review";
+  status: AcquisitionCandidateStatus;
   requiresHumanApproval: true;
   createdAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewNote: string | null;
 }>;
 
 export class CatalogAcquisitionValidationError extends Error {
@@ -65,6 +71,62 @@ export class CatalogAcquisitionValidationError extends Error {
     super(message);
     this.name = "CatalogAcquisitionValidationError";
   }
+}
+
+export class CatalogAcquisitionConflictError extends Error {
+  readonly code = "catalog-acquisition-conflict";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "CatalogAcquisitionConflictError";
+  }
+}
+
+export class CatalogAcquisitionUnavailableError extends Error {
+  readonly code = "catalog-acquisition-unavailable";
+
+  constructor(message = "Catalog acquisition providers are not configured.") {
+    super(message);
+    this.name = "CatalogAcquisitionUnavailableError";
+  }
+}
+
+export function reviewAcquisitionCandidate(
+  candidate: AcquisitionCandidate,
+  input: Readonly<{
+    decision: AcquisitionReviewDecision;
+    reviewedBy: string;
+    reviewedAt: string;
+    note?: string | null;
+  }>,
+): AcquisitionCandidate {
+  if (candidate.status !== "needs-review") {
+    throw new CatalogAcquisitionConflictError(
+      `Candidate ${candidate.id} has already been reviewed.`,
+    );
+  }
+  if (input.decision !== "accepted" && input.decision !== "rejected") {
+    throw new CatalogAcquisitionValidationError("Review decision must be accepted or rejected.");
+  }
+  assertRequired(input.reviewedBy, "reviewedBy");
+  const reviewedAt = Date.parse(input.reviewedAt);
+  const createdAt = Date.parse(candidate.createdAt);
+  if (!Number.isFinite(reviewedAt) || !Number.isFinite(createdAt) || reviewedAt < createdAt) {
+    throw new CatalogAcquisitionValidationError(
+      "reviewedAt must be a valid timestamp at or after candidate creation.",
+    );
+  }
+  const note = input.note?.trim() || null;
+  if (note && note.length > 1_000) {
+    throw new CatalogAcquisitionValidationError("Review note cannot exceed 1000 characters.");
+  }
+  return Object.freeze({
+    ...candidate,
+    status: input.decision,
+    reviewedAt: input.reviewedAt,
+    reviewedBy: input.reviewedBy.trim(),
+    reviewNote: note,
+  });
 }
 
 export function validateCatalogAcquisitionPolicy(policy: CatalogAcquisitionPolicy): void {

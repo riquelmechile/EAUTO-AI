@@ -69,6 +69,28 @@ const configSchema = z.object({
     .min(1_048_576)
     .max(500_000_000)
     .default(100_000_000),
+  CATALOG_ACQUISITION_ENABLED: environmentBoolean.default(false),
+  CATALOG_VISUAL_PROVIDER_URL: optionalUrl,
+  CATALOG_VISUAL_PROVIDER_API_KEY: optionalString,
+  CATALOG_VISUAL_PROVIDER_NAME: z.string().min(1).default("external-visual-search"),
+  CATALOG_SUPPLIER_ROUTES_JSON: z.string().default("{}"),
+  CATALOG_SUPPLIER_API_KEY: optionalString,
+  CATALOG_SUPPLIER_PROVIDER_NAME: z.string().min(1).default("external-supplier-catalog"),
+  CATALOG_PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
+  CATALOG_PROVIDER_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_024)
+    .max(20_000_000)
+    .default(2_000_000),
+  CATALOG_MINIMUM_SIMILARITY_BPS: z.coerce.number().int().min(0).max(10_000).default(8_000),
+  CATALOG_MAXIMUM_EVIDENCE_AGE_MS: z.coerce
+    .number()
+    .int()
+    .min(60_000)
+    .max(7 * 86_400_000)
+    .default(3_600_000),
+  CATALOG_POLICY_VERSION: z.string().min(1).max(128).default("catalog-acquisition-v1"),
   ACTION_EXECUTION_ENABLED: environmentBoolean.default(false),
   ACTION_PROVIDER_ROUTES_JSON: z.string().default("{}"),
   ACTION_PROVIDER_API_KEY: optionalString,
@@ -188,6 +210,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   }
 
   validateContentConfig(parsed.data);
+  validateCatalogAcquisitionConfig(parsed.data);
   validateActionExecutionConfig(parsed.data);
   validateLlmConfig(parsed.data);
   validateMercadoLibreConfig(parsed.data);
@@ -239,6 +262,42 @@ function validateContentConfig(config: z.infer<typeof configSchema>): void {
   }
 }
 
+function validateCatalogAcquisitionConfig(config: z.infer<typeof configSchema>): void {
+  let routes: unknown;
+  try {
+    routes = JSON.parse(config.CATALOG_SUPPLIER_ROUTES_JSON);
+  } catch {
+    throw new Error("CATALOG_SUPPLIER_ROUTES_JSON must contain valid JSON.");
+  }
+  if (!isRecord(routes)) {
+    throw new Error("CATALOG_SUPPLIER_ROUTES_JSON must contain an object.");
+  }
+  for (const [sourceId, endpoint] of Object.entries(routes)) {
+    if (!sourceId.trim() || typeof endpoint !== "string") {
+      throw new Error("Each catalog supplier route must map a source ID to a URL.");
+    }
+    validateExternalUrl(endpoint, `Catalog supplier route ${sourceId}`, config.NODE_ENV);
+  }
+  if (!config.CATALOG_ACQUISITION_ENABLED) return;
+  if (
+    !config.CATALOG_VISUAL_PROVIDER_URL ||
+    !config.CATALOG_VISUAL_PROVIDER_API_KEY ||
+    !config.CATALOG_SUPPLIER_API_KEY
+  ) {
+    throw new Error(
+      "CATALOG_ACQUISITION_ENABLED requires visual URL, visual API key and supplier API key.",
+    );
+  }
+  if (Object.keys(routes).length === 0) {
+    throw new Error("CATALOG_ACQUISITION_ENABLED requires at least one supplier route.");
+  }
+  validateExternalUrl(
+    config.CATALOG_VISUAL_PROVIDER_URL,
+    "CATALOG_VISUAL_PROVIDER_URL",
+    config.NODE_ENV,
+  );
+}
+
 function validateActionExecutionConfig(config: z.infer<typeof configSchema>): void {
   let routes: unknown;
   try {
@@ -261,11 +320,13 @@ function validateActionExecutionConfig(config: z.infer<typeof configSchema>): vo
     if (!isRecord(value)) throw new Error("Each action route must be an object.");
     for (const field of ["executeUrl", "verifyUrl"] as const) {
       const urlValue = value[field];
-      if (typeof urlValue !== "string")
+      if (typeof urlValue !== "string") {
         throw new Error(`Action route ${kind}.${field} is required.`);
+      }
       const url = new URL(urlValue);
-      if (url.username || url.password)
+      if (url.username || url.password) {
         throw new Error(`Action route ${kind}.${field} cannot embed credentials.`);
+      }
       if (config.NODE_ENV === "production" && url.protocol !== "https:") {
         throw new Error(`Action route ${kind}.${field} must use HTTPS in production.`);
       }
@@ -317,6 +378,16 @@ function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void 
   }
   if (config.NODE_ENV === "production" && new URL(config.MELI_REDIRECT_URI).protocol !== "https:") {
     throw new Error("MELI_REDIRECT_URI must use HTTPS in production.");
+  }
+}
+
+function validateExternalUrl(value: string, label: string, nodeEnv: string): void {
+  const url = new URL(value);
+  if (url.username || url.password || url.hash) {
+    throw new Error(`${label} cannot embed credentials or a fragment.`);
+  }
+  if (nodeEnv === "production" && url.protocol !== "https:") {
+    throw new Error(`${label} must use HTTPS in production.`);
   }
 }
 

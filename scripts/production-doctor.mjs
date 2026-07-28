@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -26,6 +27,7 @@ const files = [
   "scripts/smoke-supplier-authority-postgres.mjs",
   "scripts/smoke-supplier-sync-invariants-postgres.mjs",
   "scripts/smoke-supplier-cost-feed-postgres.mjs",
+  "scripts/smoke-catalog-acquisition-postgres.mjs",
   "scripts/smoke-production-runtime.mjs",
   "scripts/deploy-production.sh",
   "scripts/production-doctor.mjs",
@@ -44,8 +46,10 @@ const files = [
   "infra/postgres/migrations/024_supplier_cost_evidence_stability.sql",
   "infra/postgres/migrations/025_profitability_supplier_stock_wakeup.sql",
   "infra/postgres/migrations/026_supplier_failed_upsert_invariants.sql",
+  "infra/postgres/migrations/027_catalog_acquisition_candidates.sql",
   "packages/content/src/httpContentProvider.ts",
   "packages/infrastructure/src/httpActionExecutor.ts",
+  "packages/infrastructure/src/httpCatalogAcquisitionProviders.ts",
   "apps/mobile/app.config.cjs",
   "apps/mobile/eas.json",
   ".github/workflows/release.yml",
@@ -59,6 +63,8 @@ const secrets = [
   "OBJECT_STORAGE_SECRET_KEY",
   "OPERATOR_TOKENS_JSON",
   "CONTENT_PROVIDER_API_KEY",
+  "CATALOG_VISUAL_PROVIDER_API_KEY",
+  "CATALOG_SUPPLIER_API_KEY",
   "ACTION_PROVIDER_API_KEY",
   "LLM_API_KEY",
   "MELI_CLIENT_ID",
@@ -93,6 +99,7 @@ for (const key of [...secrets, ...requiredRuntimeValues]) {
 expectValue("NODE_ENV", "production");
 expectValue("AUTH_MODE", "static-token");
 expectValue("CONTENT_GENERATION_ENABLED", "true");
+expectValue("CATALOG_ACQUISITION_ENABLED", "true");
 expectValue("ACTION_EXECUTION_ENABLED", "true");
 expectValue("LLM_ENABLED", "true");
 expectValue("INTELLIGENCE_WORKER_ENABLED", "true");
@@ -100,12 +107,14 @@ expectValue("MELI_ENABLED", "true");
 expectValue("MELI_WEBHOOK_ENABLED", "true");
 expectHttps("EXPO_PUBLIC_API_URL");
 expectHttps("CONTENT_PROVIDER_URL");
+expectHttps("CATALOG_VISUAL_PROVIDER_URL");
 expectHttps("MELI_REDIRECT_URI");
 expectHttps("OBJECT_STORAGE_PUBLIC_ENDPOINT");
 expectHostname("API_DOMAIN");
 expectHostname("S3_DOMAIN");
 validateImmutableImage();
 validateDatabaseUrl();
+validateCatalogRoutes();
 validateActionRoutes();
 
 if (
@@ -215,6 +224,39 @@ function validateDatabaseUrl() {
   }
 }
 
+function validateCatalogRoutes() {
+  const value = configured.CATALOG_SUPPLIER_ROUTES_JSON;
+  if (!value || (templateMode && isPlaceholder(value))) return;
+  try {
+    const routes = JSON.parse(value);
+    if (!routes || typeof routes !== "object" || Array.isArray(routes)) {
+      failures.push("CATALOG_SUPPLIER_ROUTES_JSON must be an object.");
+      return;
+    }
+    const entries = Object.entries(routes);
+    if (entries.length === 0) failures.push("CATALOG_SUPPLIER_ROUTES_JSON cannot be empty.");
+    for (const [sourceId, endpoint] of entries) {
+      if (!sourceId.trim() || typeof endpoint !== "string") {
+        failures.push("Catalog supplier routes must map source IDs to URLs.");
+        continue;
+      }
+      try {
+        const parsed = new URL(endpoint);
+        if (parsed.protocol !== "https:") {
+          failures.push(`Catalog supplier route ${sourceId} must use HTTPS.`);
+        }
+        if (parsed.username || parsed.password || parsed.hash) {
+          failures.push(`Catalog supplier route ${sourceId} cannot embed credentials or fragment.`);
+        }
+      } catch {
+        failures.push(`Catalog supplier route ${sourceId} must be a valid URL.`);
+      }
+    }
+  } catch {
+    failures.push("CATALOG_SUPPLIER_ROUTES_JSON must be valid JSON.");
+  }
+}
+
 function validateActionRoutes() {
   const value = configured.ACTION_PROVIDER_ROUTES_JSON;
   if (!value || (templateMode && isPlaceholder(value))) return;
@@ -239,8 +281,9 @@ function validateActionRoutes() {
         }
         try {
           const parsed = new URL(url);
-          if (parsed.protocol !== "https:")
+          if (parsed.protocol !== "https:") {
             failures.push(`Action route ${kind}.${field} must use HTTPS.`);
+          }
           if (parsed.username || parsed.password) {
             failures.push(`Action route ${kind}.${field} cannot embed credentials.`);
           }
