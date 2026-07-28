@@ -9,7 +9,7 @@ import type { AcquisitionCandidateRepository } from "@eauto/application";
 export class PostgresAcquisitionCandidateRepository implements AcquisitionCandidateRepository {
   constructor(private readonly pool: Pool) {}
 
-  async save(candidate: AcquisitionCandidate): Promise<void> {
+  async save(candidate: AcquisitionCandidate): Promise<AcquisitionCandidate> {
     const inserted = await this.pool.query(
       `INSERT INTO catalog_acquisition_candidates
         (id, content_hash, organization_id, account_id, source_image_upload_id,
@@ -25,7 +25,7 @@ export class PostgresAcquisitionCandidateRepository implements AcquisitionCandid
        ON CONFLICT DO NOTHING`,
       candidateValues(candidate),
     );
-    if (inserted.rowCount === 1) return;
+    if (inserted.rowCount === 1) return candidate;
 
     const existing = await this.pool.query<{ payload_json: AcquisitionCandidate }>(
       `SELECT payload_json
@@ -34,12 +34,8 @@ export class PostgresAcquisitionCandidateRepository implements AcquisitionCandid
        LIMIT 1`,
       [candidate.id, candidate.contentHash],
     );
-    if (
-      existing.rows[0] &&
-      JSON.stringify(existing.rows[0].payload_json) === JSON.stringify(candidate)
-    ) {
-      return;
-    }
+    const canonical = existing.rows[0]?.payload_json;
+    if (canonical && hasSameImmutableIdentity(canonical, candidate)) return canonical;
     throw new CatalogAcquisitionConflictError(
       `Candidate ${candidate.id} already exists with different content.`,
     );
@@ -142,4 +138,31 @@ function candidateValues(candidate: AcquisitionCandidate): unknown[] {
     JSON.stringify(candidate),
     candidate.createdAt,
   ];
+}
+
+function hasSameImmutableIdentity(
+  existing: AcquisitionCandidate,
+  candidate: AcquisitionCandidate,
+): boolean {
+  return (
+    existing.id === candidate.id &&
+    existing.contentHash === candidate.contentHash &&
+    existing.organizationId === candidate.organizationId &&
+    existing.accountId === candidate.accountId &&
+    existing.sourceImageUploadId === candidate.sourceImageUploadId &&
+    existing.visualProvider === candidate.visualProvider &&
+    existing.externalMatchId === candidate.externalMatchId &&
+    existing.similarityBps === candidate.similarityBps &&
+    existing.supplierSourceId === candidate.supplierSourceId &&
+    existing.sku === candidate.sku &&
+    existing.name === candidate.name &&
+    existing.productUrl === candidate.productUrl &&
+    existing.unitCostMinor === candidate.unitCostMinor &&
+    existing.stockQuantity === candidate.stockQuantity &&
+    existing.currencyId === candidate.currencyId &&
+    existing.policyVersion === candidate.policyVersion &&
+    existing.requiresHumanApproval === candidate.requiresHumanApproval &&
+    existing.evidenceRefs[0] === candidate.evidenceRefs[0] &&
+    existing.evidenceRefs[1] === candidate.evidenceRefs[1]
+  );
 }
