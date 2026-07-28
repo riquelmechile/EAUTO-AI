@@ -88,16 +88,33 @@ try {
 }
 
 async function waitForPostgres() {
+  let consecutiveSuccessfulQueries = 0;
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const result = spawnSync(
       "docker",
-      [...compose, "exec", "-T", "postgres", "pg_isready", "-U", "eauto", "-d", "eauto"],
-      { encoding: "utf8", stdio: "ignore" },
+      [
+        ...compose,
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "eauto",
+        "-d",
+        "eauto",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-Atqc",
+        "SELECT 1",
+      ],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] },
     );
-    if (result.status === 0) return;
+    const querySucceeded = result.status === 0 && result.stdout.trim() === "1";
+    consecutiveSuccessfulQueries = querySucceeded ? consecutiveSuccessfulQueries + 1 : 0;
+    if (consecutiveSuccessfulQueries >= 3) return;
     await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
-  throw new Error("PostgreSQL did not become ready for the production smoke.");
+  throw new Error("PostgreSQL did not reach three consecutive stable SQL checks.");
 }
 
 function run(command, args, extraEnvironment = {}, allowFailure = false) {
