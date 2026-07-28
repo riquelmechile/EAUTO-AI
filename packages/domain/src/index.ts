@@ -8,6 +8,7 @@ export * from "./content.js";
 export * from "./evidence.js";
 export * from "./llm.js";
 export * from "./mercadolibre.js";
+export * from "./mercadoLibreProductAds.js";
 export * from "./mercadoLibreTaxonomy.js";
 export * from "./money.js";
 export * from "./objectives.js";
