@@ -43,15 +43,21 @@ export function registerProductIdentificationRoutes(
       .parse(request.body);
     await dependencies.requireAccount(actor, body.accountId, "catalog.acquire");
     if (dependencies.runtime.productIdentificationMode === "disabled") {
-      return sendError(503, "product-identification-unavailable", "Product identification is disabled.", reply);
+      return sendError(
+        503,
+        "product-identification-unavailable",
+        "Product identification is disabled.",
+        reply,
+      );
     }
     try {
-      const identification = await dependencies.runtime.productIdentification.identifyStoredFromPhoto({
-        organizationId: actor.organizationId,
-        accountId: body.accountId,
-        sourceImageUploadId: body.sourceImageUploadId,
-        policy: dependencies.runtime.productIdentificationPolicy,
-      });
+      const identification =
+        await dependencies.runtime.productIdentification.identifyStoredFromPhoto({
+          organizationId: actor.organizationId,
+          accountId: body.accountId,
+          sourceImageUploadId: body.sourceImageUploadId,
+          policy: dependencies.runtime.productIdentificationPolicy,
+        });
       return reply.code(201).send({
         identification,
         mode: dependencies.runtime.productIdentificationMode,
@@ -73,7 +79,12 @@ export function registerProductIdentificationRoutes(
       identificationId: params.id,
     });
     if (!stored) {
-      return sendError(404, "product-identification-not-found", "Product identification not found.", reply);
+      return sendError(
+        404,
+        "product-identification-not-found",
+        "Product identification not found.",
+        reply,
+      );
     }
     return stored;
   });
