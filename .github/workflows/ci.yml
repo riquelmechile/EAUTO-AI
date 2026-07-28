@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  strict-fix-and-check:
+  wire-runtime:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -25,25 +25,130 @@ jobs:
           node-version: 22.16.0
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - name: Apply exact strict fixes
+      - name: Wire Fastify worker and MiniMax
         run: |
           python - <<'PY'
           from pathlib import Path
-          scheduler = Path('packages/application/src/specialistDaemonScheduler.ts')
-          text = scheduler.read_text()
-          text = text.replace('signals: Object.freeze([]) as readonly Signal[],', 'signals: Object.freeze([]),')
-          scheduler.write_text(text)
-          source = Path('packages/infrastructure/src/companyIntelligenceSources.ts')
-          text = source.read_text().replace('  MercadoLibreOrderSnapshot,\n', '')
-          source.write_text(text)
+
+          def replace(path, old, new):
+              file = Path(path)
+              text = file.read_text()
+              if old not in text:
+                  raise SystemExit(f'missing expected block in {path}: {old[:80]!r}')
+              file.write_text(text.replace(old, new, 1))
+
+          replace('apps/api/src/runtime.ts',
+              '  HttpContentProvider,\n} from "@eauto/content";',
+              '  HttpContentProvider,\n  MiniMaxContentProvider,\n} from "@eauto/content";')
+          replace('apps/api/src/runtime.ts',
+              'import type { AppConfig } from "./config.js";\n',
+              'import type { AppConfig } from "./config.js";\nimport { loadCompanyIntelligenceConfig } from "./companyIntelligenceConfig.js";\n')
+          replace('apps/api/src/runtime.ts',
+              '  if (config.CONTENT_GENERATION_ENABLED) {\n',
+              '''  const companyConfig = loadCompanyIntelligenceConfig();
+  if (companyConfig.CONTENT_PROVIDER_KIND === "minimax") {
+    if (!companyConfig.MINIMAX_API_KEY) throw new Error("MiniMax API key is required.");
+    return Object.freeze({
+      provider: new MiniMaxContentProvider(storage, {
+        apiKey: companyConfig.MINIMAX_API_KEY,
+        imageModel: companyConfig.MINIMAX_IMAGE_MODEL,
+        videoModel: companyConfig.MINIMAX_VIDEO_MODEL,
+        promptVersion: companyConfig.MINIMAX_PROMPT_VERSION,
+        generateVideo: companyConfig.MINIMAX_GENERATE_VIDEO,
+        timeoutMs: config.CONTENT_PROVIDER_TIMEOUT_MS,
+        pollIntervalMs: companyConfig.MINIMAX_POLL_INTERVAL_MS,
+        maximumPolls: companyConfig.MINIMAX_MAXIMUM_POLLS,
+        maximumResponseBytes: config.CONTENT_PROVIDER_MAX_RESPONSE_BYTES,
+        maximumAssetBytes: config.CONTENT_MAX_ASSET_BYTES,
+      }),
+      mode: "external" as const,
+    });
+  }
+  if (config.CONTENT_GENERATION_ENABLED) {
+''')
+
+          replace('apps/api/src/app.ts',
+              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\n',
+              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\nimport { createCompanyIntelligenceRuntime } from "./companyIntelligenceRuntime.js";\nimport { registerCompanyIntelligenceRoutes } from "./companyIntelligenceRoutes.js";\n')
+          replace('apps/api/src/app.ts',
+              '  const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\n',
+              '  const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\n  const companyRuntime = createCompanyIntelligenceRuntime(runtime, intelligenceRuntime);\n')
+          replace('apps/api/src/app.ts',
+              '  app.get("/v1/me", async (request) => {\n',
+              '''  registerCompanyIntelligenceRoutes(app, {
+    runtime: companyRuntime,
+    authenticate: (request) => authenticate(request, runtime, authenticator),
+    requireAccount: async (actor, accountId, permission) => {
+      await requireAccount(runtime, actor, accountId, permission);
+    },
+  });
+
+  app.get("/v1/me", async (request) => {
+''')
+          replace('apps/api/src/app.ts',
+              '  app.addHook("onClose", async () => {\n    await intelligenceRuntime.close();\n    await runtime.close();\n  });',
+              '  app.addHook("onClose", async () => {\n    await companyRuntime.close();\n    await intelligenceRuntime.close();\n    await runtime.close();\n  });')
+
+          replace('apps/api/src/worker.ts',
+              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\n',
+              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\nimport { createCompanyIntelligenceRuntime } from "./companyIntelligenceRuntime.js";\n')
+          replace('apps/api/src/worker.ts',
+              'const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\n',
+              'const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\nconst companyRuntime = createCompanyIntelligenceRuntime(runtime, intelligenceRuntime);\n')
+          replace('apps/api/src/worker.ts',
+              'async function run(): Promise<void> {\n  log("info", "worker-started", {',
+              'async function run(): Promise<void> {\n  await companyRuntime.initialize();\n  log("info", "worker-started", {')
+          replace('apps/api/src/worker.ts',
+              '    intelligenceWorker: intelligenceRuntime.processor !== null,\n',
+              '    intelligenceWorker: intelligenceRuntime.processor !== null,\n    companyIntelligenceWorker: companyRuntime.enabled,\n')
+          replace('apps/api/src/worker.ts',
+              '''    intelligenceRuntime.processor
+      ? intelligenceRuntime.config.INTELLIGENCE_POLL_INTERVAL_MS
+      : config.OUTBOX_POLL_INTERVAL_MS,
+  );''',
+              '''    intelligenceRuntime.processor
+      ? intelligenceRuntime.config.INTELLIGENCE_POLL_INTERVAL_MS
+      : config.OUTBOX_POLL_INTERVAL_MS,
+    companyRuntime.enabled
+      ? companyRuntime.config.COMPANY_INTELLIGENCE_POLL_INTERVAL_MS
+      : config.OUTBOX_POLL_INTERVAL_MS,
+  );''')
+          replace('apps/api/src/worker.ts',
+              '    let intelligence = { leased: 0, completed: 0, failed: 0 };\n',
+              '    let intelligence = { leased: 0, completed: 0, failed: 0 };\n    let company = { evidence: { leased: 0, fulfilled: 0, failed: 0 }, daemons: { leased: 0, queued: 0, skipped: 0, waitingEvidence: 0, failed: 0 } };\n')
+          replace('apps/api/src/worker.ts',
+              '    if (marginAuditDaemon) {\n',
+              '''    if (companyRuntime.enabled) {
+      try {
+        company = await companyRuntime.processBatch();
+      } catch (error) {
+        cycleFailed = true;
+        logProcessorFailure("company-intelligence", error);
+      }
+    }
+
+    if (marginAuditDaemon) {
+''')
+          replace('apps/api/src/worker.ts',
+              '      intelligence.leased > 0 ||\n      marginAudit.leased > 0 ||',
+              '      intelligence.leased > 0 ||\n      company.evidence.leased > 0 ||\n      company.daemons.leased > 0 ||\n      marginAudit.leased > 0 ||')
+          replace('apps/api/src/worker.ts',
+              '        intelligence,\n        marginAudit,',
+              '        intelligence,\n        company,\n        marginAudit,')
+          replace('apps/api/src/worker.ts',
+              '        intelligence.leased === 0 &&\n        marginAudit.leased === 0 &&',
+              '        intelligence.leased === 0 &&\n        company.evidence.leased === 0 &&\n        company.daemons.leased === 0 &&\n        marginAudit.leased === 0 &&')
+          replace('apps/api/src/worker.ts',
+              '  await Promise.allSettled([intelligenceRuntime.close(), runtime.close()]);',
+              '  await Promise.allSettled([companyRuntime.close(), intelligenceRuntime.close(), runtime.close()]);')
           PY
-          npx prettier --write packages/application/src/specialistDaemonScheduler.ts packages/infrastructure/src/companyIntelligenceSources.ts
-      - name: Commit exact fixes
+          npx prettier --write apps/api/src/runtime.ts apps/api/src/app.ts apps/api/src/worker.ts
+      - name: Commit runtime wiring
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add packages/application/src/specialistDaemonScheduler.ts packages/infrastructure/src/companyIntelligenceSources.ts
-          git commit -m "chore: apply final strict fixes"
+          git add apps/api/src/runtime.ts apps/api/src/app.ts apps/api/src/worker.ts
+          git commit -m "feat(api): wire company intelligence and MiniMax"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
       - run: npm run format:check
       - run: npm run typecheck
