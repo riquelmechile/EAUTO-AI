@@ -5,11 +5,13 @@ import {
   accountId,
   organizationId,
   type BusinessAction,
+  type CatalogAcquisitionPolicy,
   type CommerceAccount,
 } from "@eauto/domain";
 import {
   ActionService,
   AgentOsService,
+  CatalogAcquisitionService,
   ContentStudioService,
   MercadoLibreNotificationIngestionService,
   MercadoLibreNotificationProcessor,
@@ -20,6 +22,8 @@ import {
   SourceImageUploadService,
   type ActionExecutor,
   type ContentGenerationPort,
+  type PhotoSimilarityPort,
+  type SupplierCatalogSearchPort,
 } from "@eauto/application";
 import {
   DeterministicContentProvider,
@@ -29,7 +33,12 @@ import {
 import {
   DeepSeekGateway,
   DisabledActionExecutor,
+  DisabledPhotoSimilarityProvider,
+  DisabledSupplierCatalogProvider,
   HttpActionExecutor,
+  HttpPhotoSimilarityProvider,
+  HttpSupplierCatalogProvider,
+  InMemoryAcquisitionCandidateRepository,
   InMemoryActionLifecycleEventHandler,
   InMemoryAccountRepository,
   InMemoryActionRepository,
@@ -45,6 +54,7 @@ import {
   InMemorySourceImageUploadRepository,
   MercadoLibreHttpClient,
   NodeMercadoLibreSecurity,
+  PostgresAcquisitionCandidateRepository,
   PostgresAccountRepository,
   PostgresActionRepository,
   PostgresActionLifecycleEventHandler,
@@ -142,6 +152,9 @@ export function createRuntime(config: AppConfig) {
   const uploadRepository = pool
     ? new PostgresSourceImageUploadRepository(pool)
     : new InMemorySourceImageUploadRepository();
+  const acquisitionCandidateRepository = pool
+    ? new PostgresAcquisitionCandidateRepository(pool)
+    : new InMemoryAcquisitionCandidateRepository();
   const agentOsRepository = pool
     ? new PostgresAgentOsRepository(pool)
     : new InMemoryAgentOsRepository();
@@ -169,6 +182,21 @@ export function createRuntime(config: AppConfig) {
   const shadowLlm = createShadowLlmRuntime(config, llmRuns, clock, ids);
   const contentRuntime = createContentGenerationRuntime(config, objectStorage);
   const contentStudio = new ContentStudioService(contentRuntime.provider, assetRepository);
+  const catalogRuntime = createCatalogAcquisitionProviderRuntime(config);
+  const catalogAcquisitionPolicy: CatalogAcquisitionPolicy = Object.freeze({
+    visualProvider: config.CATALOG_VISUAL_PROVIDER_NAME,
+    supplierSourceIds: Object.freeze(Object.keys(catalogRuntime.routes)),
+    minimumSimilarityBps: config.CATALOG_MINIMUM_SIMILARITY_BPS,
+    maximumEvidenceAgeMs: config.CATALOG_MAXIMUM_EVIDENCE_AGE_MS,
+    policyVersion: config.CATALOG_POLICY_VERSION,
+  });
+  const catalogAcquisition = new CatalogAcquisitionService(
+    uploadRepository,
+    catalogRuntime.photoSimilarity,
+    catalogRuntime.supplierCatalog,
+    acquisitionCandidateRepository,
+    clock,
+  );
   const sessionService = new SessionService(
     sessionRepository,
     new NodeSessionSecrets(),
@@ -230,6 +258,7 @@ export function createRuntime(config: AppConfig) {
     actions: actionRepository,
     receipts: receiptRepository,
     assets: assetRepository,
+    catalogCandidates: acquisitionCandidateRepository,
     outbox,
     llmRuns,
     actionService,
@@ -238,6 +267,9 @@ export function createRuntime(config: AppConfig) {
     shadowLlm,
     contentStudio,
     contentGenerationMode: contentRuntime.mode,
+    catalogAcquisition,
+    catalogAcquisitionMode: catalogRuntime.mode,
+    catalogAcquisitionPolicy,
     sessionService,
     sourceImageUploads,
     outboxProcessor,
@@ -309,6 +341,47 @@ function createContentGenerationRuntime(
   return Object.freeze({ provider: new DisabledContentProvider(), mode: "disabled" as const });
 }
 
+function createCatalogAcquisitionProviderRuntime(config: AppConfig): Readonly<{
+  photoSimilarity: PhotoSimilarityPort;
+  supplierCatalog: SupplierCatalogSearchPort;
+  routes: Readonly<Record<string, string>>;
+  mode: "external" | "disabled";
+}> {
+  const routes = parseCatalogSupplierRoutes(config.CATALOG_SUPPLIER_ROUTES_JSON);
+  if (!config.CATALOG_ACQUISITION_ENABLED) {
+    return Object.freeze({
+      photoSimilarity: new DisabledPhotoSimilarityProvider(),
+      supplierCatalog: new DisabledSupplierCatalogProvider(),
+      routes,
+      mode: "disabled" as const,
+    });
+  }
+  if (
+    !config.CATALOG_VISUAL_PROVIDER_URL ||
+    !config.CATALOG_VISUAL_PROVIDER_API_KEY ||
+    !config.CATALOG_SUPPLIER_API_KEY
+  ) {
+    throw new Error("Catalog acquisition is enabled but provider configuration is incomplete.");
+  }
+  return Object.freeze({
+    photoSimilarity: new HttpPhotoSimilarityProvider({
+      endpoint: config.CATALOG_VISUAL_PROVIDER_URL,
+      apiKey: config.CATALOG_VISUAL_PROVIDER_API_KEY,
+      providerName: config.CATALOG_VISUAL_PROVIDER_NAME,
+      timeoutMs: config.CATALOG_PROVIDER_TIMEOUT_MS,
+      maximumResponseBytes: config.CATALOG_PROVIDER_MAX_RESPONSE_BYTES,
+    }),
+    supplierCatalog: new HttpSupplierCatalogProvider(routes, {
+      apiKey: config.CATALOG_SUPPLIER_API_KEY,
+      providerName: config.CATALOG_SUPPLIER_PROVIDER_NAME,
+      timeoutMs: config.CATALOG_PROVIDER_TIMEOUT_MS,
+      maximumResponseBytes: config.CATALOG_PROVIDER_MAX_RESPONSE_BYTES,
+    }),
+    routes,
+    mode: "external" as const,
+  });
+}
+
 function parseActionRoutes(value: string): HttpActionRoutes {
   const parsed = JSON.parse(value) as unknown;
   if (!isRecord(parsed)) throw new Error("Action provider routes must be an object.");
@@ -324,6 +397,19 @@ function parseActionRoutes(value: string): HttpActionRoutes {
       throw new Error(`Action route ${kind} is invalid.`);
     }
     routes[kind] = Object.freeze({ executeUrl: route.executeUrl, verifyUrl: route.verifyUrl });
+  }
+  return Object.freeze(routes);
+}
+
+function parseCatalogSupplierRoutes(value: string): Readonly<Record<string, string>> {
+  const parsed = JSON.parse(value) as unknown;
+  if (!isRecord(parsed)) throw new Error("Catalog supplier routes must be an object.");
+  const routes: Record<string, string> = {};
+  for (const [sourceId, endpoint] of Object.entries(parsed)) {
+    if (!sourceId.trim() || typeof endpoint !== "string") {
+      throw new Error("Catalog supplier routes must map source IDs to URLs.");
+    }
+    routes[sourceId] = endpoint;
   }
   return Object.freeze(routes);
 }
