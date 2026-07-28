@@ -71,7 +71,12 @@ describe("SupplierStockService", () => {
       },
     );
 
-    const assessment = await service.evaluateListing("plasticov", "MLC123", policy);
+    const assessment = await service.evaluateListing(
+      "plasticov",
+      "MLC123",
+      "supplier-1",
+      policy,
+    );
 
     expect(assessments).toHaveLength(1);
     expect(proposals).toHaveLength(0);
@@ -89,8 +94,8 @@ describe("SupplierStockService", () => {
       { schedule: () => Promise.resolve() },
     );
 
-    await expect(service.evaluateListing("plasticov", "MLC123", policy)).rejects.toThrow(
-      /outside the requested scope/,
-    );
+    await expect(
+      service.evaluateListing("plasticov", "MLC123", "supplier-1", policy),
+    ).rejects.toThrow(/outside the requested scope/);
   });
 });
