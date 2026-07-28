@@ -51,7 +51,7 @@ export type SupplierCatalogSearchPort = {
 };
 
 export type AcquisitionCandidateRepository = {
-  save(candidate: AcquisitionCandidate): Promise<void>;
+  save(candidate: AcquisitionCandidate): Promise<AcquisitionCandidate>;
   get(input: {
     id: string;
     organizationId: string;
@@ -161,8 +161,8 @@ export class CatalogAcquisitionService {
           const candidate = buildCandidate(request, match, offer, now.toISOString());
           if (seenContentHashes.has(candidate.contentHash)) continue;
           seenContentHashes.add(candidate.contentHash);
-          await this.candidates.save(candidate);
-          discovered.push(candidate);
+          const canonicalCandidate = await this.candidates.save(candidate);
+          discovered.push(canonicalCandidate);
         }
       }
     }
