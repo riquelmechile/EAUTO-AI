@@ -221,7 +221,9 @@ try {
       if (!String(error).includes("already terminal")) throw error;
     });
 
-  console.log("✓ Product identification persistence, review and safe fingerprint semantics verified");
+  console.log(
+    "✓ Product identification persistence, review and safe fingerprint semantics verified",
+  );
 } finally {
   await pool
     .query(
