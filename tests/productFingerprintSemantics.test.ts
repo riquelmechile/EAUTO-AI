@@ -11,9 +11,7 @@ describe("product fingerprint semantics", () => {
     const oneBitDifferent = `1${"0".repeat(63)}`;
 
     expect(calculateVisualSimilarityBps(left, oneBitDifferent)).toBe(9_843);
-    expect(calculateProductFingerprintSimilarityBps("phash-64", left, oneBitDifferent)).toBe(
-      9_843,
-    );
+    expect(calculateProductFingerprintSimilarityBps("phash-64", left, oneBitDifferent)).toBe(9_843);
   });
 
   it("treats SHA-256 prefixes as exact-content signals instead of visual similarity", () => {
@@ -21,9 +19,9 @@ describe("product fingerprint semantics", () => {
     const oneBitDifferent = `1${"0".repeat(63)}`;
 
     expect(calculateProductFingerprintSimilarityBps("sha256-prefix-64", left, left)).toBe(10_000);
-    expect(calculateProductFingerprintSimilarityBps("sha256-prefix-64", left, oneBitDifferent)).toBe(
-      0,
-    );
+    expect(
+      calculateProductFingerprintSimilarityBps("sha256-prefix-64", left, oneBitDifferent),
+    ).toBe(0);
   });
 
   it("accepts both explicit algorithms and rejects malformed values", () => {
