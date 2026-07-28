@@ -134,10 +134,21 @@ try {
   assert(confirmedRecoveryRecord.recorded, "the confirmation observation must be recorded");
   const duplicateConfirmedRecovery = await mirror.recordObservation(confirmedRecovery);
   assert(!duplicateConfirmedRecovery.recorded, "the confirmation duplicate must be idempotent");
+
+  const refreshedProfitability = await profitEngine.auditListing(accountId, listingId);
+  assert(
+    refreshedProfitability.status === "profitable",
+    "new authoritative supplier evidence must be reaudited before reactivation",
+  );
+
   const confirmedInput = await repository.read(accountId, listingId, supplierSourceId);
   assert(
     confirmedInput.consecutiveSuccessfulSyncs === 2,
     "two unique available observations must satisfy recovery debounce",
+  );
+  assert(
+    confirmedInput.profitabilityStatus === "profitable",
+    "confirmed recovery must use the refreshed authoritative profitability snapshot",
   );
 
   const confirmedAudit = await daemon.runOnce(10);
