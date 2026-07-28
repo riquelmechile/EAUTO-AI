@@ -84,12 +84,7 @@ const configSchema = z.object({
     .string()
     .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/)
     .default("phash-64-v1"),
-  PRODUCT_FINGERPRINT_TIMEOUT_MS: z.coerce
-    .number()
-    .int()
-    .min(1_000)
-    .max(120_000)
-    .default(30_000),
+  PRODUCT_FINGERPRINT_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
   PRODUCT_FINGERPRINT_MAX_RESPONSE_BYTES: z.coerce
     .number()
     .int()
@@ -305,9 +300,7 @@ function validateCatalogAcquisitionConfig(config: z.infer<typeof configSchema>):
   const hasFingerprintUrl = config.PRODUCT_FINGERPRINT_PROVIDER_URL !== undefined;
   const hasFingerprintApiKey = config.PRODUCT_FINGERPRINT_PROVIDER_API_KEY !== undefined;
   if (hasFingerprintUrl !== hasFingerprintApiKey) {
-    throw new Error(
-      "Product fingerprint provider URL and API key must be configured together.",
-    );
+    throw new Error("Product fingerprint provider URL and API key must be configured together.");
   }
   if (config.PRODUCT_FINGERPRINT_PROVIDER_URL) {
     validateExternalUrl(
