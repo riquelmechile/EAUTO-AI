@@ -31,6 +31,73 @@ export type RequestedSourceImageUpload = Readonly<{
   requiredHeaders: Readonly<Record<string, string>>;
 }>;
 
+export type ProductIdentificationStatus =
+  | "identified-pending-confirmation"
+  | "ambiguous"
+  | "no-match"
+  | "duplicate-blocked"
+  | "incomplete";
+
+export type ProductIdentificationCandidate = Readonly<{
+  id: string;
+  canonicalName: string;
+  brand: string | null;
+  model: string | null;
+  categoryHint: string | null;
+  confidenceBps: number;
+  evidenceRefs: readonly string[];
+}>;
+
+export type VisualDuplicateCandidate = Readonly<{
+  productId: string;
+  accountId: string;
+  similarityBps: number;
+  evidenceRef: string;
+}>;
+
+export type ProductIdentificationResult = Readonly<{
+  organizationId: string;
+  accountId: string;
+  sourceImageUploadId: string;
+  status: ProductIdentificationStatus;
+  selectedCandidate: ProductIdentificationCandidate | null;
+  alternativeCandidates: readonly ProductIdentificationCandidate[];
+  blockingDuplicate: VisualDuplicateCandidate | null;
+  reasons: readonly string[];
+  evidenceRefs: readonly string[];
+  policyVersion: string;
+  requiresHumanConfirmation: boolean;
+  evaluatedAt: string;
+}>;
+
+export type StoredProductIdentification = Readonly<{
+  id: string;
+  contentHash: string;
+  result: ProductIdentificationResult;
+  fingerprint: Readonly<{
+    algorithm: "phash-64" | "sha256-prefix-64";
+    version: string;
+    value: string;
+    evidenceRef: string;
+  }>;
+}>;
+
+export type ProductIdentificationReview = Readonly<{
+  id: string;
+  organizationId: string;
+  accountId: string;
+  identificationId: string;
+  sourceImageUploadId: string;
+  candidateId: string;
+  productId: string | null;
+  decision: "confirmed" | "rejected";
+  reviewerId: string;
+  reason: string | null;
+  policyVersion: string;
+  evidenceRefs: readonly string[];
+  decidedAt: string;
+}>;
+
 export type MercadoLibreConnection = Readonly<{
   accountId: string;
   sellerId: string;
@@ -285,13 +352,63 @@ export const api = {
       { method: "POST", body: JSON.stringify({ accountId: input.accountId }) },
     ),
 
+  identifyProduct: (input: { accountId: string; sourceImageUploadId: string }) =>
+    request<
+      Readonly<{
+        identification: StoredProductIdentification;
+        mode: "catalog-visual-external" | "deterministic-development" | "disabled";
+        policyVersion: string;
+      }>
+    >("/v1/product-identification/identify", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+
+  getProductIdentification: (input: { accountId: string; identificationId: string }) =>
+    request<StoredProductIdentification>(
+      `/v1/product-identification/${encodeURIComponent(input.identificationId)}?accountId=${encodeURIComponent(input.accountId)}`,
+    ),
+
+  reviewProductIdentification: (
+    input:
+      | Readonly<{
+          identificationId: string;
+          accountId: string;
+          candidateId: string;
+          decision: "confirmed";
+          productId: string;
+          reason?: string;
+        }>
+      | Readonly<{
+          identificationId: string;
+          accountId: string;
+          candidateId: string;
+          decision: "rejected";
+          reason: string;
+        }>,
+  ) =>
+    request<ProductIdentificationReview>(
+      `/v1/product-identification/${encodeURIComponent(input.identificationId)}/review`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          accountId: input.accountId,
+          candidateId: input.candidateId,
+          decision: input.decision,
+          ...(input.decision === "confirmed"
+            ? { productId: input.productId, reason: input.reason ?? null }
+            : { productId: null, reason: input.reason }),
+        }),
+      },
+    ),
+
   createLaunch: (input: {
     id: string;
     accountId: string;
     sourceImageUploadId: string;
     instructions?: string;
   }) =>
-    request<{ assets: readonly { id: string; kind: string; uri: string }[] }>(
+    request<{ assets: readonly { id: string; kind: string; uri: string }[]>(
       "/v1/content/launches",
       {
         method: "POST",
