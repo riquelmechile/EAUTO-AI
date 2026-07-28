@@ -202,7 +202,7 @@ export class CatalogAcquisitionService {
       decision: request.decision,
       reviewedBy: request.reviewedBy,
       reviewedAt: this.clock.now().toISOString(),
-      note: request.note,
+      ...(request.note === undefined ? {} : { note: request.note }),
     });
     await this.candidates.transition({ candidate: reviewed, expectedStatus: "needs-review" });
     return reviewed;
