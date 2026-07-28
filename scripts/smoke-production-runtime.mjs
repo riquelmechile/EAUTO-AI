@@ -17,6 +17,8 @@ try {
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
   stage = "verify-postgres-schema";
   run("node", ["scripts/smoke-postgres-schema.mjs"], { DATABASE_URL: databaseUrl });
+  stage = "verify-profit-engine";
+  run("node", ["scripts/smoke-profit-engine-postgres.mjs"], { DATABASE_URL: databaseUrl });
   stage = "verify-migration-idempotency";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
 
@@ -70,6 +72,7 @@ try {
   );
   console.log("✓ Fresh PostgreSQL migrations applied and idempotent");
   console.log("✓ Scoped repositories and action lifecycle verified");
+  console.log("✓ Profit Engine persistence and margin-audit leases verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");
   console.log("EAUTO_PRODUCTION_SMOKE_OK");
