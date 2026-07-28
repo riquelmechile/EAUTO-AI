@@ -34,6 +34,7 @@ The executor:
 - Every other `ACTION_KIND` is rejected before credentials or HTTP are used.
 - The executor never proposes, reviews or approves an action; it only receives `executing` or `executed` actions from `ActionService`.
 - The access token is supplied by an internal credential port and is never persisted in receipts, logs or action payloads.
+- The rotating credential provider reads encrypted PostgreSQL credentials, refreshes under a lease and verifies the seller before persisting rotated tokens.
 - The API base URL is fixed to `https://api.mercadolibre.com` and redirects are rejected.
 - Remote seller mismatch, response mismatch, invalid JSON, timeout or verification failure fail closed.
 - A failed or ambiguous external operation is handled by the existing `ActionService` transition to `uncertain`; there is no blind retry.
@@ -41,12 +42,11 @@ The executor:
 
 ## Live activation gate
 
-The adapter remains unconfigured until:
+The adapter is wired but remains disabled in the production template until:
 
 - Plasticov OAuth is active and one refresh has been observed;
 - the read model has passed the five-day reconciliation gate;
 - an account-specific policy version is selected;
-- the action is wired to the rotating OAuth credential provider;
 - the operator approves every answer manually;
 - the receipt chain is compared with the published answer for two weeks.
 
@@ -54,7 +54,7 @@ Maustian is explicitly outside the first activation.
 
 ## Tests
 
-The contract tests cover:
+The contract and credential tests cover:
 
 - ownership preflight;
 - exact POST payload and Bearer authorization;
@@ -62,8 +62,11 @@ The contract tests cover:
 - remote verification;
 - exact-answer idempotency;
 - global blocking of all other action kinds;
-- account, policy, seller and length mismatch rejection.
+- account, policy, seller and length mismatch rejection;
+- encrypted credential reveal without refresh;
+- refresh under lease with seller verification;
+- reauthorization-required on rejected refresh token.
 
 ## Consequences
 
-The codebase has a real, narrow MercadoLibre write adapter without weakening the global boundary. Production still cannot mutate MercadoLibre until the credential adapter is wired and the live gates are evidenced.
+The codebase has a real, narrow MercadoLibre write adapter connected to the rotating OAuth credential store without weakening the global boundary. Production still cannot mutate MercadoLibre until the dedicated rollout flag is enabled for Plasticov after the live gates are evidenced.
