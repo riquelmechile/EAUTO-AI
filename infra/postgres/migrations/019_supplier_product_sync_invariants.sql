@@ -9,11 +9,20 @@ BEGIN
     RAISE EXCEPTION 'supplier product observations must advance monotonically';
   END IF;
 
-  IF NEW.sync_succeeded = false THEN
-    IF TG_OP = 'INSERT' THEN
+  IF NEW.sync_succeeded = false AND TG_OP = 'INSERT' THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM supplier_products current_product
+      WHERE current_product.supplier_source_id = NEW.supplier_source_id
+        AND current_product.sku = NEW.sku
+    ) THEN
       RAISE EXCEPTION 'first supplier product observation must be successful';
     END IF;
 
+    RETURN NEW;
+  END IF;
+
+  IF NEW.sync_succeeded = false THEN
     NEW.name := OLD.name;
     NEW.previous_stock_qty := OLD.previous_stock_qty;
     NEW.stock_qty := OLD.stock_qty;
