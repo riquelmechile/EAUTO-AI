@@ -408,7 +408,7 @@ export const api = {
     sourceImageUploadId: string;
     instructions?: string;
   }) =>
-    request<{ assets: readonly { id: string; kind: string; uri: string }[]>(
+    request<{ assets: readonly { id: string; kind: string; uri: string }[] }>(
       "/v1/content/launches",
       {
         method: "POST",
