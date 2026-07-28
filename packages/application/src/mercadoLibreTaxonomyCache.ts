@@ -97,7 +97,9 @@ export class FreshMercadoLibreTaxonomyReader implements ForReadingMercadoLibreTa
     const snapshot = await this.source.getCategory(input);
     if (!snapshot) return null;
     if (snapshot.id !== input.categoryId || snapshot.siteId !== "MLC") {
-      throw new Error("MercadoLibre taxonomy source returned a category outside the requested scope.");
+      throw new Error(
+        "MercadoLibre taxonomy source returned a category outside the requested scope.",
+      );
     }
     await this.store.saveCategory({ ...input, snapshot });
     return snapshot;
