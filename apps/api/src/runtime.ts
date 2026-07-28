@@ -25,6 +25,7 @@ import {
   SourceImageUploadService,
   type ActionExecutor,
   type ContentGenerationPort,
+  type ForComputingProductVisualFingerprints,
   type PhotoSimilarityPort,
   type SupplierCatalogSearchPort,
 } from "@eauto/application";
@@ -41,6 +42,7 @@ import {
   DisabledSupplierCatalogProvider,
   HttpActionExecutor,
   HttpPhotoSimilarityProvider,
+  HttpProductFingerprintProvider,
   HttpSupplierCatalogProvider,
   InMemoryAcquisitionCandidateRepository,
   InMemoryActionLifecycleEventHandler,
@@ -215,6 +217,11 @@ export function createRuntime(config: AppConfig) {
           config.CATALOG_VISUAL_PROVIDER_NAME,
         )
       : deterministicProductVision;
+  const productFingerprintRuntime = createProductFingerprintRuntime(
+    config,
+    deterministicProductVision,
+    catalogRuntime.mode,
+  );
   const productIdentificationPolicy: ProductIdentificationPolicy = Object.freeze({
     minimumConfidenceBps: config.CATALOG_MINIMUM_SIMILARITY_BPS,
     minimumLeadBps: 1_000,
@@ -224,7 +231,7 @@ export function createRuntime(config: AppConfig) {
   });
   const productIdentification = new ProductIdentificationService(
     uploadRepository,
-    deterministicProductVision,
+    productFingerprintRuntime.provider,
     productCandidateProvider,
     productIdentificationRepository,
     productIdentificationRepository,
@@ -318,6 +325,7 @@ export function createRuntime(config: AppConfig) {
     productIdentification,
     productIdentificationReview,
     productIdentificationMode,
+    productFingerprintMode: productFingerprintRuntime.mode,
     productIdentificationPolicy,
     sessionService,
     sourceImageUploads,
@@ -429,6 +437,41 @@ function createCatalogAcquisitionProviderRuntime(config: AppConfig): Readonly<{
     routes,
     mode: "external" as const,
   });
+}
+
+function createProductFingerprintRuntime(
+  config: AppConfig,
+  deterministicProvider: ForComputingProductVisualFingerprints,
+  catalogMode: "external" | "disabled",
+): Readonly<{
+  provider: ForComputingProductVisualFingerprints;
+  mode: "external-phash-64" | "deterministic-sha256-prefix" | "disabled";
+}> {
+  if (catalogMode === "external") {
+    if (!config.PRODUCT_FINGERPRINT_PROVIDER_URL || !config.PRODUCT_FINGERPRINT_PROVIDER_API_KEY) {
+      throw new Error(
+        "Product Identification is external but perceptual fingerprint configuration is incomplete.",
+      );
+    }
+    return Object.freeze({
+      provider: new HttpProductFingerprintProvider({
+        endpoint: config.PRODUCT_FINGERPRINT_PROVIDER_URL,
+        apiKey: config.PRODUCT_FINGERPRINT_PROVIDER_API_KEY,
+        providerName: config.PRODUCT_FINGERPRINT_PROVIDER_NAME,
+        fingerprintVersion: config.PRODUCT_FINGERPRINT_PROVIDER_VERSION,
+        timeoutMs: config.PRODUCT_FINGERPRINT_TIMEOUT_MS,
+        maximumResponseBytes: config.PRODUCT_FINGERPRINT_MAX_RESPONSE_BYTES,
+      }),
+      mode: "external-phash-64" as const,
+    });
+  }
+  if (config.NODE_ENV !== "production") {
+    return Object.freeze({
+      provider: deterministicProvider,
+      mode: "deterministic-sha256-prefix" as const,
+    });
+  }
+  return Object.freeze({ provider: deterministicProvider, mode: "disabled" as const });
 }
 
 function parseActionRoutes(value: string): HttpActionRoutes {
