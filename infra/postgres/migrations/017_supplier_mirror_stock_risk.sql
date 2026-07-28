@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS supplier_listing_links (
   active boolean NOT NULL DEFAULT true,
   recovery_stock_threshold bigint NOT NULL DEFAULT 2 CHECK (recovery_stock_threshold >= 0),
   recovery_consecutive_syncs integer NOT NULL DEFAULT 2 CHECK (recovery_consecutive_syncs > 0),
+  recovery_confirmation_count integer NOT NULL DEFAULT 0 CHECK (
+    recovery_confirmation_count >= 0
+  ),
   cost_change_alert_bps integer NOT NULL DEFAULT 500 CHECK (
     cost_change_alert_bps BETWEEN 0 AND 10000
   ),
@@ -100,6 +103,7 @@ CREATE TABLE IF NOT EXISTS supplier_stock_assessments (
   account_id text NOT NULL,
   supplier_source_id text NOT NULL,
   listing_id text NOT NULL,
+  policy_version text NOT NULL,
   evaluated_at timestamptz NOT NULL,
   content_hash text NOT NULL UNIQUE,
   payload_json jsonb NOT NULL,
