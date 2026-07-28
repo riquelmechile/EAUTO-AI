@@ -38,9 +38,9 @@ export class InMemoryAcquisitionCandidateRepository implements AcquisitionCandid
     return Promise.resolve(candidate);
   }
 
-  list(input: Parameters<AcquisitionCandidateRepository["list"]>[0]): Promise<
-    readonly AcquisitionCandidate[]
-  > {
+  list(
+    input: Parameters<AcquisitionCandidateRepository["list"]>[0],
+  ): Promise<readonly AcquisitionCandidate[]> {
     const candidates = [...this.candidates.values()]
       .filter(
         (candidate) =>

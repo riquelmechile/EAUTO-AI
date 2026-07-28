@@ -182,7 +182,9 @@ export class CatalogAcquisitionService {
     request: ListAcquisitionCandidatesRequest,
   ): Promise<readonly AcquisitionCandidate[]> {
     if (!Number.isSafeInteger(request.limit) || request.limit < 1 || request.limit > 100) {
-      throw new CatalogAcquisitionValidationError("Candidate list limit must be between 1 and 100.");
+      throw new CatalogAcquisitionValidationError(
+        "Candidate list limit must be between 1 and 100.",
+      );
     }
     return this.candidates.list(request);
   }

@@ -165,7 +165,9 @@ async function seedScope() {
 
 async function cleanup() {
   await pool
-    .query(`DELETE FROM catalog_acquisition_candidates WHERE organization_id = $1`, [organizationId])
+    .query(`DELETE FROM catalog_acquisition_candidates WHERE organization_id = $1`, [
+      organizationId,
+    ])
     .catch(() => undefined);
   await pool
     .query(`DELETE FROM source_image_uploads WHERE organization_id = $1`, [organizationId])

@@ -160,7 +160,10 @@ function parseSupplierOffer(
   }
   const observedAt = requireIsoDate(value.observedAt, `supplier offer ${index} observedAt`);
   const evidence = parseEvidence(value.evidence, `supplier offer ${index}`, observedAt);
-  const currencyId = requireString(value.currencyId, `supplier offer ${index} currencyId`).toUpperCase();
+  const currencyId = requireString(
+    value.currencyId,
+    `supplier offer ${index} currencyId`,
+  ).toUpperCase();
   return Object.freeze({
     organizationId: input.organizationId,
     accountId: input.accountId,
@@ -199,7 +202,10 @@ function parseEvidence(
       `${label} evidence timestamp must match its observation.`,
     );
   }
-  const contentHash = requireString(value.contentHash, `${label} evidence contentHash`).toLowerCase();
+  const contentHash = requireString(
+    value.contentHash,
+    `${label} evidence contentHash`,
+  ).toLowerCase();
   if (!/^[a-f0-9]{64}$/.test(contentHash)) {
     throw new CatalogAcquisitionValidationError(
       `${label} evidence contentHash must be a SHA-256 hex digest.`,

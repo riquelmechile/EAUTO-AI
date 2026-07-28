@@ -137,12 +137,7 @@ const configSchema = z.object({
     .min(0)
     .max(100_000_000)
     .default(50_000),
-  INTELLIGENCE_DEFAULT_BUDGET_MINOR_CLP: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(100_000_000)
-    .default(0),
+  INTELLIGENCE_DEFAULT_BUDGET_MINOR_CLP: z.coerce.number().int().min(0).max(100_000_000).default(0),
   LLM_ENABLED: environmentBoolean.default(false),
   LLM_BASE_URL: z.string().url().default("https://api.deepseek.com"),
   LLM_API_KEY: optionalString,
@@ -153,12 +148,7 @@ const configSchema = z.object({
     .min(1_000)
     .max(1_000_000)
     .default(100_000),
-  LLM_DEFAULT_MAXIMUM_OUTPUT_TOKENS: z.coerce
-    .number()
-    .int()
-    .min(100)
-    .max(384_000)
-    .default(8_000),
+  LLM_DEFAULT_MAXIMUM_OUTPUT_TOKENS: z.coerce.number().int().min(100).max(384_000).default(8_000),
   LLM_DAILY_ACCOUNT_BUDGET_MICROS_USD: z.coerce
     .number()
     .int()
