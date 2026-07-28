@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import type { ActorIdentity, Permission } from "@eauto/domain";
+import { registerCatalogAcquisitionRoutes } from "./catalogAcquisitionRoutes.js";
 import { registerOperationalIntelligenceRoutes } from "./operationalIntelligenceRoutes.js";
 import { registerShadowLlmRoutes } from "./llmRoutes.js";
 import type { OperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";
@@ -23,6 +24,7 @@ export function registerAgentOsRoutes(
   app: FastifyInstance,
   dependencies: AgentOsRouteDependencies,
 ): void {
+  registerCatalogAcquisitionRoutes(app, dependencies);
   registerShadowLlmRoutes(app, dependencies);
   registerOperationalIntelligenceRoutes(app, dependencies);
 
