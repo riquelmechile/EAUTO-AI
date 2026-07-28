@@ -5,10 +5,10 @@ export * from "./governedWorkOrderProcessor.js";
 export * from "./governedWorkOrderService.js";
 export * from "./llmService.js";
 export * from "./mercadoLibreService.js";
+export * from "./mercadoLibreNotifications.js";
 export * from "./operationalIntelligenceService.js";
 export * from "./outbox.js";
 export * from "./ports.js";
+export * from "./profitEngineService.js";
 export * from "./sessionService.js";
 export * from "./sourceImageUploadService.js";
-
-export * from "./mercadoLibreNotifications.js";

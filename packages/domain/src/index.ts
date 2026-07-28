@@ -10,5 +10,6 @@ export * from "./mercadolibre.js";
 export * from "./money.js";
 export * from "./objectives.js";
 export * from "./operationalIntelligence.js";
+export * from "./profitEngine.js";
 export * from "./sessions.js";
 export * from "./uploads.js";
