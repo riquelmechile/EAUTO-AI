@@ -4,6 +4,7 @@ export * from "./contentStudioService.js";
 export * from "./governedWorkOrderProcessor.js";
 export * from "./governedWorkOrderService.js";
 export * from "./llmService.js";
+export * from "./marginAuditDaemon.js";
 export * from "./mercadoLibreService.js";
 export * from "./mercadoLibreNotifications.js";
 export * from "./operationalIntelligenceService.js";
