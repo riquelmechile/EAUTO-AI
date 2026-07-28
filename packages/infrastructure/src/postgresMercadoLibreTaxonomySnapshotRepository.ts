@@ -53,7 +53,7 @@ export class PostgresMercadoLibreTaxonomySnapshotRepository
   private async readLatest(
     input: MercadoLibreTaxonomyScope,
     kind: "category" | "attributes",
-  ): Promise<unknown | null> {
+  ): Promise<unknown> {
     const result = await this.pool.query<{ payload_json: unknown }>(
       `SELECT payload_json
        FROM mercadolibre_taxonomy_snapshots
@@ -220,10 +220,13 @@ function readNamedValues(
 }
 
 function readStringArray(value: unknown, field: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
-    throw new Error(`${field} must be a string array.`);
-  }
-  return [...value];
+  if (!Array.isArray(value)) throw new Error(`${field} must be a string array.`);
+  return value.map((entry, index) => {
+    if (typeof entry !== "string") {
+      throw new Error(`${field}[${index}] must be a string.`);
+    }
+    return entry;
+  });
 }
 
 function asRecord(value: unknown, field: string): Record<string, unknown> {
