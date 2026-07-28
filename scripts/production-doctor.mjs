@@ -21,6 +21,7 @@ const files = [
   "scripts/init-object-storage.mjs",
   "scripts/migrate.mjs",
   "scripts/smoke-postgres-schema.mjs",
+  "scripts/smoke-profit-engine-postgres.mjs",
   "scripts/smoke-production-runtime.mjs",
   "scripts/deploy-production.sh",
   "scripts/production-doctor.mjs",
@@ -28,6 +29,7 @@ const files = [
   "infra/postgres/migrations/012_operational_intelligence.sql",
   "infra/postgres/migrations/014_tenant_integrity_and_action_guards.sql",
   "infra/postgres/migrations/015_action_lifecycle_delivery_log.sql",
+  "infra/postgres/migrations/016_profit_engine_margin_audit.sql",
   "packages/content/src/httpContentProvider.ts",
   "packages/infrastructure/src/httpActionExecutor.ts",
   "apps/mobile/app.config.cjs",
@@ -261,5 +263,5 @@ function unquote(value) {
 }
 
 function isPlaceholder(value) {
-  return value.includes("__REQUIRED__") || /<[^>]+>/.test(value);
+  return !value || value.includes("__REQUIRED__") || /^<.+>$/.test(value);
 }

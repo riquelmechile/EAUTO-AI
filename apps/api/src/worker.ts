@@ -1,3 +1,5 @@
+import { MarginAuditDaemon, ProfitEngineService } from "@eauto/application";
+import { PostgresProfitEngineRepository } from "@eauto/infrastructure";
 import { loadConfig } from "./config.js";
 import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";
 import { createRuntime } from "./runtime.js";
@@ -5,6 +7,23 @@ import { createRuntime } from "./runtime.js";
 const config = loadConfig();
 const runtime = createRuntime(config);
 const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);
+const marginAuditRepository = runtime.databasePool
+  ? new PostgresProfitEngineRepository(runtime.databasePool)
+  : null;
+const marginAuditDaemon = marginAuditRepository
+  ? new MarginAuditDaemon(
+      new ProfitEngineService(marginAuditRepository, marginAuditRepository, marginAuditRepository),
+      marginAuditRepository,
+      marginAuditRepository,
+      {
+        workerId: `${config.OUTBOX_WORKER_ID}-margin-${process.pid}`,
+        leaseMs: config.OUTBOX_LEASE_MS,
+        successIntervalMs: 15 * 60_000,
+        retryIntervalMs: 60_000,
+        now: () => new Date(),
+      },
+    )
+  : null;
 let stopping = false;
 let closed = false;
 
@@ -19,6 +38,7 @@ async function run(): Promise<void> {
     outboxWorkerId: `${config.OUTBOX_WORKER_ID}-${process.pid}`,
     mercadoLibreNotifications: runtime.mercadoLibreNotificationProcessor !== null,
     intelligenceWorker: intelligenceRuntime.processor !== null,
+    marginAuditWorker: marginAuditDaemon !== null,
     persistence: runtime.persistenceMode,
   });
 
@@ -37,6 +57,7 @@ async function run(): Promise<void> {
     let outbox = { claimed: 0, processed: 0, retried: 0, dead: 0 };
     let notifications = { leased: 0, processed: 0, failed: 0 };
     let intelligence = { leased: 0, completed: 0, failed: 0 };
+    let marginAudit = { leased: 0, audited: 0, findings: 0, failed: 0 };
 
     try {
       outbox = await runtime.outboxProcessor.runOnce(config.OUTBOX_BATCH_SIZE);
@@ -63,16 +84,34 @@ async function run(): Promise<void> {
       }
     }
 
-    if (outbox.claimed > 0 || notifications.leased > 0 || intelligence.leased > 0) {
+    if (marginAuditDaemon) {
+      try {
+        marginAudit = await marginAuditDaemon.runOnce(config.OUTBOX_BATCH_SIZE);
+      } catch (error) {
+        cycleFailed = true;
+        logProcessorFailure("margin-audit", error);
+      }
+    }
+
+    if (
+      outbox.claimed > 0 ||
+      notifications.leased > 0 ||
+      intelligence.leased > 0 ||
+      marginAudit.leased > 0
+    ) {
       log("info", "worker-cycle", {
         outbox,
         mercadoLibreNotifications: notifications,
         intelligence,
+        marginAudit,
       });
     }
     if (
       cycleFailed ||
-      (outbox.claimed === 0 && notifications.leased === 0 && intelligence.leased === 0)
+      (outbox.claimed === 0 &&
+        notifications.leased === 0 &&
+        intelligence.leased === 0 &&
+        marginAudit.leased === 0)
     ) {
       await delay(pollInterval);
     }
