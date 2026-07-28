@@ -29,7 +29,8 @@
     "smoke:core": "node scripts/smoke-core.mjs",
     "smoke:object-storage": "node scripts/smoke-object-storage.mjs",
     "smoke:production-runtime": "node scripts/smoke-production-runtime.mjs",
-    "smoke:postgres-schema": "node scripts/smoke-postgres-schema.mjs"
+    "smoke:postgres-schema": "node scripts/smoke-postgres-schema.mjs",
+    "smoke:taxonomy-postgres": "node scripts/smoke-mercadolibre-taxonomy-postgres.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
