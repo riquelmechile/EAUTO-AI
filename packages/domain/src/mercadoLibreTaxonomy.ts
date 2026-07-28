@@ -109,7 +109,9 @@ export function evaluateMercadoLibreTaxonomyPreflight(input: {
     submitted.set(attribute.id, attribute);
   }
 
-  const contracts = new Map(input.attributes.attributes.map((attribute) => [attribute.id, attribute]));
+  const contracts = new Map(
+    input.attributes.attributes.map((attribute) => [attribute.id, attribute]),
+  );
   const missingRequired: string[] = [];
   const invalid: string[] = [];
 
@@ -152,7 +154,8 @@ function isAllowed(
   return contract.allowedValues.some(
     (allowed) =>
       (value.valueId !== null && value.valueId === allowed.id) ||
-      (value.valueName !== null && value.valueName.trim().toLowerCase() === allowed.name.toLowerCase()),
+      (value.valueName !== null &&
+        value.valueName.trim().toLowerCase() === allowed.name.toLowerCase()),
   );
 }
 
