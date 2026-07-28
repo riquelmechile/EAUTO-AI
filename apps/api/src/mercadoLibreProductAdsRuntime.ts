@@ -4,10 +4,10 @@ import { MercadoLibreProductAdsService } from "@eauto/application";
 import {
   MercadoLibreHttpClient,
   MercadoLibreProductAdsHttpReader,
+  NodeMercadoLibreSecurity,
   PostgresMercadoLibreConnectionRepository,
   PostgresMercadoLibreProductAdsRepository,
   RotatingMercadoLibreQuestionAnswerCredentialProvider,
-  NodeMercadoLibreSecurity,
 } from "@eauto/infrastructure";
 import type { AppConfig } from "./config.js";
 
@@ -22,7 +22,8 @@ export function createMercadoLibreProductAdsRuntime(
     !config.MELI_CLIENT_ID ||
     !config.MELI_CLIENT_SECRET ||
     !config.MELI_REDIRECT_URI ||
-    !config.MELI_TOKEN_VAULT_KEY_BASE64
+    !config.MELI_TOKEN_VAULT_KEY_BASE64 ||
+    !config.MELI_PRODUCT_ADS_ACCOUNT_ID
   ) {
     throw new Error("MercadoLibre Product Ads runtime is enabled but incomplete.");
   }
