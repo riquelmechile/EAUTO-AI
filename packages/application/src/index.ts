@@ -6,6 +6,7 @@ export * from "./governedWorkOrderProcessor.js";
 export * from "./governedWorkOrderService.js";
 export * from "./llmService.js";
 export * from "./marginAuditDaemon.js";
+export * from "./mercadoLibreItemValidation.js";
 export * from "./mercadoLibreService.js";
 export * from "./mercadoLibreNotifications.js";
 export * from "./mercadoLibreTaxonomyCache.js";
