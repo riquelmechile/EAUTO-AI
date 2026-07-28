@@ -32,7 +32,17 @@ jobs:
       - name: Lint
         run: npm run lint
       - name: Test
-        run: npm test
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee /tmp/test.log
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: supplier-mirror-test-diagnostics
+          path: /tmp/test.log
+          if-no-files-found: error
+          retention-days: 1
       - name: Build application
         run: npm run build
       - name: Prepare production template
