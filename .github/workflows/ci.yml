@@ -23,12 +23,19 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install dependencies quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: List files requiring Prettier
-        run: >-
-          npx prettier --check
-          docs/sdd/010-product-identification-android-control-plane.md
-          docs/implementation-notes/product-identification-android.md
-          docs/ROADMAP.md
-          apps/mobile/App.tsx
-          apps/mobile/src/lib/api.ts
-          apps/mobile/src/features/product-identification/ProductIdentificationScreen.tsx
+      - name: Show exact Prettier diff
+        run: |
+          npx prettier --write \
+            docs/sdd/010-product-identification-android-control-plane.md \
+            docs/implementation-notes/product-identification-android.md \
+            docs/ROADMAP.md \
+            apps/mobile/App.tsx \
+            apps/mobile/src/lib/api.ts \
+            apps/mobile/src/features/product-identification/ProductIdentificationScreen.tsx >/dev/null
+          git diff --unified=3 -- \
+            docs/sdd/010-product-identification-android-control-plane.md \
+            docs/implementation-notes/product-identification-android.md \
+            docs/ROADMAP.md \
+            apps/mobile/App.tsx \
+            apps/mobile/src/lib/api.ts \
+            apps/mobile/src/features/product-identification/ProductIdentificationScreen.tsx
