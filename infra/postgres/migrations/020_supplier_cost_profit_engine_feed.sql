@@ -1,5 +1,28 @@
 BEGIN;
 
+ALTER TABLE supplier_listing_links
+  ADD COLUMN IF NOT EXISTS cost_authoritative boolean NOT NULL DEFAULT false;
+
+WITH single_active_link AS (
+  SELECT account_id, listing_id, MIN(supplier_source_id) AS supplier_source_id
+  FROM supplier_listing_links
+  WHERE active = true
+  GROUP BY account_id, listing_id
+  HAVING count(*) = 1
+)
+UPDATE supplier_listing_links link
+SET cost_authoritative = true,
+    updated_at = now()
+FROM single_active_link single
+WHERE link.account_id = single.account_id
+  AND link.listing_id = single.listing_id
+  AND link.supplier_source_id = single.supplier_source_id
+  AND link.active = true;
+
+CREATE UNIQUE INDEX IF NOT EXISTS supplier_listing_authoritative_cost_idx
+  ON supplier_listing_links(account_id, listing_id)
+  WHERE active = true AND cost_authoritative = true;
+
 CREATE OR REPLACE FUNCTION upsert_supplier_product_cost_for_links(
   product_organization_id text,
   product_account_id text,
@@ -44,6 +67,7 @@ BEGIN
     AND link.supplier_source_id = product_supplier_source_id
     AND link.sku = product_sku
     AND link.active = true
+    AND link.cost_authoritative = true
   ON CONFLICT (account_id, listing_id, cost_kind) DO UPDATE SET
     organization_id = EXCLUDED.organization_id,
     amount_minor = EXCLUDED.amount_minor,
@@ -64,6 +88,7 @@ BEGIN
     AND link.supplier_source_id = product_supplier_source_id
     AND link.sku = product_sku
     AND link.active = true
+    AND link.cost_authoritative = true
     AND policy.organization_id = link.organization_id
     AND policy.account_id = link.account_id
     AND policy.listing_id = link.listing_id;
@@ -105,7 +130,7 @@ AS $$
 DECLARE
   product supplier_products%ROWTYPE;
 BEGIN
-  IF NEW.active = false THEN
+  IF NEW.active = false OR NEW.cost_authoritative = false THEN
     RETURN NEW;
   END IF;
 
@@ -138,7 +163,8 @@ $$;
 
 DROP TRIGGER IF EXISTS supplier_listing_links_profit_engine_feed ON supplier_listing_links;
 CREATE TRIGGER supplier_listing_links_profit_engine_feed
-AFTER INSERT OR UPDATE OF active, supplier_source_id, sku ON supplier_listing_links
+AFTER INSERT OR UPDATE OF active, cost_authoritative, supplier_source_id, sku
+ON supplier_listing_links
 FOR EACH ROW
 EXECUTE FUNCTION feed_supplier_product_cost_after_link_change();
 
