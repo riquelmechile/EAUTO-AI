@@ -33,11 +33,11 @@ function result() {
   });
 }
 
-async function createTestApp(taxonomyRuntime?: MercadoLibreTaxonomyRuntime) {
+function createTestApp(taxonomyRuntime?: MercadoLibreTaxonomyRuntime) {
   const runtime = createRuntime(loadConfig({ NODE_ENV: "test", AUTH_MODE: "disabled" }));
   const app = Fastify();
   const requireAccount = vi.fn(
-    async (
+    (
       receivedActor: ActorIdentity,
       accountId: string,
       permission: Permission,
@@ -45,6 +45,7 @@ async function createTestApp(taxonomyRuntime?: MercadoLibreTaxonomyRuntime) {
       expect(receivedActor).toBe(actor);
       expect(accountId).toBe("plasticov");
       expect(permission).toBe("integrations.read");
+      return Promise.resolve();
     },
   );
   registerMercadoLibreRoutes(app, {
@@ -78,7 +79,7 @@ describe("MercadoLibre taxonomy preflight API", () => {
       policy: MERCADOLIBRE_TAXONOMY_POLICY,
       mode: "official-http-postgres-cache",
     });
-    const { app, runtime, requireAccount } = await createTestApp(taxonomyRuntime);
+    const { app, runtime, requireAccount } = createTestApp(taxonomyRuntime);
 
     try {
       const response = await app.inject({
@@ -115,7 +116,7 @@ describe("MercadoLibre taxonomy preflight API", () => {
     const preflight = vi
       .fn<MercadoLibreTaxonomyRuntime["preflight"]["preflight"]>()
       .mockResolvedValue(result());
-    const { app, runtime } = await createTestApp(
+    const { app, runtime } = createTestApp(
       Object.freeze({
         preflight: Object.freeze({ preflight }),
         policy: MERCADOLIBRE_TAXONOMY_POLICY,
@@ -143,7 +144,7 @@ describe("MercadoLibre taxonomy preflight API", () => {
   });
 
   it("fails closed when durable PostgreSQL taxonomy persistence is unavailable", async () => {
-    const { app, runtime } = await createTestApp();
+    const { app, runtime } = createTestApp();
 
     try {
       const response = await app.inject({
