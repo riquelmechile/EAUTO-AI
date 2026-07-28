@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { MercadoLibreRemoteError } from "@eauto/application";
+import type { MercadoLibreCredentialRecord } from "@eauto/application";
 import type { MercadoLibreConnection } from "@eauto/domain";
 import { RotatingMercadoLibreQuestionAnswerCredentialProvider } from "../packages/infrastructure/src/mercadoLibreQuestionAnswerCredentialProvider.js";
 
@@ -19,30 +20,31 @@ function connection(expiresAt: string): MercadoLibreConnection {
 }
 
 function createHarness(expiresAt: string) {
-  let stored = Object.freeze({
+  let stored: MercadoLibreCredentialRecord = Object.freeze({
     connection: connection(expiresAt),
     protectedAccessToken: "protected-access",
     protectedRefreshToken: "protected-refresh",
     tokenType: "Bearer",
   });
   const connections = {
-    get: vi.fn(async () => stored),
-    save: vi.fn(async (record) => {
+    get: vi.fn(() => Promise.resolve(stored)),
+    save: vi.fn((record: MercadoLibreCredentialRecord) => {
       stored = record;
+      return Promise.resolve();
     }),
-    acquireRefreshLease: vi.fn(async () => true),
-    releaseRefreshLease: vi.fn(async () => undefined),
-    markReauthorizationRequired: vi.fn(async () => undefined),
-    replaceListingSnapshots: vi.fn(async () => undefined),
-    listListingSnapshots: vi.fn(async () => []),
-    replaceClaimSnapshots: vi.fn(async () => undefined),
-    listClaimSnapshots: vi.fn(async () => []),
-    replaceQuestionSnapshots: vi.fn(async () => undefined),
-    listQuestionSnapshots: vi.fn(async () => []),
-    replaceOrderSnapshots: vi.fn(async () => undefined),
-    listOrderSnapshots: vi.fn(async () => []),
-    saveReputationSnapshot: vi.fn(async () => undefined),
-    getReputationSnapshot: vi.fn(async () => null),
+    acquireRefreshLease: vi.fn(() => Promise.resolve(true)),
+    releaseRefreshLease: vi.fn(() => Promise.resolve()),
+    markReauthorizationRequired: vi.fn(() => Promise.resolve()),
+    replaceListingSnapshots: vi.fn(() => Promise.resolve()),
+    listListingSnapshots: vi.fn(() => Promise.resolve([])),
+    replaceClaimSnapshots: vi.fn(() => Promise.resolve()),
+    listClaimSnapshots: vi.fn(() => Promise.resolve([])),
+    replaceQuestionSnapshots: vi.fn(() => Promise.resolve()),
+    listQuestionSnapshots: vi.fn(() => Promise.resolve([])),
+    replaceOrderSnapshots: vi.fn(() => Promise.resolve()),
+    listOrderSnapshots: vi.fn(() => Promise.resolve([])),
+    saveReputationSnapshot: vi.fn(() => Promise.resolve()),
+    getReputationSnapshot: vi.fn(() => Promise.resolve(null)),
   };
   const security = {
     createAuthorizationSecrets: vi.fn(() => ({
@@ -60,14 +62,16 @@ function createHarness(expiresAt: string) {
   };
   const client = {
     exchangeAuthorizationCode: vi.fn(),
-    refreshAccessToken: vi.fn(async () => ({
-      accessToken: "refreshed-access",
-      refreshToken: "refreshed-refresh",
-      expiresInSeconds: 21_600,
-      tokenType: "Bearer",
-      scopes: Object.freeze(["read", "write"]),
-      userId: "123456789",
-    })),
+    refreshAccessToken: vi.fn(() =>
+      Promise.resolve({
+        accessToken: "refreshed-access",
+        refreshToken: "refreshed-refresh",
+        expiresInSeconds: 21_600,
+        tokenType: "Bearer",
+        scopes: Object.freeze(["read", "write"]),
+        userId: "123456789",
+      }),
+    ),
     getCurrentUser: vi.fn(),
     listSellerListings: vi.fn(),
     searchSellerClaims: vi.fn(),
