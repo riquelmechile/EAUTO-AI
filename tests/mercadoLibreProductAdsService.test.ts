@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { MercadoLibreProductAdsService } from "@eauto/application";
+import {
+  MercadoLibreProductAdsService,
+  type MercadoLibreProductAdsAdvertiser,
+  type MercadoLibreProductAdsReader,
+} from "@eauto/application";
 import type {
   MercadoLibreListingSnapshot,
   MercadoLibreProductAdsMetrics,
@@ -49,32 +53,33 @@ const listing: MercadoLibreListingSnapshot = Object.freeze({
 });
 
 function profitability(salePriceMinor: number): ProfitabilitySnapshot {
+  const fixedCostsMinor = 5_000;
+  const variableRateBps = 1_600;
+  const variableCostsMinor = Math.round((salePriceMinor * variableRateBps) / 10_000);
+  const totalCostsMinor = fixedCostsMinor + variableCostsMinor;
+  const netProfitMinor = salePriceMinor - totalCostsMinor;
   return Object.freeze({
+    status: "profitable",
     accountId: "plasticov",
     listingId: "MLC123",
     currency: "CLP",
     salePriceMinor,
-    productCostMinor: 4_000,
-    shippingCostMinor: 500,
-    marketplaceFeeMinor: 1_000,
-    adsCostMinor: 0,
-    taxCostMinor: 0,
-    otherCostMinor: 0,
-    totalCostMinor: 5_500,
-    grossProfitMinor: salePriceMinor - 5_500,
-    grossMarginBps: Math.floor(((salePriceMinor - 5_500) * 10_000) / salePriceMinor),
-    contributionMarginMinor: salePriceMinor - 5_500,
-    contributionMarginBps: Math.floor(((salePriceMinor - 5_500) * 10_000) / salePriceMinor),
-    targetMarginBps: 3_500,
-    minimumPriceMinor: 8_462,
-    policyVersion: "profit-v1",
+    quantity: 1,
+    minimumMarginBps: 3_500,
+    variableRateBps,
+    grossRevenueMinor: salePriceMinor,
+    fixedCostsMinor,
+    variableCostsMinor,
+    totalCostsMinor,
+    netProfitMinor,
+    marginBps: Math.trunc((netProfitMinor * 10_000) / salePriceMinor),
+    evidenceRefs: Object.freeze(["profit-v1"]),
     calculatedAt: "2026-07-28T10:00:00.000Z",
-    sourceHashes: Object.freeze(["b".repeat(64)]),
   });
 }
 
 function createService(options?: {
-  advertisers?: readonly { advertiserId: string; siteId: string; advertiserName: string; accountName: string }[];
+  advertisers?: readonly MercadoLibreProductAdsAdvertiser[];
   itemMetrics?: MercadoLibreProductAdsMetrics | null;
   listingPriceMinor?: number;
   profitPriceMinor?: number;
@@ -82,19 +87,18 @@ function createService(options?: {
 }) {
   const repository = new InMemoryMercadoLibreProductAdsRepository();
   repository.seedProfitability(profitability(options?.profitPriceMinor ?? 9_500));
-  const reader = {
-    listAdvertisers: vi.fn(() =>
-      Promise.resolve(
-        options?.advertisers ?? [
-          {
-            advertiserId: "456",
-            siteId: "MLC",
-            advertiserName: "Plasticov Ads",
-            accountName: "Plasticov",
-          },
-        ],
-      ),
-    ),
+  const advertisers: readonly MercadoLibreProductAdsAdvertiser[] =
+    options?.advertisers ??
+    Object.freeze([
+      Object.freeze({
+        advertiserId: "456",
+        siteId: "MLC",
+        advertiserName: "Plasticov Ads",
+        accountName: "Plasticov",
+      }),
+    ]);
+  const reader: MercadoLibreProductAdsReader = {
+    listAdvertisers: vi.fn(() => Promise.resolve(advertisers)),
     read: vi.fn(() =>
       Promise.resolve({
         campaigns: Object.freeze([
@@ -217,10 +221,20 @@ describe("MercadoLibreProductAdsService", () => {
   });
 
   it("requires an explicit mapping when more than one MLC advertiser is visible", async () => {
-    const advertisers = [
-      { advertiserId: "456", siteId: "MLC", advertiserName: "One", accountName: "One" },
-      { advertiserId: "789", siteId: "MLC", advertiserName: "Two", accountName: "Two" },
-    ] as const;
+    const advertisers: readonly MercadoLibreProductAdsAdvertiser[] = Object.freeze([
+      Object.freeze({
+        advertiserId: "456",
+        siteId: "MLC",
+        advertiserName: "One",
+        accountName: "One",
+      }),
+      Object.freeze({
+        advertiserId: "789",
+        siteId: "MLC",
+        advertiserName: "Two",
+        accountName: "Two",
+      }),
+    ]);
     const ambiguous = createService({ advertisers });
     await expect(
       ambiguous.service.sync({
@@ -242,7 +256,7 @@ describe("MercadoLibreProductAdsService", () => {
     ).resolves.toMatchObject({ advertiserId: "456" });
   });
 
-  it("rejects ranges longer than the official maximum configured by the runtime", async () => {
+  it("rejects ranges longer than the configured official maximum", async () => {
     const { service, reader } = createService();
     await expect(
       service.sync({
