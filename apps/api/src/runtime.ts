@@ -86,6 +86,7 @@ import {
 } from "@eauto/infrastructure";
 import { NodeSessionSecrets } from "./sessionSecrets.js";
 import type { AppConfig } from "./config.js";
+import { createMercadoLibreProductAdsRuntime } from "./mercadoLibreProductAdsRuntime.js";
 
 const developmentAccounts: readonly CommerceAccount[] = [
   Object.freeze({
@@ -274,6 +275,7 @@ export function createRuntime(config: AppConfig) {
     now: () => new Date(),
   });
   const mercadoLibre = createMercadoLibreRuntime(config, pool, clock);
+  const mercadoLibreProductAds = createMercadoLibreProductAdsRuntime(config, pool, clock);
   const mercadoLibreNotifications = pool
     ? new PostgresMercadoLibreNotificationRepository(pool)
     : new InMemoryMercadoLibreNotificationRepository();
@@ -335,6 +337,7 @@ export function createRuntime(config: AppConfig) {
     sourceImageUploads,
     outboxProcessor,
     mercadoLibre,
+    mercadoLibreProductAds,
     mercadoLibreNotifications,
     mercadoLibreNotificationIngestion,
     mercadoLibreNotificationProcessor,

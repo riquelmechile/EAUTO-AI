@@ -23,6 +23,7 @@ import {
 } from "@eauto/domain";
 import { createAuthenticator, readBearerToken, type EnrollmentAuthenticator } from "./auth.js";
 import { registerMercadoLibreRoutes } from "./mercadoLibreRoutes.js";
+import { registerMercadoLibreProductAdsRoutes } from "./mercadoLibreProductAdsRoutes.js";
 import { registerAgentOsRoutes } from "./agentOsRoutes.js";
 import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";
 import { createRuntime, type Runtime } from "./runtime.js";
@@ -109,6 +110,14 @@ export async function buildApp(config: AppConfig, suppliedRuntime?: Runtime) {
   registerMercadoLibreRoutes(app, {
     runtime,
     webhookToken: config.MELI_WEBHOOK_TOKEN ?? null,
+    authenticate: (request) => authenticate(request, runtime, authenticator),
+    requireAccount: async (actor, accountId, permission) => {
+      await requireAccount(runtime, actor, accountId, permission);
+    },
+  });
+
+  registerMercadoLibreProductAdsRoutes(app, {
+    runtime,
     authenticate: (request) => authenticate(request, runtime, authenticator),
     requireAccount: async (actor, accountId, permission) => {
       await requireAccount(runtime, actor, accountId, permission);

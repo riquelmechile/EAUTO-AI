@@ -64,17 +64,23 @@
 - [x] Ingesta y persistencia de listings, órdenes, preguntas, reclamos y reputación.
 - [x] `sourceHash` y `observedAt` en snapshots operacionales.
 - [x] El Profit Engine lee el precio observado del snapshot MercadoLibre más reciente.
+- [x] Product Ads v2 read plane para campañas, Ad Groups e ítems.
+- [x] Advertiser discovery fail-closed y mapping explícito cuando existe ambigüedad.
+- [x] Reconciliación de precio entre listing, Product Ads y Profit Engine.
+- [x] Persistencia PostgreSQL y API autenticada para evidencia Product Ads.
+- [x] Gasto Ads por listing solo cuando MercadoLibre entrega métricas directas del ítem.
 
-### Pendiente live o de integración externa
+### Pendiente live o de decisión comercial
 
 - [ ] Configurar credenciales reales y redirect URI productiva.
 - [ ] Conectar y validar OAuth de Plasticov.
 - [ ] Conectar y validar OAuth de Maustian después de Plasticov.
 - [ ] Verificar webhook real y deduplicación en producción.
-- [ ] Incorporar el read model Product Ads v2 con advertiser IDs reales.
-- [ ] Atribuir costos Ads por listing sin inventar una regla de negocio.
+- [ ] Ejecutar advertiser discovery real para Plasticov y fijar mapping si aparece más de uno.
+- [ ] Comparar campañas, Ad Groups e ítems Product Ads contra MercadoLibre durante cinco días hábiles.
 - [ ] Consolidar freshness, provenance y reconciliación económica con datos live.
-- [ ] Comparar read models contra la interfaz real de MercadoLibre durante cinco días hábiles.
+- [ ] Definir una policy comercial versionada antes de convertir gasto Ads en costo unitario.
+- [ ] Comparar todos los read models contra la interfaz real durante cinco días hábiles.
 
 Los gates no delegables y su evidencia se rastrean en el issue #41.
 
@@ -182,7 +188,7 @@ Hasta completar esos gates, las escrituras externas permanecen completamente des
 - [ ] Ecommerce propio.
 - [ ] Gestión de proveedores y compras.
 - [ ] Importaciones y forecast de inventario.
-- [ ] Publicidad y Product Ads.
+- [ ] Optimización y escritura de Product Ads detrás de una policy independiente.
 - [ ] Redes sociales y distribución de contenido.
 - [ ] Amazon, Alibaba y otros marketplaces.
 - [ ] Nuevas organizaciones y cuentas sin perder aislamiento.
@@ -195,6 +201,7 @@ No se considera que EAUTO-AI esté operando comercialmente hasta completar todos
 - [ ] `doctor:production` verde con valores reales;
 - [ ] OAuth Plasticov y Maustian validado;
 - [ ] webhook real recibido, autenticado y deduplicado;
+- [ ] Product Ads Plasticov reconciliado con evidencia real;
 - [ ] primera sesión LLM shadow con evidencia y costo registrados;
 - [ ] proveedor visual real y perceptual hash validados con imágenes conocidas;
 - [ ] backup externo completo;

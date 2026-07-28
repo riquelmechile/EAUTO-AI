@@ -31,7 +31,8 @@
     "smoke:production-runtime": "node scripts/smoke-production-runtime.mjs",
     "smoke:postgres-schema": "node scripts/smoke-postgres-schema.mjs",
     "smoke:taxonomy-postgres": "node scripts/smoke-mercadolibre-taxonomy-postgres.mjs",
-    "smoke:mercadolibre-question-answer": "node scripts/smoke-mercadolibre-question-answer-contract.mjs"
+    "smoke:mercadolibre-question-answer": "node scripts/smoke-mercadolibre-question-answer-contract.mjs",
+    "smoke:mercadolibre-product-ads": "node scripts/smoke-mercadolibre-product-ads-postgres.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
