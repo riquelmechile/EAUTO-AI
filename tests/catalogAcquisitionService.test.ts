@@ -69,11 +69,13 @@ const policy = Object.freeze({
   policyVersion: "catalog-acquisition-v1",
 });
 
-function createService(input?: Readonly<{
-  upload?: SourceImageUpload | null;
-  matches?: readonly PhotoSimilarityMatch[];
-  offers?: readonly SupplierCatalogOffer[];
-}>) {
+function createService(
+  input?: Readonly<{
+    upload?: SourceImageUpload | null;
+    matches?: readonly PhotoSimilarityMatch[];
+    offers?: readonly SupplierCatalogOffer[];
+  }>,
+) {
   const saved: AcquisitionCandidate[] = [];
   let photoCalls = 0;
   let catalogCalls = 0;

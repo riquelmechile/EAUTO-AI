@@ -23,24 +23,28 @@ export type SourceImageReader = {
 };
 
 export type PhotoSimilarityPort = {
-  findSimilar(input: Readonly<{
-    organizationId: string;
-    accountId: string;
-    sourceImageUploadId: string;
-    objectUri: string;
-    checksumSha256Base64: string;
-    provider: string;
-  }>): Promise<readonly PhotoSimilarityMatch[]>;
+  findSimilar(
+    input: Readonly<{
+      organizationId: string;
+      accountId: string;
+      sourceImageUploadId: string;
+      objectUri: string;
+      checksumSha256Base64: string;
+      provider: string;
+    }>,
+  ): Promise<readonly PhotoSimilarityMatch[]>;
 };
 
 export type SupplierCatalogSearchPort = {
-  search(input: Readonly<{
-    organizationId: string;
-    accountId: string;
-    supplierSourceId: string;
-    query: string;
-    candidateUrl: string;
-  }>): Promise<readonly SupplierCatalogOffer[]>;
+  search(
+    input: Readonly<{
+      organizationId: string;
+      accountId: string;
+      supplierSourceId: string;
+      query: string;
+      candidateUrl: string;
+    }>,
+  ): Promise<readonly SupplierCatalogOffer[]>;
 };
 
 export type AcquisitionCandidateRepository = {
@@ -99,13 +103,7 @@ export class CatalogAcquisitionService {
         provider: request.policy.visualProvider,
       });
       if (match.similarityBps < request.policy.minimumSimilarityBps) continue;
-      if (
-        !isCatalogEvidenceFresh(
-          match.evidence,
-          now,
-          request.policy.maximumEvidenceAgeMs,
-        )
-      ) {
+      if (!isCatalogEvidenceFresh(match.evidence, now, request.policy.maximumEvidenceAgeMs)) {
         continue;
       }
 
@@ -123,13 +121,7 @@ export class CatalogAcquisitionService {
             accountId: request.accountId,
             supplierSourceId,
           });
-          if (
-            !isCatalogEvidenceFresh(
-              offer.evidence,
-              now,
-              request.policy.maximumEvidenceAgeMs,
-            )
-          ) {
+          if (!isCatalogEvidenceFresh(offer.evidence, now, request.policy.maximumEvidenceAgeMs)) {
             continue;
           }
           const candidate = buildCandidate(request, match, offer, now.toISOString());

@@ -210,8 +210,6 @@ function assertPositiveSafeInteger(value: number, field: string): void {
 
 function assertNonNegativeSafeInteger(value: number, field: string): void {
   if (!Number.isSafeInteger(value) || value < 0) {
-    throw new CatalogAcquisitionValidationError(
-      `${field} must be a non-negative safe integer.`,
-    );
+    throw new CatalogAcquisitionValidationError(`${field} must be a non-negative safe integer.`);
   }
 }
