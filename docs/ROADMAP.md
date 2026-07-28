@@ -58,19 +58,25 @@
 - [x] Contratos de integración y configuración para MercadoLibre Chile.
 - [x] Aislamiento explícito entre Plasticov y Maustian.
 - [x] Guards para seller ID, organization y account scope.
-- [x] OAuth y webhook preparados en la arquitectura.
+- [x] OAuth authorization-code + PKCE, intercambio real y refresh token con lease.
 - [x] Token secreto antiabuso para webhooks.
 - [x] Idempotencia y trazabilidad de eventos.
+- [x] Ingesta y persistencia de listings, órdenes, preguntas, reclamos y reputación.
+- [x] `sourceHash` y `observedAt` en snapshots operacionales.
+- [x] El Profit Engine lee el precio observado del snapshot MercadoLibre más reciente.
 
-### Pendiente live
+### Pendiente live o de integración externa
 
 - [ ] Configurar credenciales reales y redirect URI productiva.
 - [ ] Conectar y validar OAuth de Plasticov.
-- [ ] Conectar y validar OAuth de Maustian.
+- [ ] Conectar y validar OAuth de Maustian después de Plasticov.
 - [ ] Verificar webhook real y deduplicación en producción.
-- [ ] Completar ingesta de listings, órdenes, preguntas, reclamos, reputación y Ads.
-- [ ] Consolidar freshness, provenance y reconciliación económica.
-- [ ] Comparar read models contra la interfaz real de MercadoLibre.
+- [ ] Incorporar el read model Product Ads v2 con advertiser IDs reales.
+- [ ] Atribuir costos Ads por listing sin inventar una regla de negocio.
+- [ ] Consolidar freshness, provenance y reconciliación económica con datos live.
+- [ ] Comparar read models contra la interfaz real de MercadoLibre durante cinco días hábiles.
+
+Los gates no delegables y su evidencia se rastrean en el issue #41.
 
 ## F3 — Agent OS gobernado 🟡
 
@@ -130,33 +136,45 @@
 - [x] Unit economics determinista, margen, precio mínimo y propuestas de repricing.
 - [x] Supplier Mirror, costo verificado y control de vigencia.
 - [x] Catalog Acquisition y candidatos de proveedor persistidos.
+- [x] Validación fail-closed de categoría y atributos MercadoLibre Chile.
+- [x] Reader oficial de taxonomía con snapshots PostgreSQL, freshness y single-flight.
+- [x] API autenticada y preflight Android sin escrituras.
 
 ### Pendiente
 
 - [ ] Investigación de mercado y competencia con evidencia versionada.
-- [ ] Validación de categoría y atributos MercadoLibre.
 - [ ] Generación real de assets y preview Android aprobado.
-- [ ] Escritura preparada mediante adapter MercadoLibre.
-- [ ] Verificación posterior de la publicación real.
+- [ ] Preparar draft de publicación sin ejecutar una mutación externa.
+- [ ] Adapter de creación de publicación, separado de `question.answer` y todavía bloqueado.
+- [ ] Verificación posterior de una publicación real.
 
 ## F6 — Autonomía limitada 🔒
 
 La plataforma no habilitará autonomía por declaración del agente ni por cantidad de ejecuciones.
 
-### Gates obligatorios
+### Implementado sin activación live
 
 - [x] Modos conceptuales `ask`, `inform` y `autonomous`.
 - [x] Aprobación separada de ejecución y outcome.
 - [x] Presupuesto y scope por cuenta.
 - [x] Receipt chain y delivery log.
 - [x] Estado `uncertain` sin reintento ciego.
+- [x] Excepción de dominio acotada exclusivamente a `question.answer`.
+- [x] Adapter HTTP real de `question.answer` con preflight, policy, seller guard y verificación.
+- [x] Todas las demás escrituras MercadoLibre continúan bloqueadas.
+
+### Gates obligatorios antes de activar `question.answer`
+
+- [ ] Conectar el adapter a la credencial OAuth rotatoria de Plasticov.
+- [ ] Mantener la capability en modo `ask`.
 - [ ] Historial live suficiente y sin violaciones de política.
-- [ ] Rollback probado para la capability concreta.
+- [ ] Receipt chain comparada con la respuesta remota durante dos semanas.
+- [ ] Rollback o procedimiento de corrección probado para la capability concreta.
 - [ ] Outcome económico atribuido y verificado.
 - [ ] Límites diarios y de pérdida validados con dinero real.
 - [ ] Promoción explícita mediante política independiente.
 
-Hasta completar esos gates, las escrituras externas permanecen en modo `ask` o completamente deshabilitadas.
+Hasta completar esos gates, las escrituras externas permanecen completamente deshabilitadas en runtime productivo.
 
 ## F7 — Expansión comercial ⬜
 
