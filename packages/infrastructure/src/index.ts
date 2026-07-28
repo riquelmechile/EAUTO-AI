@@ -18,6 +18,7 @@ export * from "./postgresAcquisitionCandidateRepository.js";
 export * from "./postgresActionRepository.js";
 export * from "./postgresMercadoLibreRepositories.js";
 export * from "./postgresOutboxRepository.js";
+export * from "./postgresProductIdentificationRepository.js";
 export * from "./postgresProfitEngineRepositories.js";
 export * from "./postgresRepositories.js";
 export * from "./postgresSessionRepository.js";

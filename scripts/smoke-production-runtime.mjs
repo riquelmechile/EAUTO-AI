@@ -33,6 +33,10 @@ try {
   run("node", ["scripts/smoke-supplier-cost-feed-postgres.mjs"], {
     DATABASE_URL: databaseUrl,
   });
+  stage = "verify-product-identification";
+  run("node", ["scripts/smoke-product-identification-postgres.mjs"], {
+    DATABASE_URL: databaseUrl,
+  });
   stage = "verify-catalog-acquisition";
   run("node", ["scripts/smoke-catalog-acquisition-postgres.mjs"], {
     DATABASE_URL: databaseUrl,
@@ -105,6 +109,7 @@ try {
   console.log("✓ Multi-provider supplier authority and lease isolation verified");
   console.log("✓ Failed sync preservation and monotonic supplier state verified");
   console.log("✓ Verified supplier product cost feeds Profit Engine");
+  console.log("✓ Product identification, human review and visual similarity verified");
   console.log("✓ Catalog acquisition persistence and review lifecycle verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");
