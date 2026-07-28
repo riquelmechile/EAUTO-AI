@@ -29,12 +29,12 @@ jobs:
       - name: Install dependencies quietly
         run: npm ci --no-audit --no-fund --loglevel=error
       - name: Build runtime quietly
-        run: npm run build > /tmp/build.log 2>&1 || { tail -n 120 /tmp/build.log; exit 1; }
+        run: npm run build > /tmp/build.log 2>&1 || { tail -n 60 /tmp/build.log; exit 1; }
       - name: Run PostgreSQL runtime smoke with concise failure output
         run: |
           cp .env.production.example .env.production
           set +e
           npm run smoke:production-runtime > /tmp/postgres-smoke.log 2>&1
           status=$?
-          tail -n 180 /tmp/postgres-smoke.log
+          tail -n 60 /tmp/postgres-smoke.log
           exit "$status"
