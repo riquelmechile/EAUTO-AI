@@ -1,11 +1,7 @@
 import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import {
-  MercadoLibreIntegrationError,
-  type ActorIdentity,
-  type Permission,
-} from "@eauto/domain";
+import { MercadoLibreIntegrationError, type ActorIdentity, type Permission } from "@eauto/domain";
 import { loadConfig } from "../apps/api/src/config.js";
 import { registerMercadoLibreRoutes } from "../apps/api/src/mercadoLibreRoutes.js";
 import {
@@ -90,9 +86,7 @@ describe("MercadoLibre taxonomy preflight API", () => {
         url: "/v1/integrations/mercadolibre/plasticov/taxonomy/preflight",
         payload: {
           categoryId: "MLC1234",
-          submittedAttributes: [
-            { id: "ITEM_CONDITION", valueId: "2230284", valueName: null },
-          ],
+          submittedAttributes: [{ id: "ITEM_CONDITION", valueId: "2230284", valueName: null }],
         },
       });
 
@@ -108,9 +102,7 @@ describe("MercadoLibre taxonomy preflight API", () => {
         organizationId: "maustian",
         accountId: "plasticov",
         categoryId: "MLC1234",
-        submittedAttributes: [
-          { id: "ITEM_CONDITION", valueId: "2230284", valueName: null },
-        ],
+        submittedAttributes: [{ id: "ITEM_CONDITION", valueId: "2230284", valueName: null }],
         policy: MERCADOLIBRE_TAXONOMY_POLICY,
       });
     } finally {
