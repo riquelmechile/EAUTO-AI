@@ -1,3 +1,4 @@
+import type { LlmTaskClass } from "./llm.js";
 import type { EvidenceSubject, Signal } from "./operationalIntelligence.js";
 
 export const SPECIALIST_DAEMON_IDS = [
@@ -24,7 +25,7 @@ export type SpecialistDaemonDefinition = Readonly<{
   id: SpecialistDaemonId;
   agentId: SpecialistDaemonId;
   capability: string;
-  taskClass: "analysis" | "planning" | "research" | "content";
+  taskClass: LlmTaskClass;
   evidenceSubject: EvidenceSubject;
   requiredEvidenceKinds: readonly string[];
   instruction: string;
