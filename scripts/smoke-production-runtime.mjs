@@ -45,6 +45,10 @@ try {
   run("node", ["scripts/smoke-mercadolibre-taxonomy-postgres.mjs"], {
     DATABASE_URL: databaseUrl,
   });
+  stage = "verify-mercadolibre-product-ads";
+  run("node", ["scripts/smoke-mercadolibre-product-ads-postgres.mjs"], {
+    DATABASE_URL: databaseUrl,
+  });
   stage = "verify-migration-idempotency";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
 
@@ -136,6 +140,7 @@ try {
   console.log("✓ External perceptual fingerprint gateway required and wired");
   console.log("✓ Catalog acquisition persistence and review lifecycle verified");
   console.log("✓ MercadoLibre taxonomy snapshot versions and scope verified");
+  console.log("✓ Product Ads snapshots, reconciliation and tenant isolation verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ Generic marketplace writes disabled and question.answer wired explicitly");
   console.log("✓ Product Ads v2 read plane and reconciliation runtime wired");
