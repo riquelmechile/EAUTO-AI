@@ -19,5 +19,7 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: List remaining files
-        run: npx prettier --check docs/sdd/012-mercadolibre-taxonomy-preflight.md packages/domain/src/mercadoLibreTaxonomy.ts packages/application/src/mercadoLibreTaxonomyPreflightService.ts tests/mercadoLibreTaxonomyPreflight.test.ts packages/domain/src/index.ts packages/application/src/index.ts
+      - name: Show exact test diff
+        run: |
+          npx prettier --write tests/mercadoLibreTaxonomyPreflight.test.ts >/dev/null
+          git diff --unified=3 -- tests/mercadoLibreTaxonomyPreflight.test.ts
