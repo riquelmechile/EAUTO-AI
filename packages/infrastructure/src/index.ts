@@ -13,6 +13,7 @@ export * from "./inMemorySessionRepository.js";
 export * from "./inMemorySourceImageUploadRepository.js";
 export * from "./llmRunRepositories.js";
 export * from "./mercadoLibreHttpClient.js";
+export * from "./mercadoLibreItemValidationHttpAdapter.js";
 export * from "./mercadoLibreNotificationRepositories.js";
 export * from "./mercadoLibreTaxonomyHttpReader.js";
 export * from "./nodeMercadoLibreSecurity.js";
