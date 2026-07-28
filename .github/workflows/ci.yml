@@ -23,7 +23,6 @@ jobs:
         run: |
           npx prettier --write \
             docs/sdd/014-mercadolibre-taxonomy-snapshots-cache.md \
-            infra/postgres/migrations/030_mercadolibre_taxonomy_snapshots.sql \
             package.json \
             packages/application/src/index.ts \
             packages/application/src/mercadoLibreTaxonomyCache.ts \
