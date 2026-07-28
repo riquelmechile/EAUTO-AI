@@ -110,17 +110,22 @@ describe("MercadoLibreQuestionAnswerExecutor", () => {
       externalMutation: true,
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
-      "https://api.mercadolibre.com/questions/3957150025?api_version=4",
+    expect(fetchMock.mock.calls[0]?.[0]).toEqual(
+      new URL("https://api.mercadolibre.com/questions/3957150025?api_version=4"),
     );
-    expect(String(fetchMock.mock.calls[1]?.[0])).toBe("https://api.mercadolibre.com/answers");
+    expect(fetchMock.mock.calls[1]?.[0]).toEqual(
+      new URL("https://api.mercadolibre.com/answers"),
+    );
     const post = fetchMock.mock.calls[1]?.[1];
     expect(post?.method).toBe("POST");
-    expect(JSON.parse(String(post?.body))).toEqual({
+    const postBody = post?.body;
+    expect(typeof postBody).toBe("string");
+    if (typeof postBody !== "string") throw new Error("Expected a JSON request body.");
+    expect(JSON.parse(postBody) as unknown).toEqual({
       question_id: 3957150025,
       text: "Sí, tenemos stock disponible.",
     });
-    const headers = new Headers(post?.headers);
+    const headers = new Headers(post.headers);
     expect(headers.get("authorization")).toBe("Bearer access-token");
   });
 
