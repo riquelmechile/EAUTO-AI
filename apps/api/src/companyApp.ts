@@ -7,6 +7,7 @@ import {
 } from "@eauto/domain";
 import { createAuthenticator, readBearerToken } from "./auth.js";
 import { buildApp } from "./app.js";
+import { registerCompanyCreativeRoutes } from "./companyCreativeRoutes.js";
 import { createCompanyIntelligenceRuntime } from "./companyIntelligenceRuntime.js";
 import { registerCompanyIntelligenceRoutes } from "./companyIntelligenceRoutes.js";
 import type { AppConfig } from "./config.js";
@@ -23,18 +24,20 @@ export async function buildCompanyApp(config: AppConfig) {
     nodeEnv: config.NODE_ENV,
   });
   const app = await buildApp(config, runtime);
-
-  registerCompanyIntelligenceRoutes(app, {
+  const routeDependencies = {
     runtime: companyRuntime,
-    authenticate: async (request) => {
+    authenticate: async (request: Parameters<typeof readBearerToken>[0] extends never ? never : import("fastify").FastifyRequest) => {
       if (authenticator.developmentActor) return authenticator.developmentActor;
       const accessToken = readBearerToken(request.headers.authorization);
       return runtime.sessionService.authenticateAccess(accessToken);
     },
-    requireAccount: async (actor, accountId, permission) => {
+    requireAccount: async (actor: ActorIdentity, accountId: string, permission: Permission) => {
       await requireAccount(runtime, actor, accountId, permission);
     },
-  });
+  };
+
+  registerCompanyIntelligenceRoutes(app, routeDependencies);
+  registerCompanyCreativeRoutes(app, routeDependencies);
 
   app.addHook("onClose", async () => {
     await companyRuntime.close();
