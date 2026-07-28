@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   evaluateProductIdentification,
   validateProductVisualFingerprint,
@@ -5,6 +6,7 @@ import {
   type ProductIdentificationPolicy,
   type ProductIdentificationResult,
   type ProductVisualFingerprint,
+  type StoredProductIdentification,
   type VerifiedSourceImageUpload,
   type VisualDuplicateCandidate,
 } from "@eauto/domain";
@@ -23,10 +25,7 @@ export type ProductVisionRequest = ProductSourceImageRequest &
     fingerprint: ProductVisualFingerprint;
   }>;
 
-export type ProductIdentificationArtifact = Readonly<{
-  result: ProductIdentificationResult;
-  fingerprint: ProductVisualFingerprint;
-}>;
+export type ProductIdentificationArtifact = StoredProductIdentification;
 
 export type ForReadingVerifiedSourceImages = {
   getVerified(input: {
@@ -72,6 +71,12 @@ export class ProductIdentificationService {
   async identifyFromPhoto(
     request: IdentifyProductFromPhotoRequest,
   ): Promise<ProductIdentificationResult> {
+    return (await this.identifyStoredFromPhoto(request)).result;
+  }
+
+  async identifyStoredFromPhoto(
+    request: IdentifyProductFromPhotoRequest,
+  ): Promise<StoredProductIdentification> {
     assertRequired(request.organizationId, "organizationId");
     assertRequired(request.accountId, "accountId");
     assertRequired(request.sourceImageUploadId, "sourceImageUploadId");
@@ -137,8 +142,7 @@ export class ProductIdentificationService {
 
     const evidencePreflight = evaluate([], []);
     if (evidencePreflight.status === "incomplete") {
-      await this.results.save(Object.freeze({ result: evidencePreflight, fingerprint }));
-      return evidencePreflight;
+      return this.persist(evidencePreflight, fingerprint);
     }
 
     const duplicates = await this.duplicates.search(providerRequest);
@@ -150,15 +154,49 @@ export class ProductIdentificationService {
 
     const duplicatePreflight = evaluate([], duplicates);
     if (duplicatePreflight.status === "duplicate-blocked") {
-      await this.results.save(Object.freeze({ result: duplicatePreflight, fingerprint }));
-      return duplicatePreflight;
+      return this.persist(duplicatePreflight, fingerprint);
     }
 
     const candidates = await this.vision.identify(providerRequest);
     const result = evaluate(candidates, duplicates);
-    await this.results.save(Object.freeze({ result, fingerprint }));
-    return result;
+    return this.persist(result, fingerprint);
   }
+
+  private async persist(
+    result: ProductIdentificationResult,
+    fingerprint: ProductVisualFingerprint,
+  ): Promise<StoredProductIdentification> {
+    const artifact = createProductIdentificationArtifact(result, fingerprint);
+    await this.results.save(artifact);
+    return artifact;
+  }
+}
+
+export function createProductIdentificationArtifact(
+  result: ProductIdentificationResult,
+  fingerprint: ProductVisualFingerprint,
+): StoredProductIdentification {
+  const material = canonicalize({ result, fingerprint });
+  const contentHash = createHash("sha256").update(JSON.stringify(material)).digest("hex");
+  return Object.freeze({
+    id: `product_identification_${contentHash}`,
+    contentHash,
+    result,
+    fingerprint,
+  });
+}
+
+function canonicalize(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, canonicalize(nested)]),
+    );
+  }
+  return value;
 }
 
 function assertRequired(value: string, field: string): void {

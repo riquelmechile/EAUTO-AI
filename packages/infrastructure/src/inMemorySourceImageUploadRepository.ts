@@ -1,7 +1,16 @@
-import type { SourceImageUpload } from "@eauto/domain";
-import type { SourceImageUploadRepository } from "@eauto/application";
+import {
+  isVerifiedSourceImageUpload,
+  type SourceImageUpload,
+  type VerifiedSourceImageUpload,
+} from "@eauto/domain";
+import type {
+  ForReadingVerifiedSourceImages,
+  SourceImageUploadRepository,
+} from "@eauto/application";
 
-export class InMemorySourceImageUploadRepository implements SourceImageUploadRepository {
+export class InMemorySourceImageUploadRepository
+  implements SourceImageUploadRepository, ForReadingVerifiedSourceImages
+{
   private readonly uploads = new Map<string, SourceImageUpload>();
 
   save(upload: SourceImageUpload): Promise<void> {
@@ -47,5 +56,18 @@ export class InMemorySourceImageUploadRepository implements SourceImageUploadRep
       return Promise.resolve(null);
     }
     return Promise.resolve(upload);
+  }
+
+  async getVerified(input: {
+    organizationId: string;
+    accountId: string;
+    sourceImageUploadId: string;
+  }): Promise<VerifiedSourceImageUpload | null> {
+    const upload = await this.get({
+      id: input.sourceImageUploadId,
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+    });
+    return upload && isVerifiedSourceImageUpload(upload) ? upload : null;
   }
 }

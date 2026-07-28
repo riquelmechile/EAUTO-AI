@@ -26,8 +26,6 @@ export class PostgresProductIdentificationRepository
   constructor(private readonly pool: Pool) {}
 
   async save(artifact: ProductIdentificationArtifact): Promise<void> {
-    const contentHash = hashCanonical(artifact);
-    const id = `product_identification_${contentHash}`;
     const inserted = await this.pool.query(
       `INSERT INTO product_identification_results
         (id, organization_id, account_id, source_image_upload_id, status,
@@ -37,7 +35,7 @@ export class PostgresProductIdentificationRepository
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::bit(64),$13,$14::jsonb)
        ON CONFLICT (id) DO NOTHING`,
       [
-        id,
+        artifact.id,
         artifact.result.organizationId,
         artifact.result.accountId,
         artifact.result.sourceImageUploadId,
@@ -45,7 +43,7 @@ export class PostgresProductIdentificationRepository
         artifact.result.selectedCandidate?.id ?? null,
         artifact.result.policyVersion,
         artifact.result.evaluatedAt,
-        contentHash,
+        artifact.contentHash,
         artifact.fingerprint.algorithm,
         artifact.fingerprint.version,
         artifact.fingerprint.value,
@@ -57,9 +55,9 @@ export class PostgresProductIdentificationRepository
     const existing = await this.get({
       organizationId: artifact.result.organizationId,
       accountId: artifact.result.accountId,
-      identificationId: id,
+      identificationId: artifact.id,
     });
-    if (!existing || existing.contentHash !== contentHash) {
+    if (!existing || existing.contentHash !== artifact.contentHash) {
       throw new Error("Product identification idempotency conflict.");
     }
   }

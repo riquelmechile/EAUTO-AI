@@ -7,6 +7,7 @@ import {
   type BusinessAction,
   type CatalogAcquisitionPolicy,
   type CommerceAccount,
+  type ProductIdentificationPolicy,
 } from "@eauto/domain";
 import {
   ActionService,
@@ -17,6 +18,8 @@ import {
   MercadoLibreNotificationProcessor,
   MercadoLibreService,
   OutboxProcessor,
+  ProductIdentificationReviewService,
+  ProductIdentificationService,
   SessionService,
   ShadowLlmService,
   SourceImageUploadService,
@@ -27,6 +30,7 @@ import {
 } from "@eauto/application";
 import {
   DeterministicContentProvider,
+  DeterministicProductVisionProvider,
   DisabledContentProvider,
   HttpContentProvider,
 } from "@eauto/content";
@@ -49,11 +53,13 @@ import {
   InMemoryMercadoLibreOAuthStateRepository,
   InMemoryMercadoLibreNotificationRepository,
   InMemoryOutboxRepository,
+  InMemoryProductIdentificationRepository,
   InMemoryReceiptRepository,
   InMemorySessionRepository,
   InMemorySourceImageUploadRepository,
   MercadoLibreHttpClient,
   NodeMercadoLibreSecurity,
+  PhotoSimilarityProductCandidateProvider,
   PostgresAcquisitionCandidateRepository,
   PostgresAccountRepository,
   PostgresActionRepository,
@@ -65,6 +71,7 @@ import {
   PostgresMercadoLibreOAuthStateRepository,
   PostgresMercadoLibreNotificationRepository,
   PostgresOutboxRepository,
+  PostgresProductIdentificationRepository,
   PostgresReceiptRepository,
   PostgresSessionRepository,
   PostgresSourceImageUploadRepository,
@@ -155,6 +162,9 @@ export function createRuntime(config: AppConfig) {
   const acquisitionCandidateRepository = pool
     ? new PostgresAcquisitionCandidateRepository(pool)
     : new InMemoryAcquisitionCandidateRepository();
+  const productIdentificationRepository = pool
+    ? new PostgresProductIdentificationRepository(pool)
+    : new InMemoryProductIdentificationRepository();
   const agentOsRepository = pool
     ? new PostgresAgentOsRepository(pool)
     : new InMemoryAgentOsRepository();
@@ -197,6 +207,39 @@ export function createRuntime(config: AppConfig) {
     acquisitionCandidateRepository,
     clock,
   );
+  const deterministicProductVision = new DeterministicProductVisionProvider([]);
+  const productCandidateProvider =
+    catalogRuntime.mode === "external"
+      ? new PhotoSimilarityProductCandidateProvider(
+          catalogRuntime.photoSimilarity,
+          config.CATALOG_VISUAL_PROVIDER_NAME,
+        )
+      : deterministicProductVision;
+  const productIdentificationPolicy: ProductIdentificationPolicy = Object.freeze({
+    minimumConfidenceBps: config.CATALOG_MINIMUM_SIMILARITY_BPS,
+    minimumLeadBps: 1_000,
+    duplicateThresholdBps: 9_500,
+    maximumEvidenceAgeMs: config.CATALOG_MAXIMUM_EVIDENCE_AGE_MS,
+    policyVersion: `${config.CATALOG_POLICY_VERSION}:product-identification-v1`,
+  });
+  const productIdentification = new ProductIdentificationService(
+    uploadRepository,
+    deterministicProductVision,
+    productCandidateProvider,
+    productIdentificationRepository,
+    productIdentificationRepository,
+    () => clock.now(),
+  );
+  const productIdentificationReview = new ProductIdentificationReviewService(
+    productIdentificationRepository,
+    productIdentificationRepository,
+  );
+  const productIdentificationMode =
+    catalogRuntime.mode === "external"
+      ? ("catalog-visual-external" as const)
+      : config.NODE_ENV !== "production"
+        ? ("deterministic-development" as const)
+        : ("disabled" as const);
   const sessionService = new SessionService(
     sessionRepository,
     new NodeSessionSecrets(),
@@ -258,7 +301,9 @@ export function createRuntime(config: AppConfig) {
     actions: actionRepository,
     receipts: receiptRepository,
     assets: assetRepository,
+    sourceImages: uploadRepository,
     catalogCandidates: acquisitionCandidateRepository,
+    productIdentifications: productIdentificationRepository,
     outbox,
     llmRuns,
     actionService,
@@ -270,6 +315,10 @@ export function createRuntime(config: AppConfig) {
     catalogAcquisition,
     catalogAcquisitionMode: catalogRuntime.mode,
     catalogAcquisitionPolicy,
+    productIdentification,
+    productIdentificationReview,
+    productIdentificationMode,
+    productIdentificationPolicy,
     sessionService,
     sourceImageUploads,
     outboxProcessor,
