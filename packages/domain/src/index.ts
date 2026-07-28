@@ -3,6 +3,7 @@ export * from "./accounts.js";
 export * from "./actions.js";
 export * from "./agentOs.js";
 export * from "./autonomy.js";
+export * from "./catalogAcquisition.js";
 export * from "./content.js";
 export * from "./evidence.js";
 export * from "./llm.js";
