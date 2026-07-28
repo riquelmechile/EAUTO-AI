@@ -39,6 +39,10 @@ jobs:
         run: npm run build
       - name: Verify MercadoLibre question answer contract
         run: npm run smoke:mercadolibre-question-answer
+      - name: Verify credential generation and validation
+        run: npm run smoke:credentials
+      - name: Verify capability parity claims
+        run: npm run doctor:parity
       - name: Prepare production template
         run: cp .env.production.example .env.production
       - name: Validate production and release contracts
