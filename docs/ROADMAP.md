@@ -161,12 +161,13 @@ La plataforma no habilitará autonomía por declaración del agente ni por canti
 - [x] Estado `uncertain` sin reintento ciego.
 - [x] Excepción de dominio acotada exclusivamente a `question.answer`.
 - [x] Adapter HTTP real de `question.answer` con preflight, policy, seller guard y verificación.
+- [x] Credencial OAuth cifrada y rotatoria conectada mediante lease para Plasticov.
 - [x] Todas las demás escrituras MercadoLibre continúan bloqueadas.
 
 ### Gates obligatorios antes de activar `question.answer`
 
-- [ ] Conectar el adapter a la credencial OAuth rotatoria de Plasticov.
 - [ ] Mantener la capability en modo `ask`.
+- [ ] Configurar las credenciales reales y habilitar exclusivamente Plasticov después del gate de lectura.
 - [ ] Historial live suficiente y sin violaciones de política.
 - [ ] Receipt chain comparada con la respuesta remota durante dos semanas.
 - [ ] Rollback o procedimiento de corrección probado para la capability concreta.
