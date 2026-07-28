@@ -8,6 +8,12 @@ import {
   type MercadoLibreQuestionSnapshot,
   type MercadoLibreReputationSnapshot,
 } from "@eauto/domain";
+import type {
+  MercadoLibreItemValidationClientPort,
+  MercadoLibreItemValidationDraft,
+  MercadoLibreItemValidationResult,
+  MercadoLibreRemoteItemValidationResult,
+} from "./mercadoLibreItemValidation.js";
 
 export type MercadoLibreOAuthStateRecord = Readonly<{
   stateHash: string;
@@ -219,6 +225,7 @@ export class MercadoLibreService {
     private readonly client: MercadoLibreClientPort,
     private readonly clock: { now(): Date },
     private readonly config: MercadoLibreServiceConfig,
+    private readonly itemValidationClient: MercadoLibreItemValidationClientPort | null = null,
   ) {}
 
   async beginAuthorization(input: {
@@ -302,6 +309,40 @@ export class MercadoLibreService {
     const record = await this.connections.get(input.accountId);
     if (!record || record.connection.organizationId !== input.organizationId) return null;
     return record.connection;
+  }
+
+  async validateItemDraft(input: {
+    organizationId: string;
+    accountId: string;
+    draft: MercadoLibreItemValidationDraft;
+  }): Promise<MercadoLibreItemValidationResult> {
+    if (!this.itemValidationClient) {
+      throw new MercadoLibreIntegrationError(
+        "mercadolibre-item-validation-unavailable",
+        "MercadoLibre item validation is not configured.",
+      );
+    }
+    assertItemValidationDraft(input.draft);
+    const accessToken = await this.ensureAccessToken(input);
+    const stored = await this.requireConnection(input);
+    try {
+      const validation = await this.itemValidationClient.validateItemDraft(input.draft, accessToken);
+      assertRemoteItemValidation(validation);
+      return Object.freeze({
+        ...validation,
+        sellerId: stored.connection.sellerId,
+        observedAt: this.clock.now().toISOString(),
+      });
+    } catch (error) {
+      if (error instanceof MercadoLibreRemoteError && error.reauthorizationRequired) {
+        await this.connections.markReauthorizationRequired(input.accountId, this.clock.now());
+        throw new MercadoLibreIntegrationError(
+          "mercadolibre-reauthorization-required",
+          "MercadoLibre rejected the item validation token; reconnect the account.",
+        );
+      }
+      throw error;
+    }
   }
 
   async syncReadModel(input: { organizationId: string; accountId: string }): Promise<{
@@ -457,105 +498,86 @@ export class MercadoLibreService {
     accountId: string;
   }): Promise<string> {
     let stored = await this.requireConnection(input);
-    if (stored.connection.status === "reauthorization-required") {
+    if (stored.connection.status === "reauthorization-required" || stored.connection.status === "revoked") {
       throw new MercadoLibreIntegrationError(
         "mercadolibre-reauthorization-required",
-        `MercadoLibre account ${input.accountId} requires authorization again.`,
+        "MercadoLibre account must be reauthorized.",
       );
     }
     const now = this.clock.now();
-    if (
-      new Date(stored.connection.expiresAt).getTime() >
-      now.getTime() + this.config.refreshWindowMs
-    ) {
-      return this.revealAccessToken(stored);
+    const expiresAt = new Date(stored.connection.expiresAt);
+    if (expiresAt.getTime() - now.getTime() > this.config.refreshWindowMs) {
+      return this.security.reveal(
+        stored.protectedAccessToken,
+        credentialContext(input.accountId, "access"),
+      );
     }
 
-    const leaseOwner = this.security.randomId("meli-refresh");
+    const owner = this.security.randomId("meli-refresh");
     const acquired = await this.connections.acquireRefreshLease({
       accountId: input.accountId,
-      owner: leaseOwner,
+      owner,
       now,
       leaseUntil: new Date(now.getTime() + this.config.refreshLeaseMs),
     });
     if (!acquired) {
+      stored = await this.requireConnection(input);
+      const refreshedExpiry = new Date(stored.connection.expiresAt);
+      if (refreshedExpiry.getTime() - now.getTime() > this.config.refreshWindowMs) {
+        return this.security.reveal(
+          stored.protectedAccessToken,
+          credentialContext(input.accountId, "access"),
+        );
+      }
       throw new MercadoLibreIntegrationError(
         "mercadolibre-refresh-in-progress",
-        `Another worker is refreshing MercadoLibre account ${input.accountId}.`,
+        "Another worker is refreshing the MercadoLibre access token.",
       );
     }
 
     try {
-      stored = await this.requireConnection(input);
-      const currentTime = this.clock.now();
-      if (
-        new Date(stored.connection.expiresAt).getTime() >
-        currentTime.getTime() + this.config.refreshWindowMs
-      ) {
-        return this.revealAccessToken(stored);
-      }
-      const context = credentialContext(stored.connection.accountId, stored.connection.sellerId);
-      const refreshToken = this.security.reveal(stored.protectedRefreshToken, `${context}:refresh`);
+      const refreshToken = this.security.reveal(
+        stored.protectedRefreshToken,
+        credentialContext(input.accountId, "refresh"),
+      );
       const tokens = await this.client.refreshAccessToken(refreshToken);
-      if (tokens.userId !== undefined && tokens.userId !== stored.connection.sellerId) {
+      const user = await this.client.getCurrentUser(tokens.accessToken);
+      this.assertChileIdentity(input.accountId, user);
+      if (tokens.userId !== undefined && tokens.userId !== user.id) {
         throw new MercadoLibreIntegrationError(
           "mercadolibre-seller-mismatch",
-          `Refreshed token belongs to seller ${tokens.userId}, expected ${stored.connection.sellerId}.`,
+          `MercadoLibre refreshed token user ${tokens.userId} does not match /users/me ${user.id}.`,
         );
       }
-      const refreshedConnection = Object.freeze({
-        ...stored.connection,
-        scopes: tokens.scopes,
-        status: "active" as const,
-        expiresAt: new Date(currentTime.getTime() + tokens.expiresInSeconds * 1000).toISOString(),
-        updatedAt: currentTime.toISOString(),
+      const refreshedAt = this.clock.now();
+      const connection = connectionFrom({
+        organizationId: stored.connection.organizationId,
+        accountId: input.accountId,
+        user,
+        tokens,
+        now: refreshedAt,
+        lastSyncedAt: stored.connection.lastSyncedAt,
       });
-      const refreshed = this.protectCredential(
-        refreshedConnection,
-        tokens.accessToken,
-        tokens.refreshToken,
-        tokens.tokenType,
+      await this.connections.save(
+        this.protectCredential(
+          connection,
+          tokens.accessToken,
+          tokens.refreshToken,
+          tokens.tokenType,
+        ),
       );
-      await this.connections.save(refreshed);
       return tokens.accessToken;
     } catch (error) {
       if (error instanceof MercadoLibreRemoteError && error.reauthorizationRequired) {
         await this.connections.markReauthorizationRequired(input.accountId, this.clock.now());
         throw new MercadoLibreIntegrationError(
           "mercadolibre-reauthorization-required",
-          `MercadoLibre rejected the refresh token for ${input.accountId}.`,
+          "MercadoLibre rejected the refresh token; reconnect the account.",
         );
       }
       throw error;
     } finally {
-      await this.connections.releaseRefreshLease(input.accountId, leaseOwner);
-    }
-  }
-
-  private expectedSellerId(accountId: string): string {
-    const sellerId = this.config.expectedSellerIds[accountId]?.trim();
-    if (!sellerId) {
-      throw new MercadoLibreIntegrationError(
-        "mercadolibre-seller-mismatch",
-        `No expected MercadoLibre Chile seller ID is configured for account ${accountId}.`,
-      );
-    }
-    return sellerId;
-  }
-
-  private assertChileIdentity(accountId: string, user: MercadoLibreRemoteUser): void {
-    if (user.siteId !== MERCADOLIBRE_CHILE_SITE_ID) {
-      throw new MercadoLibreIntegrationError(
-        "mercadolibre-site-mismatch",
-        `MercadoLibre account ${user.id} belongs to ${user.siteId}, expected MLC (Chile).`,
-      );
-    }
-    const expectedSellerId = this.expectedSellerId(accountId);
-    if (user.id !== expectedSellerId) {
-      throw new MercadoLibreIntegrationError(
-        "mercadolibre-seller-mismatch",
-        `MercadoLibre account mismatch for ${accountId}: expected ${expectedSellerId}, received ${user.id}.`,
-      );
+      await this.connections.releaseRefreshLease(input.accountId, owner);
     }
   }
 
@@ -567,7 +589,7 @@ export class MercadoLibreService {
     if (!record || record.connection.organizationId !== input.organizationId) {
       throw new MercadoLibreIntegrationError(
         "mercadolibre-not-connected",
-        `MercadoLibre account ${input.accountId} is not connected.`,
+        "MercadoLibre account is not connected for this organization.",
       );
     }
     return record;
@@ -579,21 +601,54 @@ export class MercadoLibreService {
     refreshToken: string,
     tokenType: string,
   ): MercadoLibreCredentialRecord {
-    const context = credentialContext(connection.accountId, connection.sellerId);
     return Object.freeze({
       connection,
-      protectedAccessToken: this.security.protect(accessToken, `${context}:access`),
-      protectedRefreshToken: this.security.protect(refreshToken, `${context}:refresh`),
+      protectedAccessToken: this.security.protect(
+        accessToken,
+        credentialContext(connection.accountId, "access"),
+      ),
+      protectedRefreshToken: this.security.protect(
+        refreshToken,
+        credentialContext(connection.accountId, "refresh"),
+      ),
       tokenType,
     });
   }
 
-  private revealAccessToken(record: MercadoLibreCredentialRecord): string {
-    return this.security.reveal(
-      record.protectedAccessToken,
-      `${credentialContext(record.connection.accountId, record.connection.sellerId)}:access`,
-    );
+  private assertChileIdentity(accountId: string, user: MercadoLibreRemoteUser): void {
+    if (user.siteId !== MERCADOLIBRE_CHILE_SITE_ID) {
+      throw new MercadoLibreIntegrationError(
+        "mercadolibre-site-mismatch",
+        `Expected MercadoLibre Chile (${MERCADOLIBRE_CHILE_SITE_ID}) but received ${user.siteId}.`,
+      );
+    }
+    const expectedSellerId = this.expectedSellerId(accountId);
+    if (user.id !== expectedSellerId) {
+      throw new MercadoLibreIntegrationError(
+        "mercadolibre-seller-mismatch",
+        `Expected seller ${expectedSellerId} for account ${accountId} but received ${user.id}.`,
+      );
+    }
   }
+
+  private expectedSellerId(accountId: string): string {
+    const sellerId = this.config.expectedSellerIds[accountId];
+    if (!sellerId) {
+      throw new MercadoLibreIntegrationError(
+        "mercadolibre-disabled",
+        `MercadoLibre seller mapping is not configured for account ${accountId}.`,
+      );
+    }
+    return sellerId;
+  }
+}
+
+function stateContext(accountId: string, stateHash: string): string {
+  return `mercadolibre:state:${accountId}:${stateHash}`;
+}
+
+function credentialContext(accountId: string, kind: "access" | "refresh"): string {
+  return `mercadolibre:credential:${accountId}:${kind}`;
 }
 
 function connectionFrom(input: {
@@ -602,24 +657,42 @@ function connectionFrom(input: {
   user: MercadoLibreRemoteUser;
   tokens: MercadoLibreTokenSet;
   now: Date;
+  lastSyncedAt?: string;
 }): MercadoLibreConnection {
   return Object.freeze({
     organizationId: input.organizationId,
     accountId: input.accountId,
     sellerId: input.user.id,
-    ...(input.user.nickname ? { nickname: input.user.nickname } : {}),
+    ...(input.user.nickname === undefined ? {} : { nickname: input.user.nickname }),
     siteId: MERCADOLIBRE_CHILE_SITE_ID,
-    scopes: input.tokens.scopes,
+    scopes: Object.freeze([...input.tokens.scopes]),
     status: "active",
-    expiresAt: new Date(input.now.getTime() + input.tokens.expiresInSeconds * 1000).toISOString(),
+    expiresAt: new Date(input.now.getTime() + input.tokens.expiresInSeconds * 1_000).toISOString(),
+    ...(input.lastSyncedAt === undefined ? {} : { lastSyncedAt: input.lastSyncedAt }),
     updatedAt: input.now.toISOString(),
   });
 }
 
-function stateContext(accountId: string, stateHash: string): string {
-  return `mercadolibre:oauth-state:${accountId}:${stateHash}`;
+function assertItemValidationDraft(draft: MercadoLibreItemValidationDraft): void {
+  if (!/^MLC\d+$/.test(draft.categoryId)) {
+    throw new Error("MercadoLibre item validation categoryId must identify a Chile category.");
+  }
+  if (draft.currencyId !== "CLP" || draft.buyingMode !== "buy_it_now") {
+    throw new Error("MercadoLibre item validation currency and buying mode are server-owned.");
+  }
+  if (draft.shipping.mode !== "me2") {
+    throw new Error("MercadoLibre item validation shipping mode must be me2.");
+  }
 }
 
-function credentialContext(accountId: string, sellerId: string): string {
-  return `mercadolibre:credential:${accountId}:${sellerId}`;
+function assertRemoteItemValidation(result: MercadoLibreRemoteItemValidationResult): void {
+  if (result.status !== "valid" && result.status !== "invalid") {
+    throw new Error("MercadoLibre item validation status is invalid.");
+  }
+  if (!/^[a-f0-9]{64}$/.test(result.sourceHash)) {
+    throw new Error("MercadoLibre item validation sourceHash must be a SHA-256 digest.");
+  }
+  if (result.status === "valid" && result.causes.length > 0) {
+    throw new Error("MercadoLibre valid item validation cannot include causes.");
+  }
 }
