@@ -1,0 +1,8 @@
+
+> eauto-ai@0.1.0 typecheck
+> tsc -b packages/domain packages/agent-kernel packages/application packages/content packages/infrastructure apps/api && npm run typecheck -w @eauto/mobile
+
+packages/application/src/catalogAcquisitionService.ts(180,3): error TS2322: Type 'Readonly<{ id: `acquisition-${string}`; contentHash: string; organizationId: string; accountId: string; sourceImageUploadId: string; visualProvider: string; externalMatchId: string; similarityBps: number; supplierSourceId: string; ... 10 more ...; createdAt: string; }>' is not assignable to type 'Readonly<{ id: string; contentHash: string; organizationId: string; accountId: string; sourceImageUploadId: string; visualProvider: string; externalMatchId: string; similarityBps: number; supplierSourceId: string; ... 10 more ...; createdAt: string; }>'.
+  Types of property 'evidenceRefs' are incompatible.
+    Type 'readonly string[]' is not assignable to type 'readonly [string, string]'.
+      Target requires 2 element(s) but source may have fewer.
