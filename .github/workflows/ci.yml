@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  format-and-check:
+  lint-fix-and-check:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -25,15 +25,17 @@ jobs:
           node-version: 22.16.0
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npx prettier --write packages/application/src/specialistDaemonScheduler.ts
-      - name: Commit formatting when needed
+      - name: Apply strict ESLint fixes
+        run: npx eslint packages/application/src/specialistDaemonScheduler.ts packages/infrastructure/src/companyIntelligenceSources.ts --fix
+      - name: Commit lint fixes when needed
         run: |
           if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add packages/application/src/specialistDaemonScheduler.ts
-            git commit -m "chore: finalize daemon formatting"
+            git add packages/application/src/specialistDaemonScheduler.ts packages/infrastructure/src/companyIntelligenceSources.ts
+            git commit -m "chore: apply strict lint fixes"
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
           fi
+      - run: npm run format:check
       - run: npm run typecheck
       - run: npm run lint
