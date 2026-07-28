@@ -53,7 +53,9 @@ export class MercadoLibreTaxonomyPreflightService {
       throw new Error("Current MercadoLibre category and attribute evidence is required.");
     }
     if (category.id !== input.categoryId || attributes.categoryId !== input.categoryId) {
-      throw new Error("MercadoLibre taxonomy reader returned evidence outside the requested category.");
+      throw new Error(
+        "MercadoLibre taxonomy reader returned evidence outside the requested category.",
+      );
     }
 
     return evaluateMercadoLibreTaxonomyPreflight({
