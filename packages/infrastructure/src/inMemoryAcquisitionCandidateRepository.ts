@@ -5,21 +5,21 @@ export class InMemoryAcquisitionCandidateRepository implements AcquisitionCandid
   private readonly candidates = new Map<string, AcquisitionCandidate>();
   private readonly idsByContentHash = new Map<string, string>();
 
-  save(candidate: AcquisitionCandidate): Promise<void> {
+  save(candidate: AcquisitionCandidate): Promise<AcquisitionCandidate> {
     const byId = this.candidates.get(candidate.id);
     const idByHash = this.idsByContentHash.get(candidate.contentHash);
     if (byId || idByHash) {
       const existing = byId ?? (idByHash ? this.candidates.get(idByHash) : undefined);
-      if (!existing || JSON.stringify(existing) !== JSON.stringify(candidate)) {
+      if (!existing || !hasSameImmutableIdentity(existing, candidate)) {
         throw new CatalogAcquisitionConflictError(
           `Candidate ${candidate.id} already exists with different content.`,
         );
       }
-      return Promise.resolve();
+      return Promise.resolve(existing);
     }
     this.candidates.set(candidate.id, candidate);
     this.idsByContentHash.set(candidate.contentHash, candidate.id);
-    return Promise.resolve();
+    return Promise.resolve(candidate);
   }
 
   get(input: {
@@ -72,4 +72,31 @@ export class InMemoryAcquisitionCandidateRepository implements AcquisitionCandid
     this.candidates.set(input.candidate.id, input.candidate);
     return Promise.resolve();
   }
+}
+
+function hasSameImmutableIdentity(
+  existing: AcquisitionCandidate,
+  candidate: AcquisitionCandidate,
+): boolean {
+  return (
+    existing.id === candidate.id &&
+    existing.contentHash === candidate.contentHash &&
+    existing.organizationId === candidate.organizationId &&
+    existing.accountId === candidate.accountId &&
+    existing.sourceImageUploadId === candidate.sourceImageUploadId &&
+    existing.visualProvider === candidate.visualProvider &&
+    existing.externalMatchId === candidate.externalMatchId &&
+    existing.similarityBps === candidate.similarityBps &&
+    existing.supplierSourceId === candidate.supplierSourceId &&
+    existing.sku === candidate.sku &&
+    existing.name === candidate.name &&
+    existing.productUrl === candidate.productUrl &&
+    existing.unitCostMinor === candidate.unitCostMinor &&
+    existing.stockQuantity === candidate.stockQuantity &&
+    existing.currencyId === candidate.currencyId &&
+    existing.policyVersion === candidate.policyVersion &&
+    existing.requiresHumanApproval === candidate.requiresHumanApproval &&
+    existing.evidenceRefs[0] === candidate.evidenceRefs[0] &&
+    existing.evidenceRefs[1] === candidate.evidenceRefs[1]
+  );
 }
