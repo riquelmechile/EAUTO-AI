@@ -9,8 +9,8 @@ Make Product Identification and Photo-to-Similar durable without allowing an unc
 This slice owns:
 
 - PostgreSQL persistence of identification evaluations;
-- deterministic 64-bit visual fingerprints;
-- same-account visual similarity search;
+- versioned 64-bit product fingerprints with explicit semantics;
+- same-account duplicate search;
 - terminal human confirmation or rejection;
 - fingerprint indexing only after confirmation;
 - idempotency and cross-scope protection;
@@ -33,20 +33,23 @@ A result can receive one terminal review:
 
 A second identical write is idempotent. A conflicting decision fails closed.
 
-### Product visual fingerprint
+### Product fingerprint
 
-Only a confirmed result creates a searchable product fingerprint. Ambiguous, no-match, duplicate-blocked, incomplete and rejected results never enter the product similarity index.
+Only a confirmed result creates a searchable product fingerprint. Ambiguous, no-match, duplicate-blocked, incomplete and rejected results never enter the product fingerprint index.
 
 ## Fingerprint contract
 
-The first supported algorithm is `phash-64`:
+Every fingerprint contains:
 
+- an explicit algorithm;
+- a version;
 - exactly 64 binary digits;
-- versioned algorithm implementation;
-- evidence reference to the verified source image;
-- similarity expressed in integer basis points;
-- identical fingerprints score 10,000;
-- opposite fingerprints score zero.
+- an evidence reference to the verified source image.
+
+The supported semantics are defined separately in SDD 008:
+
+- `phash-64` is a perceptual signal and may use Hamming similarity;
+- `sha256-prefix-64` is an exact-content development signal and only supports equality.
 
 A fingerprint is an indexing signal, not identity evidence. Product identity remains the reviewed candidate plus evidence chain.
 
@@ -65,7 +68,7 @@ A fingerprint is an indexing signal, not identity evidence. Product identity rem
 
 Review persistence locks the identification row with `FOR UPDATE`. Review and confirmed fingerprint are written in one transaction. A conflict rolls back both.
 
-## Similarity isolation
+## Duplicate-search isolation
 
 Search is limited by:
 
@@ -94,12 +97,12 @@ Results from Plasticov can never be used as Maustian duplicates and vice versa.
 - rejection persists no fingerprint;
 - repeated identical review is idempotent;
 - conflicting review fails;
-- identical fingerprint returns 10,000 similarity basis points;
-- duplicate search remains account-scoped;
+- duplicate search remains account-, algorithm- and version-scoped;
+- algorithm-specific comparison semantics are verified in domain and PostgreSQL;
 - migrations apply twice without drift;
-- production validation requires both migrations and the PostgreSQL smoke;
+- production validation requires the migrations and smoke;
 - full immutable CI remains green.
 
 ## Next slice
 
-Allowlisted live vision adapter, candidate evidence acquisition, MercadoLibre category/attribute resolution and Android review UI.
+Authenticated API routes, Android review UI, allowlisted live vision adapter, candidate evidence acquisition and MercadoLibre category/attribute resolution.

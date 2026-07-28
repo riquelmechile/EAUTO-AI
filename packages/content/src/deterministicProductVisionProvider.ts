@@ -55,7 +55,7 @@ export class DeterministicProductVisionProvider
     for (const byte of digest.subarray(0, 8)) value += byte.toString(2).padStart(8, "0");
     return Promise.resolve(
       Object.freeze({
-        algorithm: "phash-64" as const,
+        algorithm: "sha256-prefix-64" as const,
         version: "deterministic-sha256-prefix-v1",
         value,
         evidenceRef: input.evidenceId,

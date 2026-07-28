@@ -162,8 +162,11 @@ export class PostgresProductIdentificationRepository
       evidence_ref: string;
     }>(
       `SELECT product_id,
-         ((((64 - bit_count(fingerprint # $5::bit(64))) * 10000) / 64))::int
-           AS similarity_bps,
+         (CASE
+           WHEN algorithm = 'sha256-prefix-64' THEN
+             CASE WHEN fingerprint = $5::bit(64) THEN 10000 ELSE 0 END
+           ELSE ((((64 - bit_count(fingerprint # $5::bit(64))) * 10000) / 64))::int
+         END)::int AS similarity_bps,
          evidence_ref
        FROM product_visual_fingerprints
        WHERE organization_id = $1 AND account_id = $2
@@ -262,7 +265,7 @@ export class PostgresProductIdentificationRepository
       row.evidence_ref !== fingerprint.evidenceRef ||
       row.identification_id !== review.identificationId
     ) {
-      throw new Error("Confirmed product already has a different visual fingerprint.");
+      throw new Error("Confirmed product already has a different product fingerprint.");
     }
   }
 }

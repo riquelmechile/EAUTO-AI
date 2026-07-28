@@ -11,7 +11,7 @@ const sourceRequest = Object.freeze({
 });
 
 describe("DeterministicProductVisionProvider", () => {
-  it("computes a stable cited 64-bit visual fingerprint", async () => {
+  it("computes a stable cited exact-content fingerprint without claiming perceptual similarity", async () => {
     const provider = new DeterministicProductVisionProvider([]);
 
     const first = await provider.compute(sourceRequest);
@@ -19,7 +19,7 @@ describe("DeterministicProductVisionProvider", () => {
 
     expect(first).toEqual(second);
     expect(first).toMatchObject({
-      algorithm: "phash-64",
+      algorithm: "sha256-prefix-64",
       version: "deterministic-sha256-prefix-v1",
       evidenceRef: sourceRequest.evidenceId,
     });
