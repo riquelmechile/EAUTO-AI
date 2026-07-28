@@ -29,7 +29,7 @@ for (let attempt = 1; attempt <= 60; attempt += 1) {
         await client.send(new CreateBucketCommand({ Bucket: bucket }));
       } catch (createError) {
         throw new AggregateError([error, createError], "Object storage bucket is unavailable.", {
-          cause: error,
+          cause: createError,
         });
       }
       break;
