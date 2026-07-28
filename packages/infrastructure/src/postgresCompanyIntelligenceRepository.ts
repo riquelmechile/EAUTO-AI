@@ -108,7 +108,13 @@ export class PostgresCompanyIntelligenceRepository
          ),
          '{leaseUntil}', to_jsonb(lease_until)
        ) AS payload_json FROM leased`,
-      [input.recipientAgentId, input.now.toISOString(), input.limit, input.owner, input.leaseUntil.toISOString()],
+      [
+        input.recipientAgentId,
+        input.now.toISOString(),
+        input.limit,
+        input.owner,
+        input.leaseUntil.toISOString(),
+      ],
     );
     return result.rows.map((row) => row.payload_json);
   }

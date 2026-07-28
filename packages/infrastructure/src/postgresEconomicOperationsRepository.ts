@@ -53,7 +53,10 @@ export class PostgresEconomicOperationsRepository implements EconomicOperationsR
       policyCount: safeInteger(row.policy_count, "policyCount"),
       costObservationCount: safeInteger(row.cost_observation_count, "costObservationCount"),
       completeSnapshotCount: safeInteger(row.complete_snapshot_count, "completeSnapshotCount"),
-      incompleteSnapshotCount: safeInteger(row.incomplete_snapshot_count, "incompleteSnapshotCount"),
+      incompleteSnapshotCount: safeInteger(
+        row.incomplete_snapshot_count,
+        "incompleteSnapshotCount",
+      ),
       latestCalculatedAt: row.latest_calculated_at ? iso(row.latest_calculated_at) : null,
     });
   }

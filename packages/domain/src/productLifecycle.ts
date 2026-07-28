@@ -39,9 +39,7 @@ export type ProductLifecycleAssessment = Readonly<{
   contentHash: string;
 }>;
 
-export function classifyProductLifecycle(
-  input: ProductLifecycleInput,
-): Readonly<{
+export function classifyProductLifecycle(input: ProductLifecycleInput): Readonly<{
   state: ProductLifecycleState;
   confidence: "low" | "medium" | "high";
   reasons: readonly string[];

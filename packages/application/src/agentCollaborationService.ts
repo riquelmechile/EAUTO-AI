@@ -7,10 +7,7 @@ import type {
   SemanticMemoryEntry,
   SemanticMemorySearchResult,
 } from "@eauto/domain";
-import {
-  decideSemanticMemoryAdmission,
-  reconcileSemanticMemory,
-} from "@eauto/domain";
+import { decideSemanticMemoryAdmission, reconcileSemanticMemory } from "@eauto/domain";
 
 export type CollaborationScope = Readonly<{ organizationId: string; accountId: string }>;
 
@@ -68,7 +65,9 @@ export interface EvidenceResponder {
     requiredKinds: readonly string[];
     asOf: string;
     maximumAgeMs: number;
-  }): Promise<Readonly<{ documents: EvidenceResponse["documents"]; missingInputs: readonly string[] }>>;
+  }): Promise<
+    Readonly<{ documents: EvidenceResponse["documents"]; missingInputs: readonly string[] }>
+  >;
 }
 
 export class AgentMessageBusService {
@@ -191,11 +190,16 @@ export class EvidenceResponseRouter {
     private readonly repository: AgentCollaborationRepository,
     private readonly clock: { now(): Date },
     private readonly ids: { next(prefix: string): string },
-    private readonly config: Readonly<{ workerId: string; leaseMs: number; maximumAttempts: number }>,
+    private readonly config: Readonly<{
+      workerId: string;
+      leaseMs: number;
+      maximumAttempts: number;
+    }>,
   ) {
     const uniqueResponders = new Map<string, EvidenceResponder>();
     for (const responder of responders) {
-      if (uniqueResponders.has(responder.id)) throw new Error(`Duplicate responder ${responder.id}.`);
+      if (uniqueResponders.has(responder.id))
+        throw new Error(`Duplicate responder ${responder.id}.`);
       uniqueResponders.set(responder.id, responder);
     }
     this.responders = uniqueResponders;
@@ -216,7 +220,9 @@ export class EvidenceResponseRouter {
   }): Promise<EvidenceRequest> {
     const responder = input.responderId
       ? this.responders.get(input.responderId)
-      : [...this.responders.values()].find((candidate) => candidate.subjects.includes(input.subject));
+      : [...this.responders.values()].find((candidate) =>
+          candidate.subjects.includes(input.subject),
+        );
     if (!responder) throw new Error(`No evidence responder supports ${input.subject}.`);
     if (!responder.subjects.includes(input.subject)) {
       throw new Error(`Responder ${responder.id} does not support ${input.subject}.`);
@@ -254,7 +260,9 @@ export class EvidenceResponseRouter {
     );
   }
 
-  async processBatch(limit = 20): Promise<Readonly<{ leased: number; fulfilled: number; failed: number }>> {
+  async processBatch(
+    limit = 20,
+  ): Promise<Readonly<{ leased: number; fulfilled: number; failed: number }>> {
     const now = this.clock.now();
     const requests = await this.repository.leaseEvidenceRequests({
       owner: this.config.workerId,
@@ -341,7 +349,9 @@ export class EvidenceResponseRouter {
       Object.freeze({
         ...request,
         status: dead ? "dead" : "failed",
-        availableAt: new Date(now.getTime() + 5_000 * 2 ** Math.max(0, request.attempts - 1)).toISOString(),
+        availableAt: new Date(
+          now.getTime() + 5_000 * 2 ** Math.max(0, request.attempts - 1),
+        ).toISOString(),
         leaseOwner: null,
         leaseUntil: null,
         failureReason: sanitizeError(error),
@@ -451,14 +461,15 @@ export class SemanticMemoryService {
       limit: bounded(input.limit ?? 20),
     });
     return Object.freeze(
-      results.filter((result) =>
-        decideSemanticMemoryAdmission({
-          entry: result.entry,
-          organizationId: input.organizationId,
-          accountId: input.accountId,
-          now,
-          requireVerifiedOutcome: input.requireVerifiedOutcome ?? false,
-        }).admitted,
+      results.filter(
+        (result) =>
+          decideSemanticMemoryAdmission({
+            entry: result.entry,
+            organizationId: input.organizationId,
+            accountId: input.accountId,
+            now,
+            requireVerifiedOutcome: input.requireVerifiedOutcome ?? false,
+          }).admitted,
       ),
     );
   }
@@ -499,7 +510,9 @@ function unique(values: readonly string[]): string[] {
 }
 
 function normalizeTopic(value: string): string {
-  return required(value, "topicKey", 256).toLowerCase().replace(/[^a-z0-9._:-]+/g, "-");
+  return required(value, "topicKey", 256)
+    .toLowerCase()
+    .replace(/[^a-z0-9._:-]+/g, "-");
 }
 
 function normalizeKeyword(value: string): string {

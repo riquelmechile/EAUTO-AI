@@ -58,7 +58,9 @@ export class MiniMaxContentProvider implements ContentGenerationPort {
     assertProviderSuccess(payload, "MiniMax image generation");
     const data = record(payload.data);
     const urls = Array.isArray(data?.image_urls) ? data.image_urls : [];
-    const url = urls.find((value): value is string => typeof value === "string" && value.length > 0);
+    const url = urls.find(
+      (value): value is string => typeof value === "string" && value.length > 0,
+    );
     if (url) return requireHttpsUrl(url, "MiniMax image");
     const images = Array.isArray(data?.images) ? data.images : [];
     for (const image of images) {
@@ -115,9 +117,12 @@ export class MiniMaxContentProvider implements ContentGenerationPort {
   }
 
   private async retrieveFileUrl(fileId: string): Promise<string> {
-    const payload = await this.requestJson(`/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`, {
-      method: "GET",
-    });
+    const payload = await this.requestJson(
+      `/v1/files/retrieve?file_id=${encodeURIComponent(fileId)}`,
+      {
+        method: "GET",
+      },
+    );
     assertProviderSuccess(payload, "MiniMax file retrieval");
     const file = record(payload.file);
     const url = file?.download_url;
@@ -127,9 +132,13 @@ export class MiniMaxContentProvider implements ContentGenerationPort {
     return requireHttpsUrl(url, "MiniMax video");
   }
 
-  private async requestJson(path: string, init: Readonly<{ method: "GET" | "POST"; body?: string }>) {
+  private async requestJson(
+    path: string,
+    init: Readonly<{ method: "GET" | "POST"; body?: string }>,
+  ) {
     const url = new URL(path, MINIMAX_API_ORIGIN);
-    if (url.origin !== MINIMAX_API_ORIGIN) throw new Error("MiniMax request escaped the official host.");
+    if (url.origin !== MINIMAX_API_ORIGIN)
+      throw new Error("MiniMax request escaped the official host.");
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
     try {
@@ -159,7 +168,8 @@ export class MiniMaxContentProvider implements ContentGenerationPort {
           cause: error,
         });
       }
-      if (error instanceof SyntaxError) throw new Error("MiniMax returned invalid JSON.", { cause: error });
+      if (error instanceof SyntaxError)
+        throw new Error("MiniMax returned invalid JSON.", { cause: error });
       throw error;
     } finally {
       clearTimeout(timeout);
@@ -245,9 +255,11 @@ export class MiniMaxContentProvider implements ContentGenerationPort {
         redirect: "error",
         signal: controller.signal,
       });
-      if (!response.ok) throw new Error(`MiniMax ${kind} download failed with HTTP ${response.status}.`);
+      if (!response.ok)
+        throw new Error(`MiniMax ${kind} download failed with HTTP ${response.status}.`);
       const declared = Number(response.headers.get("content-length") ?? "0");
-      if (Number.isFinite(declared) && declared > 0) enforceMaximum(declared, this.config.maximumAssetBytes);
+      if (Number.isFinite(declared) && declared > 0)
+        enforceMaximum(declared, this.config.maximumAssetBytes);
       const body = new Uint8Array(await response.arrayBuffer());
       enforceMaximum(body.byteLength, this.config.maximumAssetBytes);
       const contentType = normalizeContentType(response.headers.get("content-type"), kind);
@@ -305,7 +317,8 @@ async function readLimitedText(response: Response, maximumBytes: number): Promis
 
 function normalizeContentType(value: string | null, kind: "image" | "video"): string {
   const normalized = value?.split(";", 1)[0]?.trim().toLowerCase() ?? "";
-  if (!normalized.startsWith(`${kind}/`)) throw new Error(`MiniMax ${kind} returned invalid content type.`);
+  if (!normalized.startsWith(`${kind}/`))
+    throw new Error(`MiniMax ${kind} returned invalid content type.`);
   return normalized;
 }
 

@@ -43,7 +43,9 @@ export class OperationalEvidenceResponder implements EvidenceResponder {
     requiredKinds: readonly string[];
     asOf: string;
     maximumAgeMs: number;
-  }): Promise<Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>> {
+  }): Promise<
+    Readonly<{ documents: readonly EvidenceDocument[]; missingInputs: readonly string[] }>
+  > {
     return this.reader.read(input);
   }
 }
@@ -78,12 +80,24 @@ export class OperationalAccountBrainSource implements AccountBrainSource {
       const marginBps = typeof payload?.marginBps === "number" ? payload.marginBps : null;
       if (status === "incomplete") {
         findings.push(
-          finding("incomplete-read-model", "Incomplete operational snapshot", "A current source declares missing inputs.", "warning", document),
+          finding(
+            "incomplete-read-model",
+            "Incomplete operational snapshot",
+            "A current source declares missing inputs.",
+            "warning",
+            document,
+          ),
         );
       }
       if (marginBps !== null && marginBps < 0) {
         findings.push(
-          finding("negative-margin", "Negative margin detected", "Verified economic evidence contains a negative margin.", "critical", document),
+          finding(
+            "negative-margin",
+            "Negative margin detected",
+            "Verified economic evidence contains a negative margin.",
+            "critical",
+            document,
+          ),
         );
       }
     }
@@ -91,8 +105,18 @@ export class OperationalAccountBrainSource implements AccountBrainSource {
     const scoreBps =
       result.documents.length === 0 || missingInputs.length > 0
         ? null
-        : Math.max(0, 9_000 - findings.filter((entry) => entry.severity === "warning").length * 1_500 - findings.filter((entry) => entry.severity === "critical").length * 4_000);
-    return Object.freeze({ scoreBps, evidenceRefs, missingInputs, findings: Object.freeze(findings) });
+        : Math.max(
+            0,
+            9_000 -
+              findings.filter((entry) => entry.severity === "warning").length * 1_500 -
+              findings.filter((entry) => entry.severity === "critical").length * 4_000,
+          );
+    return Object.freeze({
+      scoreBps,
+      evidenceRefs,
+      missingInputs,
+      findings: Object.freeze(findings),
+    });
   }
 
   retrieveMemory(input: {
@@ -162,10 +186,20 @@ export class OperationalSupplyWorkflowEvidenceReader implements SupplyWorkflowEv
     );
     return Object.freeze({
       availableKinds: Object.freeze(
-        [...new Set(results.flatMap((result) => result.documents.flatMap((document) => document.kind ? [document.kind] : [])))].sort(),
+        [
+          ...new Set(
+            results.flatMap((result) =>
+              result.documents.flatMap((document) => (document.kind ? [document.kind] : [])),
+            ),
+          ),
+        ].sort(),
       ),
       evidenceRefs: Object.freeze(
-        [...new Set(results.flatMap((result) => result.documents.map((document) => document.reference.id)))].sort(),
+        [
+          ...new Set(
+            results.flatMap((result) => result.documents.map((document) => document.reference.id)),
+          ),
+        ].sort(),
       ),
       missingInputs: Object.freeze(
         [...new Set(results.flatMap((result) => result.missingInputs))].sort(),
@@ -220,20 +254,20 @@ export class PostgresProductLifecycleSource implements ProductLifecycleSource {
     );
     const orderRow = ordersResult.rows[0];
     const profitability = profitabilityResult.rows[0];
-    const evidenceRefs = Object.freeze(
-      [
-        ...(listing ? [`listing:${listing.itemId}`] : []),
-        ...(orderRow?.evidence_refs ?? []),
-        ...(profitability ? [`profitability:${profitability.id}`] : []),
-      ],
-    );
-    const observedTimes = [listing?.observedAt, profitability ? iso(profitability.calculated_at) : null].filter(
-      (value): value is string => value !== null && value !== undefined,
-    );
+    const evidenceRefs = Object.freeze([
+      ...(listing ? [`listing:${listing.itemId}`] : []),
+      ...(orderRow?.evidence_refs ?? []),
+      ...(profitability ? [`profitability:${profitability.id}`] : []),
+    ]);
+    const observedTimes = [
+      listing?.observedAt,
+      profitability ? iso(profitability.calculated_at) : null,
+    ].filter((value): value is string => value !== null && value !== undefined);
     const evidenceFresh =
       observedTimes.length > 0 &&
       observedTimes.every(
-        (observedAt) => Date.parse(input.asOf) - Date.parse(observedAt) <= this.maximumEvidenceAgeMs,
+        (observedAt) =>
+          Date.parse(input.asOf) - Date.parse(observedAt) <= this.maximumEvidenceAgeMs,
       );
     return Object.freeze({
       listingActive: listing ? listing.status === "active" : null,

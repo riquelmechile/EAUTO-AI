@@ -199,7 +199,9 @@ export function reconcileSemanticMemory(input: {
   );
   return {
     status: "compatible",
-    relatedIds: Object.freeze((compatible.length > 0 ? compatible : sameTopic).map((entry) => entry.id)),
+    relatedIds: Object.freeze(
+      (compatible.length > 0 ? compatible : sameTopic).map((entry) => entry.id),
+    ),
   };
 }
 

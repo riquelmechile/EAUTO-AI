@@ -47,22 +47,134 @@ export interface SpecialistDaemonSignalProvider {
 }
 
 export const SPECIALIST_DAEMON_CATALOG: readonly SpecialistDaemonDefinition[] = Object.freeze([
-  daemon("economic-ingestion", "economics.read", "analysis", "economic", ["order-snapshot", "cost-evidence"], "Reconcile orders and cost evidence; report missing economic inputs."),
-  daemon("unit-economics", "economics.read", "analysis", "economic", ["economic-snapshot"], "Audit unit economics, contribution margin and capital exposure."),
-  daemon("pricing", "proposal.create", "planning", "economic", ["economic-snapshot", "market-evidence"], "Prepare pricing proposals that preserve the configured margin floor."),
-  daemon("ads-profitability", "ads.read", "analysis", "economic", ["ads-snapshot", "economic-snapshot"], "Reconcile direct Product Ads evidence against profitability."),
-  daemon("analytics", "analytics.read", "analysis", "commercial", ["analytics-snapshot"], "Detect material changes in sales, visits, conversion and anomalies."),
-  daemon("catalog", "catalog.read", "analysis", "catalog", ["listing-snapshot"], "Audit catalog attributes, duplicates, taxonomy and listing gaps."),
-  daemon("product-research", "research.read", "analysis", "catalog", ["market-evidence", "supplier-evidence"], "Research bounded product opportunities using current market and supplier evidence."),
-  daemon("listing-retread", "catalog.read", "planning", "catalog", ["listing-snapshot", "analytics-snapshot"], "Prepare non-executable improvement plans for stagnant listings."),
-  daemon("supplier-manager", "supplier.read", "analysis", "economic", ["supplier-evidence"], "Audit supplier authority, cost, availability, lead time and concentration."),
-  daemon("inventory-forecast", "inventory.read", "analysis", "commercial", ["inventory-snapshot", "order-snapshot"], "Forecast stockout and excess inventory from verified evidence."),
-  daemon("acquisition-imports", "supplier.read", "planning", "economic", ["supplier-evidence", "landed-cost-evidence"], "Evaluate landed cost, logistics and working-capital risk without purchasing."),
-  daemon("sales-service", "questions.read", "analysis", "customer", ["customer-operation-snapshot"], "Prioritize pending sales and questions without answering automatically."),
-  daemon("claims-reputation", "claims.read", "analysis", "reputation", ["customer-operation-snapshot"], "Detect claim, return and reputation risks that require owner attention."),
-  daemon("shipping-logistics", "shipping.read", "analysis", "customer", ["shipment-snapshot"], "Audit shipment SLA, tracking and logistics exceptions."),
-  daemon("creative-studio", "content.draft", "planning", "content", ["product-evidence", "brand-policy"], "Prepare traceable creative packages; never publish automatically."),
-  daemon("product-ads", "ads.read", "analysis", "economic", ["ads-snapshot", "economic-snapshot"], "Prepare Product Ads optimization proposals from direct item attribution only."),
+  daemon(
+    "economic-ingestion",
+    "economics.read",
+    "analysis",
+    "economic",
+    ["order-snapshot", "cost-evidence"],
+    "Reconcile orders and cost evidence; report missing economic inputs.",
+  ),
+  daemon(
+    "unit-economics",
+    "economics.read",
+    "analysis",
+    "economic",
+    ["economic-snapshot"],
+    "Audit unit economics, contribution margin and capital exposure.",
+  ),
+  daemon(
+    "pricing",
+    "proposal.create",
+    "planning",
+    "economic",
+    ["economic-snapshot", "market-evidence"],
+    "Prepare pricing proposals that preserve the configured margin floor.",
+  ),
+  daemon(
+    "ads-profitability",
+    "ads.read",
+    "analysis",
+    "economic",
+    ["ads-snapshot", "economic-snapshot"],
+    "Reconcile direct Product Ads evidence against profitability.",
+  ),
+  daemon(
+    "analytics",
+    "analytics.read",
+    "analysis",
+    "commercial",
+    ["analytics-snapshot"],
+    "Detect material changes in sales, visits, conversion and anomalies.",
+  ),
+  daemon(
+    "catalog",
+    "catalog.read",
+    "analysis",
+    "catalog",
+    ["listing-snapshot"],
+    "Audit catalog attributes, duplicates, taxonomy and listing gaps.",
+  ),
+  daemon(
+    "product-research",
+    "research.read",
+    "analysis",
+    "catalog",
+    ["market-evidence", "supplier-evidence"],
+    "Research bounded product opportunities using current market and supplier evidence.",
+  ),
+  daemon(
+    "listing-retread",
+    "catalog.read",
+    "planning",
+    "catalog",
+    ["listing-snapshot", "analytics-snapshot"],
+    "Prepare non-executable improvement plans for stagnant listings.",
+  ),
+  daemon(
+    "supplier-manager",
+    "supplier.read",
+    "analysis",
+    "economic",
+    ["supplier-evidence"],
+    "Audit supplier authority, cost, availability, lead time and concentration.",
+  ),
+  daemon(
+    "inventory-forecast",
+    "inventory.read",
+    "analysis",
+    "commercial",
+    ["inventory-snapshot", "order-snapshot"],
+    "Forecast stockout and excess inventory from verified evidence.",
+  ),
+  daemon(
+    "acquisition-imports",
+    "supplier.read",
+    "planning",
+    "economic",
+    ["supplier-evidence", "landed-cost-evidence"],
+    "Evaluate landed cost, logistics and working-capital risk without purchasing.",
+  ),
+  daemon(
+    "sales-service",
+    "questions.read",
+    "analysis",
+    "customer",
+    ["customer-operation-snapshot"],
+    "Prioritize pending sales and questions without answering automatically.",
+  ),
+  daemon(
+    "claims-reputation",
+    "claims.read",
+    "analysis",
+    "reputation",
+    ["customer-operation-snapshot"],
+    "Detect claim, return and reputation risks that require owner attention.",
+  ),
+  daemon(
+    "shipping-logistics",
+    "shipping.read",
+    "analysis",
+    "customer",
+    ["shipment-snapshot"],
+    "Audit shipment SLA, tracking and logistics exceptions.",
+  ),
+  daemon(
+    "creative-studio",
+    "content.draft",
+    "planning",
+    "content",
+    ["product-evidence", "brand-policy"],
+    "Prepare traceable creative packages; never publish automatically.",
+  ),
+  daemon(
+    "product-ads",
+    "ads.read",
+    "analysis",
+    "economic",
+    ["ads-snapshot", "economic-snapshot"],
+    "Prepare Product Ads optimization proposals from direct item attribution only.",
+  ),
 ]);
 assertSpecialistDaemonCatalog(SPECIALIST_DAEMON_CATALOG);
 
@@ -91,7 +203,17 @@ export class SpecialistDaemonScheduler {
     });
   }
 
-  async runOnce(limit = 16): Promise<Readonly<{ leased: number; queued: number; skipped: number; waitingEvidence: number; failed: number }>> {
+  async runOnce(
+    limit = 16,
+  ): Promise<
+    Readonly<{
+      leased: number;
+      queued: number;
+      skipped: number;
+      waitingEvidence: number;
+      failed: number;
+    }>
+  > {
     const now = this.clock.now();
     const states = await this.repository.leaseDueStates({
       owner: this.config.workerId,
@@ -123,7 +245,10 @@ export class SpecialistDaemonScheduler {
     daemonId?: SpecialistDaemonId;
     limit?: number;
   }) {
-    return this.repository.listRuns({ ...input, limit: Math.min(100, positive(input.limit ?? 50, "limit")) });
+    return this.repository.listRuns({
+      ...input,
+      limit: Math.min(100, positive(input.limit ?? 50, "limit")),
+    });
   }
 
   private async runState(
@@ -231,7 +356,9 @@ export class SpecialistDaemonScheduler {
       workOrderId,
       status,
       reason,
-      startedAt: state.leaseUntil ? new Date(Date.parse(state.leaseUntil) - this.config.leaseMs).toISOString() : completedAt.toISOString(),
+      startedAt: state.leaseUntil
+        ? new Date(Date.parse(state.leaseUntil) - this.config.leaseMs).toISOString()
+        : completedAt.toISOString(),
       completedAt: completedAt.toISOString(),
     });
     await this.repository.saveRun(

@@ -101,7 +101,8 @@ export class InMemoryCompanyIntelligenceRepository
 
   updateMessage(message: AgentMessage): Promise<void> {
     const current = this.messages.get(message.id);
-    if (!current || !sameScope(current, message)) throw new Error(`Agent message ${message.id} not found.`);
+    if (!current || !sameScope(current, message))
+      throw new Error(`Agent message ${message.id} not found.`);
     this.messages.set(message.id, message);
     return Promise.resolve();
   }
@@ -355,8 +356,7 @@ export class InMemoryCompanyIntelligenceRepository
     return Promise.resolve(
       descending(
         [...this.daemonRuns.values()].filter(
-          (run) =>
-            sameScope(run, input) && (!input.daemonId || run.daemonId === input.daemonId),
+          (run) => sameScope(run, input) && (!input.daemonId || run.daemonId === input.daemonId),
         ),
         "completedAt",
       ).slice(0, input.limit),
@@ -426,7 +426,8 @@ export class InMemoryCompanyIntelligenceRepository
     return Promise.resolve(
       descending(
         [...this.lifecycle.values()].filter(
-          (assessment) => sameScope(assessment, input) && (!input.state || assessment.state === input.state),
+          (assessment) =>
+            sameScope(assessment, input) && (!input.state || assessment.state === input.state),
         ),
         "assessedAt",
       ).slice(0, input.limit),
@@ -461,7 +462,12 @@ function descending<T extends Record<K, string>, K extends keyof T>(values: T[],
 }
 
 function tokenize(value: string): readonly string[] {
-  return Object.freeze(
-    [...new Set(value.toLowerCase().split(/[^a-z0-9áéíóúüñ._:-]+/u).filter((term) => term.length > 1))],
-  );
+  return Object.freeze([
+    ...new Set(
+      value
+        .toLowerCase()
+        .split(/[^a-z0-9áéíóúüñ._:-]+/u)
+        .filter((term) => term.length > 1),
+    ),
+  ]);
 }

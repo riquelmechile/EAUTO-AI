@@ -88,9 +88,12 @@ export function planSupplyWorkflow(input: SupplyWorkflowRequest): readonly Suppl
         ])
       : input.kind === "supplier.full-scrape"
         ? Object.freeze([
-            step(3, "compare", "Determine whether mirror coverage or freshness requires a full scan.", [
-              "supplier-evidence",
-            ]),
+            step(
+              3,
+              "compare",
+              "Determine whether mirror coverage or freshness requires a full scan.",
+              ["supplier-evidence"],
+            ),
             step(4, "propose", "Queue a bounded full catalog acquisition work order.", [
               "policy-version",
             ]),

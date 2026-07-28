@@ -1,9 +1,5 @@
 import { createHash } from "node:crypto";
-import type {
-  SupplyWorkflowRequest,
-  SupplyWorkflowRun,
-  SupplyWorkflowStep,
-} from "@eauto/domain";
+import type { SupplyWorkflowRequest, SupplyWorkflowRun, SupplyWorkflowStep } from "@eauto/domain";
 import { planSupplyWorkflow, supplyWorkflowActionKind } from "@eauto/domain";
 
 export interface SupplyWorkflowRepository {
@@ -68,13 +64,15 @@ export class SupplyWorkflowService {
     const steps = Object.freeze(
       planned.map((step) => completeStep(step, availableKinds, observed.evidenceRefs)),
     );
-    const missingInputs = Object.freeze([
-      ...new Set([
-        ...observed.missingInputs,
-        ...steps.flatMap((step) => step.missingInputs),
-        ...validateBusinessParameters(request),
-      ]),
-    ].sort());
+    const missingInputs = Object.freeze(
+      [
+        ...new Set([
+          ...observed.missingInputs,
+          ...steps.flatMap((step) => step.missingInputs),
+          ...validateBusinessParameters(request),
+        ]),
+      ].sort(),
+    );
     const ready = missingInputs.length === 0 && steps.every((step) => step.status === "completed");
     const normalized = Object.freeze({
       organizationId: request.organizationId,
@@ -86,7 +84,9 @@ export class SupplyWorkflowService {
       status: ready ? ("proposed" as const) : ("waiting-evidence" as const),
       dryRun: true as const,
       steps,
-      evidenceRefs: Object.freeze([...new Set([...request.evidenceRefs, ...observed.evidenceRefs])].sort()),
+      evidenceRefs: Object.freeze(
+        [...new Set([...request.evidenceRefs, ...observed.evidenceRefs])].sort(),
+      ),
       proposedActionKind: ready ? supplyWorkflowActionKind(request.kind) : null,
       proposedActionId: null,
       missingInputs,
@@ -143,7 +143,8 @@ function validateBusinessParameters(request: SupplyWorkflowRequest): readonly st
     missing.push("stock-ceiling");
   }
   if (request.kind === "purchase.opportunistic") {
-    if (request.parameters.maximumPurchaseQuantity === null) missing.push("maximum-purchase-quantity");
+    if (request.parameters.maximumPurchaseQuantity === null)
+      missing.push("maximum-purchase-quantity");
     if (request.parameters.maximumUnitCostMinorClp === null) missing.push("maximum-unit-cost");
   }
   return Object.freeze(missing);
