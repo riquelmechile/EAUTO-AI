@@ -115,12 +115,6 @@ await replaceOnce(
 );
 
 await replaceOnce(
-  ".github/workflows/ci.yml",
-  "    branches: [main]",
-  "    branches: [main, feat/mercadolibre-production-completion]",
-);
-
-await replaceOnce(
   "package.json",
   '    "smoke:mercadolibre-question-answer": "node scripts/smoke-mercadolibre-question-answer-contract.mjs"\n',
   '    "smoke:mercadolibre-question-answer": "node scripts/smoke-mercadolibre-question-answer-contract.mjs",\n    "smoke:mercadolibre-product-ads": "node scripts/smoke-mercadolibre-product-ads-postgres.mjs"\n',
