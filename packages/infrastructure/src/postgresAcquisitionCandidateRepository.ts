@@ -115,7 +115,7 @@ export class PostgresAcquisitionCandidateRepository implements AcquisitionCandid
   }
 }
 
-function candidateValues(candidate: AcquisitionCandidate): readonly unknown[] {
+function candidateValues(candidate: AcquisitionCandidate): unknown[] {
   return [
     candidate.id,
     candidate.contentHash,
