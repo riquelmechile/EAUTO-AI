@@ -48,7 +48,12 @@ export type StockAvailabilityProposal = Readonly<{
 }>;
 
 export type SupplierStockSignal = Readonly<{
-  kind: "sync.failure" | "stock.recovered" | "cost.change" | "margin.reaudit-required";
+  kind:
+    | "sync.failure"
+    | "stock.recovered"
+    | "cost.change"
+    | "margin.reaudit-required"
+    | "evidence.stale";
   severity: "info" | "warning" | "critical";
   details: Readonly<Record<string, string | number | boolean>>;
 }>;
@@ -90,6 +95,22 @@ export function evaluateSupplierStock(
   );
   const signals: SupplierStockSignal[] = [];
 
+  if (!stockEvidenceFresh) {
+    signals.push(
+      signal("evidence.stale", "critical", {
+        evidenceKind: "stock",
+        evidenceId: input.stockEvidence.id,
+      }),
+    );
+  }
+  if (!costEvidenceFresh && input.costEvidence) {
+    signals.push(
+      signal("evidence.stale", "warning", {
+        evidenceKind: "cost",
+        evidenceId: input.costEvidence.id,
+      }),
+    );
+  }
   if (!input.syncSucceeded) {
     signals.push(
       signal("sync.failure", "critical", {
@@ -129,7 +150,13 @@ export function evaluateSupplierStock(
     input.currentStock === 0 &&
     input.listingStatus === "active"
   ) {
-    availabilityProposal = proposal(input, policy, "listing.pause", "supplier-out-of-stock", evidenceRefs);
+    availabilityProposal = proposal(
+      input,
+      policy,
+      "listing.pause",
+      "supplier-out-of-stock",
+      evidenceRefs,
+    );
   }
 
   const stockRecovered =
@@ -213,7 +240,11 @@ function calculateCostChangeBps(previous: number | null, current: number | null)
   if (previous === null || current === null) return null;
   assertPositiveInteger(previous, "previousUnitCostMinor");
   assertNonNegativeInteger(current, "currentUnitCostMinor");
-  return Math.trunc(((current - previous) * 10_000) / previous);
+  const numerator = (current - previous) * 10_000;
+  if (!Number.isSafeInteger(numerator)) {
+    throw new Error("Supplier cost change exceeded safe integer range.");
+  }
+  return Math.trunc(numerator / previous);
 }
 
 function isStale(
