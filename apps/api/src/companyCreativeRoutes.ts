@@ -26,7 +26,7 @@ export function registerCompanyCreativeRoutes(
       })
       .parse(request.body);
     await dependencies.requireAccount(actor, params.accountId, "content.create");
-    if (!dependencies.runtime.creativeStudio) {
+    if (!dependencies.runtime.creativeStudio || !dependencies.runtime.creativeStorage) {
       return reply.code(503).send({
         error: "creative-provider-disabled",
         message: "Configure CONTENT_PROVIDER_KIND=minimax and MINIMAX_API_KEY.",
@@ -37,16 +37,20 @@ export function registerCompanyCreativeRoutes(
       actor.organizationId,
       params.accountId,
     );
+    const sourceImageUrl = await dependencies.runtime.creativeStorage.createPresignedDownload({
+      objectKey: upload.objectKey,
+      expiresInSeconds: 900,
+    });
     const brief: ProductLaunchBrief = Object.freeze({
       id: body.productId,
       accountId: params.accountId,
-      sourceImageUri: upload.objectUri,
+      sourceImageUri: sourceImageUrl,
       ...(body.instructions ? { instructions: body.instructions } : {}),
       requestedChannels: Object.freeze(body.requestedChannels),
     });
     const assets = await dependencies.runtime.creativeStudio.createLaunch(brief);
     return reply.code(201).send({
-      brief,
+      brief: { ...brief, sourceImageUri: upload.objectUri },
       sourceImageUpload: upload,
       assets,
       requestedBy: actor.id,
