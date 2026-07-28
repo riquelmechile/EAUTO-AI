@@ -92,26 +92,23 @@ export function registerMercadoLibreRoutes(
     };
   });
 
-  app.post(
-    "/v1/integrations/mercadolibre/:accountId/taxonomy/preflight",
-    async (request) => {
-      const actor = await dependencies.authenticate(request);
-      const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
-      const body = taxonomyPreflightSchema.parse(request.body);
-      await dependencies.requireAccount(actor, params.accountId, "integrations.read");
-      const runtime = requireTaxonomyRuntime(taxonomyRuntime);
-      const result = await runtime.preflight.preflight({
-        organizationId: actor.organizationId,
-        accountId: params.accountId,
-        categoryId: body.categoryId,
-        submittedAttributes: Object.freeze(
-          body.submittedAttributes.map((attribute) => Object.freeze(attribute)),
-        ),
-        policy: runtime.policy,
-      });
-      return Object.freeze({ ...result, writesPerformed: false });
-    },
-  );
+  app.post("/v1/integrations/mercadolibre/:accountId/taxonomy/preflight", async (request) => {
+    const actor = await dependencies.authenticate(request);
+    const params = z.object({ accountId: z.string().min(3) }).parse(request.params);
+    const body = taxonomyPreflightSchema.parse(request.body);
+    await dependencies.requireAccount(actor, params.accountId, "integrations.read");
+    const runtime = requireTaxonomyRuntime(taxonomyRuntime);
+    const result = await runtime.preflight.preflight({
+      organizationId: actor.organizationId,
+      accountId: params.accountId,
+      categoryId: body.categoryId,
+      submittedAttributes: Object.freeze(
+        body.submittedAttributes.map((attribute) => Object.freeze(attribute)),
+      ),
+      policy: runtime.policy,
+    });
+    return Object.freeze({ ...result, writesPerformed: false });
+  });
 
   app.get("/v1/integrations/mercadolibre/:accountId/listings", async (request) => {
     const actor = await dependencies.authenticate(request);
