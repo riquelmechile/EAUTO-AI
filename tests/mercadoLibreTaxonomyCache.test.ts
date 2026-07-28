@@ -102,9 +102,7 @@ function attributes(
 
 function makeSource() {
   const getCategory = vi.fn<ForReadingMercadoLibreTaxonomy["getCategory"]>();
-  const getCategoryAttributes = vi.fn<
-    ForReadingMercadoLibreTaxonomy["getCategoryAttributes"]
-  >();
+  const getCategoryAttributes = vi.fn<ForReadingMercadoLibreTaxonomy["getCategoryAttributes"]>();
   getCategory.mockResolvedValue(null);
   getCategoryAttributes.mockResolvedValue(null);
   return {
@@ -206,11 +204,7 @@ describe("evidenceIsFresh", () => {
       ),
     ).toBe(true);
     expect(
-      evidenceIsFresh(
-        { observedAt: "invalid", sourceHash: "9".repeat(64) },
-        now,
-        3_600_000,
-      ),
+      evidenceIsFresh({ observedAt: "invalid", sourceHash: "9".repeat(64) }, now, 3_600_000),
     ).toBe(false);
   });
 });
