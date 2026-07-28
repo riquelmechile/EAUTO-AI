@@ -30,15 +30,16 @@
     "smoke:object-storage": "node scripts/smoke-object-storage.mjs",
     "smoke:production-runtime": "node scripts/smoke-production-runtime.mjs",
     "smoke:postgres-schema": "node scripts/smoke-postgres-schema.mjs",
-    "smoke:taxonomy-postgres": "node scripts/smoke-mercadolibre-taxonomy-postgres.mjs"
+    "smoke:taxonomy-postgres": "node scripts/smoke-mercadolibre-taxonomy-postgres.mjs",
+    "smoke:mercadolibre-question-answer": "node scripts/smoke-mercadolibre-question-answer-contract.mjs"
   },
   "devDependencies": {
-    "@eslint/js": "^9.31.0",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.30",
-    "eslint": "^9.31.0",
+    "eslint": "^10.8.0",
     "prettier": "^3.6.2",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.37.0",
+    "typescript-eslint": "^8.65.0",
     "vitest": "^3.2.4"
   }
 }

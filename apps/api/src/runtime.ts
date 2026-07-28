@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import {
   ACTION_KINDS,
+  MERCADOLIBRE_ACTION_KINDS,
   accountId,
   organizationId,
   type BusinessAction,
@@ -60,6 +61,7 @@ import {
   InMemorySessionRepository,
   InMemorySourceImageUploadRepository,
   MercadoLibreHttpClient,
+  MercadoLibreQuestionAnswerExecutor,
   NodeMercadoLibreSecurity,
   PhotoSimilarityProductCandidateProvider,
   PostgresAcquisitionCandidateRepository,
@@ -77,6 +79,8 @@ import {
   PostgresReceiptRepository,
   PostgresSessionRepository,
   PostgresSourceImageUploadRepository,
+  RotatingMercadoLibreQuestionAnswerCredentialProvider,
+  RoutedActionExecutor,
   S3ObjectStorage,
   type HttpActionRoutes,
 } from "@eauto/infrastructure";
@@ -188,7 +192,7 @@ export function createRuntime(config: AppConfig) {
       : {}),
     forcePathStyle: config.OBJECT_STORAGE_FORCE_PATH_STYLE,
   });
-  const actionRuntime = createActionExecutorRuntime(config);
+  const actionRuntime = createActionExecutorRuntime(config, pool, clock);
   const actionService = new ActionService(actionRepository, actionRuntime.executor, clock, ids);
   const agentOs = new AgentOsService(agentOsRepository, clock, ids);
   const shadowLlm = createShadowLlmRuntime(config, llmRuns, clock, ids);
@@ -339,7 +343,74 @@ export function createRuntime(config: AppConfig) {
   };
 }
 
-function createActionExecutorRuntime(config: AppConfig): Readonly<{
+function createActionExecutorRuntime(
+  config: AppConfig,
+  pool: Pool | null,
+  clock: { now(): Date },
+): Readonly<{
+  executor: ActionExecutor;
+  mode:
+    | "external"
+    | "disabled"
+    | "development-simulator"
+    | "mercadolibre-question-answer"
+    | "external-and-mercadolibre-question-answer";
+}> {
+  const fallback = createFallbackActionExecutorRuntime(config);
+  if (!config.MELI_QUESTION_ANSWER_ENABLED) return fallback;
+  if (
+    !pool ||
+    !config.MELI_QUESTION_ANSWER_ACCOUNT_ID ||
+    !config.MELI_TOKEN_VAULT_KEY_BASE64 ||
+    !config.MELI_CLIENT_ID ||
+    !config.MELI_CLIENT_SECRET ||
+    !config.MELI_REDIRECT_URI
+  ) {
+    throw new Error("MercadoLibre question answer runtime is enabled but incomplete.");
+  }
+
+  const connections = new PostgresMercadoLibreConnectionRepository(pool);
+  const security = new NodeMercadoLibreSecurity(config.MELI_TOKEN_VAULT_KEY_BASE64);
+  const client = new MercadoLibreHttpClient({
+    clientId: config.MELI_CLIENT_ID,
+    clientSecret: config.MELI_CLIENT_SECRET,
+    redirectUri: config.MELI_REDIRECT_URI,
+    tokenUrl: config.MELI_TOKEN_URL,
+    apiBaseUrl: config.MELI_API_BASE_URL,
+    timeoutMs: config.MELI_HTTP_TIMEOUT_MS,
+    maximumScanPages: config.MELI_MAXIMUM_SCAN_PAGES,
+  });
+  const credentials = new RotatingMercadoLibreQuestionAnswerCredentialProvider(
+    connections,
+    security,
+    client,
+    clock,
+    {
+      allowedAccountId: config.MELI_QUESTION_ANSWER_ACCOUNT_ID,
+      refreshWindowMs: config.MELI_REFRESH_WINDOW_MS,
+      refreshLeaseMs: config.MELI_REFRESH_LEASE_MS,
+    },
+  );
+  const questionAnswers = new MercadoLibreQuestionAnswerExecutor(credentials, {
+    apiBaseUrl: config.MELI_API_BASE_URL,
+    allowedAccountId: config.MELI_QUESTION_ANSWER_ACCOUNT_ID,
+    policyVersion: config.MELI_QUESTION_ANSWER_POLICY_VERSION,
+    timeoutMs: config.MELI_QUESTION_ANSWER_TIMEOUT_MS,
+    maximumResponseBytes: config.MELI_QUESTION_ANSWER_MAX_RESPONSE_BYTES,
+  });
+  return Object.freeze({
+    executor: new RoutedActionExecutor(
+      Object.freeze({ "question.answer": questionAnswers }),
+      fallback.executor,
+    ),
+    mode:
+      fallback.mode === "external"
+        ? ("external-and-mercadolibre-question-answer" as const)
+        : ("mercadolibre-question-answer" as const),
+  });
+}
+
+function createFallbackActionExecutorRuntime(config: AppConfig): Readonly<{
   executor: ActionExecutor;
   mode: "external" | "disabled" | "development-simulator";
 }> {
@@ -479,8 +550,14 @@ function parseActionRoutes(value: string): HttpActionRoutes {
   if (!isRecord(parsed)) throw new Error("Action provider routes must be an object.");
   const routes: Record<string, { executeUrl: string; verifyUrl: string }> = {};
   const allowedKinds = new Set<string>(ACTION_KINDS);
+  const mercadoLibreKinds = new Set<string>(MERCADOLIBRE_ACTION_KINDS);
   for (const [kind, route] of Object.entries(parsed)) {
     if (!allowedKinds.has(kind)) throw new Error(`Unknown action route kind ${kind}.`);
+    if (mercadoLibreKinds.has(kind)) {
+      throw new Error(
+        `MercadoLibre action route ${kind} is forbidden in the generic action gateway.`,
+      );
+    }
     if (
       !isRecord(route) ||
       typeof route.executeUrl !== "string" ||

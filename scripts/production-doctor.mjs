@@ -8,6 +8,15 @@ const envArgument = process.argv.find((argument) => argument.startsWith("--env="
 const envPath = resolve(process.cwd(), envArgument?.slice(6) ?? ".env.production");
 const configured = existsSync(envPath) ? parseEnvironment(await readFile(envPath, "utf8")) : {};
 const immutableImagePattern = /^ghcr\.io\/riquelmechile\/eauto-ai@sha256:[a-f0-9]{64}$/;
+const mercadoLibreActionKinds = new Set([
+  "listing.publish",
+  "listing.update",
+  "price.update",
+  "stock.update",
+  "question.answer",
+  "claim.respond",
+  "ads.update",
+]);
 
 const files = [
   "Dockerfile",
@@ -28,6 +37,7 @@ const files = [
   "scripts/smoke-supplier-sync-invariants-postgres.mjs",
   "scripts/smoke-supplier-cost-feed-postgres.mjs",
   "scripts/smoke-catalog-acquisition-postgres.mjs",
+  "scripts/smoke-mercadolibre-question-answer-contract.mjs",
   "scripts/smoke-production-runtime.mjs",
   "scripts/deploy-production.sh",
   "scripts/production-doctor.mjs",
@@ -51,10 +61,13 @@ const files = [
   "packages/infrastructure/src/httpActionExecutor.ts",
   "packages/infrastructure/src/httpCatalogAcquisitionProviders.ts",
   "packages/infrastructure/src/httpProductFingerprintProvider.ts",
+  "packages/infrastructure/src/mercadoLibreQuestionAnswerCredentialProvider.ts",
+  "packages/infrastructure/src/mercadoLibreQuestionAnswerExecutor.ts",
   "apps/mobile/app.config.cjs",
   "apps/mobile/eas.json",
   ".github/workflows/release.yml",
   "docs/runbooks/production-release.md",
+  "docs/sdd/017-mercadolibre-question-answer-write-slice.md",
 ];
 const secrets = [
   "POSTGRES_PASSWORD",
@@ -67,7 +80,6 @@ const secrets = [
   "CATALOG_VISUAL_PROVIDER_API_KEY",
   "PRODUCT_FINGERPRINT_PROVIDER_API_KEY",
   "CATALOG_SUPPLIER_API_KEY",
-  "ACTION_PROVIDER_API_KEY",
   "LLM_API_KEY",
   "MELI_CLIENT_ID",
   "MELI_CLIENT_SECRET",
@@ -97,12 +109,15 @@ for (const key of [...secrets, ...requiredRuntimeValues]) {
   console.log(`${ready ? "✓" : "○"} ${key}${ready ? " configured" : " pending"}`);
   if (!ready) pending.push(key);
 }
+if (configured.ACTION_EXECUTION_ENABLED === "true") {
+  checkConditionalSecret("ACTION_PROVIDER_API_KEY");
+}
 
 expectValue("NODE_ENV", "production");
 expectValue("AUTH_MODE", "static-token");
 expectValue("CONTENT_GENERATION_ENABLED", "true");
 expectValue("CATALOG_ACQUISITION_ENABLED", "true");
-expectValue("ACTION_EXECUTION_ENABLED", "true");
+expectValue("ACTION_EXECUTION_ENABLED", "false");
 expectValue("LLM_ENABLED", "true");
 expectValue("INTELLIGENCE_WORKER_ENABLED", "true");
 expectValue("MELI_ENABLED", "true");
@@ -119,6 +134,7 @@ validateImmutableImage();
 validateDatabaseUrl();
 validateCatalogRoutes();
 validateActionRoutes();
+validateQuestionAnswerRollout();
 
 if (
   configured.API_DOMAIN &&
@@ -176,6 +192,13 @@ console.log(`Configuration values pending: ${pending.length}`);
 for (const failure of failures) console.error(`✗ ${failure}`);
 if (pending.length > 0) console.log(`Pending: ${pending.join(", ")}`);
 if (failures.length > 0 || (!templateMode && pending.length > 0)) process.exitCode = 1;
+
+function checkConditionalSecret(key) {
+  const value = configured[key]?.trim();
+  const ready = Boolean(value && !isPlaceholder(value));
+  console.log(`${ready ? "✓" : "○"} ${key}${ready ? " configured" : " pending"}`);
+  if (!ready) pending.push(key);
+}
 
 function expectValue(key, expected) {
   if (configured[key] !== expected) failures.push(`${key} must be ${expected}.`);
@@ -270,8 +293,15 @@ function validateActionRoutes() {
       return;
     }
     const entries = Object.entries(routes);
-    if (entries.length === 0) failures.push("ACTION_PROVIDER_ROUTES_JSON cannot be empty.");
+    if (configured.ACTION_EXECUTION_ENABLED === "true" && entries.length === 0) {
+      failures.push("ACTION_PROVIDER_ROUTES_JSON cannot be empty when execution is enabled.");
+    }
     for (const [kind, route] of entries) {
+      if (mercadoLibreActionKinds.has(kind)) {
+        failures.push(
+          `MercadoLibre action route ${kind} is forbidden in the generic action gateway.`,
+        );
+      }
       if (!route || typeof route !== "object" || Array.isArray(route)) {
         failures.push(`Action route ${kind} must be an object.`);
         continue;
@@ -297,6 +327,17 @@ function validateActionRoutes() {
     }
   } catch {
     failures.push("ACTION_PROVIDER_ROUTES_JSON must be valid JSON.");
+  }
+}
+
+function validateQuestionAnswerRollout() {
+  if (configured.MELI_QUESTION_ANSWER_ENABLED !== "true") return;
+  if (configured.MELI_QUESTION_ANSWER_ACCOUNT_ID !== "plasticov") {
+    failures.push("MELI_QUESTION_ANSWER_ACCOUNT_ID must be plasticov for the first rollout.");
+  }
+  const policy = configured.MELI_QUESTION_ANSWER_POLICY_VERSION?.trim();
+  if (!policy || isPlaceholder(policy)) {
+    failures.push("MELI_QUESTION_ANSWER_POLICY_VERSION must be configured when enabled.");
   }
 }
 

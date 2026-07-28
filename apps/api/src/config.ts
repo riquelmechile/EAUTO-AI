@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { z } from "zod";
-import { ACTION_KINDS } from "@eauto/domain";
+import { ACTION_KINDS, MERCADOLIBRE_ACTION_KINDS } from "@eauto/domain";
 
 const optionalUrl = z.preprocess(
   (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
@@ -188,6 +188,20 @@ const configSchema = z.object({
   MELI_REFRESH_LEASE_MS: z.coerce.number().int().min(5_000).max(300_000).default(30_000),
   MELI_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(15_000),
   MELI_MAXIMUM_SCAN_PAGES: z.coerce.number().int().min(1).max(1_000).default(100),
+  MELI_QUESTION_ANSWER_ENABLED: environmentBoolean.default(false),
+  MELI_QUESTION_ANSWER_ACCOUNT_ID: optionalString,
+  MELI_QUESTION_ANSWER_POLICY_VERSION: z
+    .string()
+    .min(1)
+    .max(128)
+    .default("mercadolibre-question-answer-v1"),
+  MELI_QUESTION_ANSWER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(15_000),
+  MELI_QUESTION_ANSWER_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_024)
+    .max(2_000_000)
+    .default(100_000),
   MELI_WEBHOOK_ENABLED: environmentBoolean.default(false),
   MELI_APPLICATION_ID: optionalString,
   MELI_WEBHOOK_TOKEN: optionalString,
@@ -340,17 +354,17 @@ function validateActionExecutionConfig(config: z.infer<typeof configSchema>): vo
     throw new Error("ACTION_PROVIDER_ROUTES_JSON must contain valid JSON.");
   }
   if (!isRecord(routes)) throw new Error("ACTION_PROVIDER_ROUTES_JSON must contain an object.");
-  if (!config.ACTION_EXECUTION_ENABLED) return;
-  if (!config.ACTION_PROVIDER_API_KEY) {
-    throw new Error("ACTION_EXECUTION_ENABLED requires ACTION_PROVIDER_API_KEY.");
-  }
+
   const entries = Object.entries(routes);
-  if (entries.length === 0) {
-    throw new Error("ACTION_EXECUTION_ENABLED requires at least one allowlisted route.");
-  }
   const allowedKinds = new Set<string>(ACTION_KINDS);
+  const mercadoLibreKinds = new Set<string>(MERCADOLIBRE_ACTION_KINDS);
   for (const [kind, value] of entries) {
     if (!allowedKinds.has(kind)) throw new Error(`Unknown action route kind ${kind}.`);
+    if (mercadoLibreKinds.has(kind)) {
+      throw new Error(
+        `MercadoLibre action route ${kind} is forbidden in the generic action gateway; use a dedicated fail-closed adapter.`,
+      );
+    }
     if (!isRecord(value)) throw new Error("Each action route must be an object.");
     for (const field of ["executeUrl", "verifyUrl"] as const) {
       const urlValue = value[field];
@@ -366,6 +380,14 @@ function validateActionExecutionConfig(config: z.infer<typeof configSchema>): vo
       }
     }
   }
+
+  if (!config.ACTION_EXECUTION_ENABLED) return;
+  if (!config.ACTION_PROVIDER_API_KEY) {
+    throw new Error("ACTION_EXECUTION_ENABLED requires ACTION_PROVIDER_API_KEY.");
+  }
+  if (entries.length === 0) {
+    throw new Error("ACTION_EXECUTION_ENABLED requires at least one allowlisted route.");
+  }
 }
 
 function validateLlmConfig(config: z.infer<typeof configSchema>): void {
@@ -377,6 +399,18 @@ function validateLlmConfig(config: z.infer<typeof configSchema>): void {
 }
 
 function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {
+  if (config.MELI_QUESTION_ANSWER_ENABLED) {
+    if (!config.MELI_ENABLED || !config.DATABASE_URL) {
+      throw new Error(
+        "MELI_QUESTION_ANSWER_ENABLED requires MELI_ENABLED and durable PostgreSQL credentials.",
+      );
+    }
+    if (config.MELI_QUESTION_ANSWER_ACCOUNT_ID !== "plasticov") {
+      throw new Error(
+        "The first MercadoLibre question.answer rollout is restricted to the Plasticov account.",
+      );
+    }
+  }
   if (config.MELI_WEBHOOK_ENABLED) {
     if (!config.MELI_ENABLED || !config.MELI_APPLICATION_ID || !config.MELI_WEBHOOK_TOKEN) {
       throw new Error(

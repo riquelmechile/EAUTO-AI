@@ -1,6 +1,6 @@
 # Contratos de proveedores productivos
 
-EAUTO-AI integra proveedores externos mediante dos gateways HTTP independientes. Las claves y las URLs se configuran fuera de Git. En producción no existe fallback a simuladores.
+EAUTO-AI integra proveedores externos mediante gateways HTTP independientes. Las claves y las URLs se configuran fuera de Git. En producción no existe fallback a simuladores.
 
 ## Gateway de contenido
 
@@ -53,19 +53,30 @@ Headers relevantes:
 
 Debe incluir al menos una imagen y un copy. Los videos son opcionales. EAUTO-AI descarga las URLs HTTPS sin seguir redirects, limita el tamaño, verifica el tipo MIME y el hash opcional, calcula SHA-256 y guarda el contenido en el bucket privado. La URL temporal del proveedor nunca se persiste como asset definitivo.
 
-## Gateway de acciones
+## Gateway genérico de acciones no-MercadoLibre
 
-Configure:
+El gateway genérico está deshabilitado por defecto:
 
-- `ACTION_EXECUTION_ENABLED=true`;
-- `ACTION_PROVIDER_API_KEY`;
-- `ACTION_PROVIDER_ROUTES_JSON` con una entrada explícita por `BusinessAction.kind`.
+```dotenv
+ACTION_EXECUTION_ENABLED=false
+ACTION_PROVIDER_ROUTES_JSON={}
+```
 
-Ejemplo:
+Solo puede habilitarse para capabilities que no pertenezcan a MercadoLibre y que tengan su propia política y gate live. Los siguientes action kinds están prohibidos por configuración, runtime y doctor:
+
+- `listing.publish`;
+- `listing.update`;
+- `price.update`;
+- `stock.update`;
+- `question.answer`;
+- `claim.respond`;
+- `ads.update`.
+
+Un ejemplo válido para una capability externa independiente sería:
 
 ```json
 {
-  "price.update": {
+  "social.publish": {
     "executeUrl": "https://actions.example.cl/v1/execute",
     "verifyUrl": "https://actions.example.cl/v1/verify"
   }
@@ -110,6 +121,37 @@ La respuesta debe contener:
 
 Sin `verified: true`, la acción no alcanza estado `verified`.
 
+## MercadoLibre `question.answer`
+
+La única escritura MercadoLibre modelada es un adapter dedicado; nunca debe configurarse en `ACTION_PROVIDER_ROUTES_JSON`.
+
+Permanece apagado en la plantilla:
+
+```dotenv
+MELI_QUESTION_ANSWER_ENABLED=false
+MELI_QUESTION_ANSWER_ACCOUNT_ID=
+MELI_QUESTION_ANSWER_POLICY_VERSION=mercadolibre-question-answer-v1
+```
+
+Después de completar los gates live del issue #41, la primera activación exige:
+
+```dotenv
+MELI_QUESTION_ANSWER_ENABLED=true
+MELI_QUESTION_ANSWER_ACCOUNT_ID=plasticov
+```
+
+El runtime:
+
+1. obtiene la credencial cifrada de PostgreSQL;
+2. rota el token bajo lease cuando está próximo a expirar;
+3. verifica que la pregunta pertenezca al seller OAuth esperado;
+4. acepta únicamente `answer.text` desde `null` a un texto aprobado de hasta 2.000 caracteres;
+5. publica en el host oficial fijo de MercadoLibre;
+6. persiste un receipt sanitizado;
+7. vuelve a consultar la pregunta y compara el hash de la respuesta y el estado remoto.
+
+Maustian no está admitida en el primer rollout. Todas las otras escrituras MercadoLibre continúan bloqueadas.
+
 ## Seguridad operacional
 
 - HTTPS obligatorio en producción.
@@ -119,13 +161,17 @@ Sin `verified: true`, la acción no alcanza estado `verified`.
 - La aprobación humana debe existir y coincidir con el hash actual de la acción.
 - Una propuesta shadow aprobada no se convierte automáticamente en `BusinessAction`.
 - Cada ejecución y verificación queda en la cadena de receipts.
+- Los tokens MercadoLibre nunca se incluyen en receipts ni logs.
+- Una operación externa ambigua termina en `uncertain`; no existe reintento ciego.
 
 ## Pruebas previas
 
 ```bash
 npm run check
+npm audit --audit-level=high
+npm run smoke:mercadolibre-question-answer
 npm run smoke:production-runtime
 npm run doctor:production -- --env=.env.production
 ```
 
-El smoke confirma que el runtime productivo usa gateways externos y no dobles de desarrollo.
+El smoke de producción confirma que el gateway genérico no puede ejecutar MercadoLibre y que la única ruta dedicada se conecta al almacén OAuth rotatorio sin realizar una mutación live.

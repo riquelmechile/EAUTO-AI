@@ -73,7 +73,6 @@ try {
     CATALOG_VISUAL_PROVIDER_API_KEY: "catalog-visual-smoke-key",
     PRODUCT_FINGERPRINT_PROVIDER_API_KEY: "fingerprint-smoke-key",
     CATALOG_SUPPLIER_API_KEY: "catalog-supplier-smoke-key",
-    ACTION_PROVIDER_API_KEY: "action-smoke-key",
     LLM_API_KEY: "llm-smoke-key",
     MELI_CLIENT_ID: "meli-smoke-client",
     MELI_CLIENT_SECRET: "meli-smoke-secret",
@@ -82,6 +81,8 @@ try {
     MELI_MAUSTIAN_SELLER_ID: "100002",
     MELI_APPLICATION_ID: "100003",
     MELI_WEBHOOK_TOKEN: "smoke-webhook-token-0123456789abcdef",
+    MELI_QUESTION_ANSWER_ENABLED: "true",
+    MELI_QUESTION_ANSWER_ACCOUNT_ID: "plasticov",
   });
 
   stage = "create-production-runtime";
@@ -108,7 +109,10 @@ try {
     runtime.productIdentificationPolicy.policyVersion.endsWith(":product-identification-v1"),
     "product identification policy must be server-owned and versioned",
   );
-  assert(runtime.actionExecutionMode === "external", "action provider must be external");
+  assert(
+    runtime.actionExecutionMode === "mercadolibre-question-answer",
+    "only the dedicated MercadoLibre question answer executor may be enabled",
+  );
   assert(runtime.shadowLlm !== null, "DeepSeek shadow runtime must be enabled");
   assert(runtime.mercadoLibre !== null, "MercadoLibre Chile runtime must be enabled");
   assert(
@@ -132,6 +136,7 @@ try {
   console.log("✓ Catalog acquisition persistence and review lifecycle verified");
   console.log("✓ MercadoLibre taxonomy snapshot versions and scope verified");
   console.log("✓ Production configuration parsed");
+  console.log("✓ Generic marketplace writes disabled and question.answer wired explicitly");
   console.log("✓ External providers and MercadoLibre runtimes wired");
   console.log("EAUTO_PRODUCTION_SMOKE_OK");
 } catch (error) {

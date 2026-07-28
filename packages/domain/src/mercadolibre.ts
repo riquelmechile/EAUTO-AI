@@ -1,4 +1,18 @@
+import type { ActionKind } from "./actions.js";
+
 export const MERCADOLIBRE_CHILE_SITE_ID = "MLC" as const;
+
+export const MERCADOLIBRE_ACTION_KINDS = [
+  "listing.publish",
+  "listing.update",
+  "price.update",
+  "stock.update",
+  "question.answer",
+  "claim.respond",
+  "ads.update",
+] as const satisfies readonly ActionKind[];
+
+export type MercadoLibreActionKind = (typeof MERCADOLIBRE_ACTION_KINDS)[number];
 
 export const MERCADOLIBRE_CONNECTION_STATUSES = [
   "active",
@@ -148,10 +162,33 @@ export class MercadoLibreWriteBlockedError extends Error {
   }
 }
 
+export type MercadoLibreQuestionAnswerWriteGrant = Readonly<{
+  action: "question.answer";
+  policyVersion: string;
+}>;
+
 /**
  * Fail-closed boundary inherited from MSL. There is intentionally no feature
  * flag until each mutation has its own policy, receipt and live smoke test.
  */
 export function assertMercadoLibreWriteDisabled(operation: string, sellerId?: string): never {
   throw new MercadoLibreWriteBlockedError(operation, sellerId);
+}
+
+/**
+ * The only scoped write exception currently modeled by the domain. Callers
+ * must still enforce the exact account, policy, approval and receipt chain.
+ */
+export function assertMercadoLibreWriteAllowed(
+  operation: ActionKind,
+  grant: MercadoLibreQuestionAnswerWriteGrant | null,
+  sellerId?: string,
+): void {
+  if (
+    operation !== "question.answer" ||
+    grant?.action !== "question.answer" ||
+    grant.policyVersion.trim().length === 0
+  ) {
+    assertMercadoLibreWriteDisabled(operation, sellerId);
+  }
 }

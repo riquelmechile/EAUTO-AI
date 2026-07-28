@@ -99,6 +99,7 @@ export class MercadoLibreTaxonomyHttpReader implements ForReadingMercadoLibreTax
       ) {
         throw new Error(
           `MercadoLibre taxonomy read timed out after ${this.config.timeoutMs} ms for ${path}.`,
+          { cause: error },
         );
       }
       throw error;
