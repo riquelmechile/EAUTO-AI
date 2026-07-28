@@ -42,6 +42,7 @@ const files = [
   "infra/postgres/migrations/022_supplier_authoritative_audit_scheduling.sql",
   "infra/postgres/migrations/023_supplier_authority_transfer_scheduling.sql",
   "infra/postgres/migrations/024_supplier_cost_evidence_stability.sql",
+  "infra/postgres/migrations/025_profitability_supplier_stock_wakeup.sql",
   "packages/content/src/httpContentProvider.ts",
   "packages/infrastructure/src/httpActionExecutor.ts",
   "apps/mobile/app.config.cjs",
