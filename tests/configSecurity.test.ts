@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { MERCADOLIBRE_ACTION_KINDS } from "@eauto/domain";
 import { loadConfig } from "../apps/api/src/config.js";
 import { hashToken } from "../apps/api/src/auth.js";
 
@@ -34,11 +35,16 @@ const mercadoLibreChile = {
 } as const;
 
 const actionRoutes = JSON.stringify({
-  "price.update": {
+  "social.publish": {
     executeUrl: "https://actions.example.com/v1/execute",
     verifyUrl: "https://actions.example.com/v1/verify",
   },
 });
+
+const exampleRoute = {
+  executeUrl: "https://actions.example.com/v1/execute",
+  verifyUrl: "https://actions.example.com/v1/verify",
+};
 
 describe("production security configuration", () => {
   it("rejects production without Postgres and authentication", () => {
@@ -133,16 +139,24 @@ describe("production security configuration", () => {
         ACTION_EXECUTION_ENABLED: "true",
         ACTION_PROVIDER_API_KEY: "secret",
         ACTION_PROVIDER_ROUTES_JSON: JSON.stringify({
-          "price.updtae": {
-            executeUrl: "https://actions.example.com/v1/execute",
-            verifyUrl: "https://actions.example.com/v1/verify",
-          },
+          "social.publsih": exampleRoute,
         }),
       }),
     ).toThrow(/Unknown action route kind/);
   });
 
-  it("requires allowlisted HTTPS action routes and an API key", () => {
+  it("forbids every MercadoLibre action kind in the generic gateway", () => {
+    for (const kind of MERCADOLIBRE_ACTION_KINDS) {
+      expect(() =>
+        loadConfig({
+          ACTION_EXECUTION_ENABLED: "false",
+          ACTION_PROVIDER_ROUTES_JSON: JSON.stringify({ [kind]: exampleRoute }),
+        }),
+      ).toThrow(/forbidden in the generic action gateway/);
+    }
+  });
+
+  it("requires allowlisted HTTPS non-MercadoLibre action routes and an API key", () => {
     expect(() =>
       loadConfig({
         ACTION_EXECUTION_ENABLED: "true",
@@ -154,7 +168,7 @@ describe("production security configuration", () => {
         ACTION_EXECUTION_ENABLED: "true",
         ACTION_PROVIDER_API_KEY: "secret",
         ACTION_PROVIDER_ROUTES_JSON: JSON.stringify({
-          "price.update": {
+          "social.publish": {
             executeUrl: "http://actions.example.com/v1/execute",
             verifyUrl: "https://actions.example.com/v1/verify",
           },
@@ -223,6 +237,38 @@ describe("production security configuration", () => {
         MELI_WEBHOOK_TOKEN: "short",
       }),
     ).toThrow(/at least 32/);
+  });
+
+  it("keeps the dedicated question answer rollout disabled by default", () => {
+    const config = loadConfig({ ...baseProduction, ...mercadoLibreChile });
+    expect(config.MELI_QUESTION_ANSWER_ENABLED).toBe(false);
+  });
+
+  it("requires durable Plasticov configuration for the dedicated question answer rollout", () => {
+    expect(() =>
+      loadConfig({
+        ...mercadoLibreChile,
+        MELI_QUESTION_ANSWER_ENABLED: "true",
+        MELI_QUESTION_ANSWER_ACCOUNT_ID: "plasticov",
+      }),
+    ).toThrow(/durable PostgreSQL/);
+    expect(() =>
+      loadConfig({
+        ...baseProduction,
+        ...mercadoLibreChile,
+        MELI_QUESTION_ANSWER_ENABLED: "true",
+        MELI_QUESTION_ANSWER_ACCOUNT_ID: "maustian",
+      }),
+    ).toThrow(/restricted to the Plasticov account/);
+
+    const config = loadConfig({
+      ...baseProduction,
+      ...mercadoLibreChile,
+      MELI_QUESTION_ANSWER_ENABLED: "true",
+      MELI_QUESTION_ANSWER_ACCOUNT_ID: "plasticov",
+    });
+    expect(config.MELI_QUESTION_ANSWER_ENABLED).toBe(true);
+    expect(config.MELI_QUESTION_ANSWER_ACCOUNT_ID).toBe("plasticov");
   });
 
   it("accepts a complete fail-closed MercadoLibre Chile production configuration", () => {
