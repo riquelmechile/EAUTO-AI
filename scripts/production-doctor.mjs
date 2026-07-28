@@ -50,6 +50,7 @@ const files = [
   "packages/content/src/httpContentProvider.ts",
   "packages/infrastructure/src/httpActionExecutor.ts",
   "packages/infrastructure/src/httpCatalogAcquisitionProviders.ts",
+  "packages/infrastructure/src/httpProductFingerprintProvider.ts",
   "apps/mobile/app.config.cjs",
   "apps/mobile/eas.json",
   ".github/workflows/release.yml",
@@ -64,6 +65,7 @@ const secrets = [
   "OPERATOR_TOKENS_JSON",
   "CONTENT_PROVIDER_API_KEY",
   "CATALOG_VISUAL_PROVIDER_API_KEY",
+  "PRODUCT_FINGERPRINT_PROVIDER_API_KEY",
   "CATALOG_SUPPLIER_API_KEY",
   "ACTION_PROVIDER_API_KEY",
   "LLM_API_KEY",
@@ -108,6 +110,7 @@ expectValue("MELI_WEBHOOK_ENABLED", "true");
 expectHttps("EXPO_PUBLIC_API_URL");
 expectHttps("CONTENT_PROVIDER_URL");
 expectHttps("CATALOG_VISUAL_PROVIDER_URL");
+expectHttps("PRODUCT_FINGERPRINT_PROVIDER_URL");
 expectHttps("MELI_REDIRECT_URI");
 expectHttps("OBJECT_STORAGE_PUBLIC_ENDPOINT");
 expectHostname("API_DOMAIN");
