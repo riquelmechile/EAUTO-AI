@@ -28,11 +28,11 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Capture typecheck diagnostics
         run: |
-          npm run typecheck > typecheck.log 2>&1 || true
-          if ! git diff --quiet -- typecheck.log || [ -n "$(git status --porcelain -- typecheck.log)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add typecheck.log
+          npm run typecheck > typecheck-diagnostics.txt 2>&1 || true
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f typecheck-diagnostics.txt
+          if ! git diff --cached --quiet; then
             git commit -m "chore: capture catalog acquisition typecheck diagnostics"
             git push origin HEAD:feat/catalog-acquisition-photo-similar
           fi
