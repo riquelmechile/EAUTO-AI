@@ -8,45 +8,45 @@ La fuente canónica es `config/capability-parity.json`. El comando `npm run doct
 
 Resumen actual:
 
-| Estado | Cantidad | Significado |
-| --- | ---: | --- |
-| Implementada | 14 | Existe una capacidad equivalente y verificable en EAUTO-AI. |
-| Parcial | 9 | Existe parte del comportamiento, pero falta una pieza funcional de MSL o kiiess. |
-| Ausente | 7 | No existe implementación equivalente. |
-| Reemplazada | 2 | La tecnología fue sustituida intencionalmente por otra arquitectura. |
+| Estado       | Cantidad | Significado                                                                      |
+| ------------ | -------: | -------------------------------------------------------------------------------- |
+| Implementada |       14 | Existe una capacidad equivalente y verificable en EAUTO-AI.                      |
+| Parcial      |        9 | Existe parte del comportamiento, pero falta una pieza funcional de MSL o kiiess. |
+| Ausente      |        7 | No existe implementación equivalente.                                            |
+| Reemplazada  |        2 | La tecnología fue sustituida intencionalmente por otra arquitectura.             |
 
 ## Capacidades implementadas
 
-| Capacidad | Equivalencia EAUTO-AI |
-| --- | --- |
-| Aprobación y ejecución gobernada | Máquina de estados, policy hash, receipts, verificación y estado `uncertain`. |
-| Plasticov y Maustian aisladas | Scope obligatorio por organización/cuenta y constraints PostgreSQL. |
-| Agent OS | Contratos, skills, preflight, planner, sesiones, heartbeats, presupuesto y scorecards. |
-| Procesamiento durable | Transactional outbox, leases, retries, dead-letter y worker recuperable. |
-| Evidencia operacional | Evidence packs con freshness, provenance, autoridad y missing inputs. |
-| Rentabilidad | Profit Engine, repricing, margin floor y auditoría periódica. |
-| MercadoLibre read plane | OAuth, refresh, listings, órdenes, preguntas, reclamos, reputación y webhooks. |
-| `question.answer` | Primera escritura dedicada, aprobada y verificada, restringida a Plasticov. |
-| Product Ads v2 | Campañas, Ad Groups, ítems y reconciliación de precios/costos directos. |
-| Supplier Mirror | Autoridad, freshness, costo verificado, stock-risk y auditoría. |
-| Catalog Acquisition | Candidatos, evidencia, revisión humana y reconciliación. |
-| Photo-to-Similar | Identificación, fingerprints, búsqueda visual y confirmación humana. |
-| Control móvil | Android es el control plane canónico del CEO. |
-| Producción | PostgreSQL, MinIO, backups, Docker, Caddy, GHCR, EAS y CI inmutable. |
+| Capacidad                        | Equivalencia EAUTO-AI                                                                  |
+| -------------------------------- | -------------------------------------------------------------------------------------- |
+| Aprobación y ejecución gobernada | Máquina de estados, policy hash, receipts, verificación y estado `uncertain`.          |
+| Plasticov y Maustian aisladas    | Scope obligatorio por organización/cuenta y constraints PostgreSQL.                    |
+| Agent OS                         | Contratos, skills, preflight, planner, sesiones, heartbeats, presupuesto y scorecards. |
+| Procesamiento durable            | Transactional outbox, leases, retries, dead-letter y worker recuperable.               |
+| Evidencia operacional            | Evidence packs con freshness, provenance, autoridad y missing inputs.                  |
+| Rentabilidad                     | Profit Engine, repricing, margin floor y auditoría periódica.                          |
+| MercadoLibre read plane          | OAuth, refresh, listings, órdenes, preguntas, reclamos, reputación y webhooks.         |
+| `question.answer`                | Primera escritura dedicada, aprobada y verificada, restringida a Plasticov.            |
+| Product Ads v2                   | Campañas, Ad Groups, ítems y reconciliación de precios/costos directos.                |
+| Supplier Mirror                  | Autoridad, freshness, costo verificado, stock-risk y auditoría.                        |
+| Catalog Acquisition              | Candidatos, evidencia, revisión humana y reconciliación.                               |
+| Photo-to-Similar                 | Identificación, fingerprints, búsqueda visual y confirmación humana.                   |
+| Control móvil                    | Android es el control plane canónico del CEO.                                          |
+| Producción                       | PostgreSQL, MinIO, backups, Docker, Caddy, GHCR, EAS y CI inmutable.                   |
 
 ## Capacidades parciales
 
-| Capacidad de referencia | Qué existe | Qué falta |
-| --- | --- | --- |
-| Agent Message Bus de MSL | Outbox y work orders durables | Envelopes generales request/response entre agentes. |
-| Evidence Response Router | Evidence reader y packs | Routing explícito hacia responders especialistas. |
-| Memoria semántica | Memoria consultiva con provenance y outcome verificado | Embeddings, búsqueda semántica, Engram y aprendizaje tipo Cortex. |
-| Account Brain | Inteligencia account-scoped y economía por cuenta | Grafo consolidado de activos, scoring estratégico y comparación histórica. |
-| 16 daemons MSL | Worker 24/7, inteligencia, margin audit y stock audit | Catálogo completo de especialistas proactivos. |
-| Creative Studio | Gateway genérico, assets privados y checksums | MiniMax concreto, brand kits, moderación y control de costo proveedor. |
-| Supply workflows kiiess | Supplier Mirror, stock-risk y costo | `supplier.pause`, full scrape, autopause y opportunistic-buy completos. |
-| Product lifecycle BI | Señales, rentabilidad y evidencia | Clasificador `active/seasonal/off-season/obsolete/uncertain`. |
-| Economic CLI MSL | Servicios, API y smokes | CLI operacional de ingest/status/coverage/reconcile/missing. |
+| Capacidad de referencia  | Qué existe                                             | Qué falta                                                                  |
+| ------------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Agent Message Bus de MSL | Outbox y work orders durables                          | Envelopes generales request/response entre agentes.                        |
+| Evidence Response Router | Evidence reader y packs                                | Routing explícito hacia responders especialistas.                          |
+| Memoria semántica        | Memoria consultiva con provenance y outcome verificado | Embeddings, búsqueda semántica, Engram y aprendizaje tipo Cortex.          |
+| Account Brain            | Inteligencia account-scoped y economía por cuenta      | Grafo consolidado de activos, scoring estratégico y comparación histórica. |
+| 16 daemons MSL           | Worker 24/7, inteligencia, margin audit y stock audit  | Catálogo completo de especialistas proactivos.                             |
+| Creative Studio          | Gateway genérico, assets privados y checksums          | MiniMax concreto, brand kits, moderación y control de costo proveedor.     |
+| Supply workflows kiiess  | Supplier Mirror, stock-risk y costo                    | `supplier.pause`, full scrape, autopause y opportunistic-buy completos.    |
+| Product lifecycle BI     | Señales, rentabilidad y evidencia                      | Clasificador `active/seasonal/off-season/obsolete/uncertain`.              |
+| Economic CLI MSL         | Servicios, API y smokes                                | CLI operacional de ingest/status/coverage/reconcile/missing.               |
 
 ## Capacidades ausentes
 

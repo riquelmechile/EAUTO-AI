@@ -257,7 +257,10 @@ function validateCrossFieldInvariants(values, errors) {
   ) {
     errors.push("Plasticov and Maustian seller IDs must be different");
   }
-  if (values.MELI_PRODUCT_ADS_ENABLED === "true" && values.MELI_PRODUCT_ADS_ACCOUNT_ID !== "plasticov") {
+  if (
+    values.MELI_PRODUCT_ADS_ENABLED === "true" &&
+    values.MELI_PRODUCT_ADS_ACCOUNT_ID !== "plasticov"
+  ) {
     errors.push("Product Ads first rollout must use MELI_PRODUCT_ADS_ACCOUNT_ID=plasticov");
   }
   if (values.MELI_QUESTION_ANSWER_ENABLED === "true") {

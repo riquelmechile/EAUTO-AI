@@ -97,7 +97,9 @@ function replaceEnvironmentValues(content, replacements) {
     return `${key}=${replacements[key]}`;
   });
   if (pending.size > 0) {
-    throw new Error(`Production template is missing generated variables: ${[...pending].join(", ")}.`);
+    throw new Error(
+      `Production template is missing generated variables: ${[...pending].join(", ")}.`,
+    );
   }
   return `${lines.join("\n").replace(/\n+$/, "")}\n`;
 }

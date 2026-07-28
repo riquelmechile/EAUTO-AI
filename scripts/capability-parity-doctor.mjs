@@ -57,12 +57,16 @@ for (const capability of manifest.capabilities) {
     }
   }
   if (capability.status === "superseded") {
-    if (!evidence.some((path) => typeof path === "string" && existsSync(resolve(process.cwd(), path)))) {
+    if (
+      !evidence.some((path) => typeof path === "string" && existsSync(resolve(process.cwd(), path)))
+    ) {
       failures.push(`${capability.id} requires evidence for the replacement architecture.`);
     }
   }
   if (
-    (capability.status === "partial" || capability.status === "missing" || capability.status === "superseded") &&
+    (capability.status === "partial" ||
+      capability.status === "missing" ||
+      capability.status === "superseded") &&
     (typeof capability.gap !== "string" || !capability.gap.trim())
   ) {
     failures.push(`${capability.id} requires an explicit gap or replacement explanation.`);
