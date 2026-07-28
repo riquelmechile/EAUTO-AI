@@ -1,6 +1,6 @@
+import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnSync } from "node:child_process";
 
 const productionArguments = process.argv.slice(2);
 const requiredProductIdentificationFiles = [
@@ -19,6 +19,9 @@ for (const path of requiredProductIdentificationFiles) {
 
 const checks = [
   ["scripts/production-doctor.mjs", ...productionArguments],
+  ["scripts/credentials-doctor.mjs", ...productionArguments],
+  ["scripts/product-ads-production-doctor.mjs", ...productionArguments],
+  ["scripts/capability-parity-doctor.mjs"],
   ["scripts/release-doctor.mjs"],
   ["scripts/workflow-supply-chain-doctor.mjs"],
 ];

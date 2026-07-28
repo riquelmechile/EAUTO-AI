@@ -1,0 +1,310 @@
+{
+  "schemaVersion": "eauto-capability-parity-v1",
+  "canonicalProject": "EAUTO-AI",
+  "referenceProjects": ["riquelmechile/Msl", "riquelmechile/kiiess"],
+  "capabilities": [
+    {
+      "id": "governed-action-lifecycle",
+      "name": "Aprobación, ejecución, verificación y receipts",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": ["packages/application/src/actionService.ts", "packages/domain/src/actions.ts"]
+    },
+    {
+      "id": "multi-account-isolation",
+      "name": "Aislamiento Plasticov/Maustian",
+      "sources": ["MSL"],
+      "status": "implemented",
+      "evidence": [
+        "packages/domain/src/accounts.ts",
+        "infra/postgres/migrations/014_tenant_integrity_and_action_guards.sql"
+      ]
+    },
+    {
+      "id": "agent-os",
+      "name": "Contratos, skills, preflight, sesiones, heartbeats y scorecards",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/agentOsService.ts",
+        "packages/agent-kernel/src/index.ts"
+      ]
+    },
+    {
+      "id": "durable-message-processing",
+      "name": "Procesamiento asíncrono durable, leases, retries y dead-letter",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/infrastructure/src/postgresOutboxRepository.ts",
+        "apps/api/src/worker.ts"
+      ]
+    },
+    {
+      "id": "operational-evidence",
+      "name": "Evidence packs con freshness, provenance y autoridad",
+      "sources": ["MSL"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/operationalIntelligenceService.ts",
+        "packages/infrastructure/src/verifiedOperationalEvidenceReader.ts"
+      ]
+    },
+    {
+      "id": "profit-engine",
+      "name": "Rentabilidad, repricing y auditoría de margen",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/profitEngineService.ts",
+        "packages/application/src/marginAuditDaemon.ts"
+      ]
+    },
+    {
+      "id": "mercadolibre-read-plane",
+      "name": "OAuth, listings, órdenes, preguntas, reclamos, reputación y webhooks",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/mercadoLibreService.ts",
+        "apps/api/src/mercadoLibreRoutes.ts"
+      ]
+    },
+    {
+      "id": "mercadolibre-question-answer",
+      "name": "Primera escritura gobernada question.answer",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/infrastructure/src/mercadoLibreQuestionAnswerExecutor.ts",
+        "docs/sdd/017-mercadolibre-question-answer-write-slice.md"
+      ]
+    },
+    {
+      "id": "product-ads-read-plane",
+      "name": "Product Ads v2 y reconciliación económica",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/mercadoLibreProductAdsService.ts",
+        "docs/sdd/018-mercadolibre-product-ads-read-plane.md"
+      ]
+    },
+    {
+      "id": "supplier-mirror",
+      "name": "Supplier Mirror, freshness, stock-risk y costo verificado",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/supplierMirrorService.ts",
+        "packages/application/src/supplierStockAuditDaemon.ts"
+      ]
+    },
+    {
+      "id": "catalog-acquisition",
+      "name": "Adquisición de catálogo y reconciliación de candidatos",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/catalogAcquisitionService.ts",
+        "packages/domain/src/catalogAcquisition.ts"
+      ]
+    },
+    {
+      "id": "photo-similar",
+      "name": "Foto a producto similar con fingerprint y revisión humana",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/application/src/productIdentificationService.ts",
+        "packages/infrastructure/src/photoSimilarityProductCandidateProvider.ts"
+      ]
+    },
+    {
+      "id": "android-control-plane",
+      "name": "Control operativo móvil del CEO",
+      "sources": ["kiiess"],
+      "status": "implemented",
+      "evidence": ["apps/mobile/app.config.cjs", "apps/mobile/src"]
+    },
+    {
+      "id": "object-storage-and-release",
+      "name": "Assets privados, backups, despliegue y release Android",
+      "sources": ["MSL", "kiiess"],
+      "status": "implemented",
+      "evidence": [
+        "packages/infrastructure/src/s3ObjectStorage.ts",
+        "infra/backup/restore.sh",
+        ".github/workflows/release.yml"
+      ]
+    },
+    {
+      "id": "agent-message-bus",
+      "name": "Bus general de mensajes entre agentes",
+      "sources": ["MSL"],
+      "status": "partial",
+      "evidence": [
+        "packages/application/src/operationalIntelligenceService.ts",
+        "packages/infrastructure/src/postgresOutboxRepository.ts"
+      ],
+      "gap": "Existen work orders y outbox durable, pero no envelopes generales request/response entre pares."
+    },
+    {
+      "id": "evidence-response-router",
+      "name": "Router de solicitudes de evidencia entre especialistas",
+      "sources": ["MSL"],
+      "status": "partial",
+      "evidence": [
+        "packages/infrastructure/src/verifiedOperationalEvidenceReader.ts",
+        "packages/application/src/operationalIntelligenceService.ts"
+      ],
+      "gap": "La evidencia se compone desde read models; falta routing explícito a responders especializados."
+    },
+    {
+      "id": "semantic-memory",
+      "name": "Memoria semántica consultiva con retrieval gate",
+      "sources": ["MSL", "kiiess"],
+      "status": "partial",
+      "evidence": [
+        "packages/application/src/operationalIntelligenceService.ts",
+        "packages/infrastructure/src/operationalIntelligenceRepositories.ts"
+      ],
+      "gap": "Hay memoria con provenance y outcomes verificados, pero no embeddings, Engram ni grafo Cortex."
+    },
+    {
+      "id": "account-brain",
+      "name": "Account Brain, assets estratégicos y aprendizaje por cuenta",
+      "sources": ["MSL"],
+      "status": "partial",
+      "evidence": [
+        "packages/application/src/operationalIntelligenceService.ts",
+        "packages/application/src/profitEngineService.ts"
+      ],
+      "gap": "La inteligencia está account-scoped, pero falta el modelo estratégico consolidado de activos y comparaciones."
+    },
+    {
+      "id": "specialist-daemons",
+      "name": "Catálogo amplio de daemons especialistas proactivos",
+      "sources": ["MSL"],
+      "status": "partial",
+      "evidence": [
+        "apps/api/src/worker.ts",
+        "packages/application/src/marginAuditDaemon.ts",
+        "packages/application/src/supplierStockAuditDaemon.ts"
+      ],
+      "gap": "El worker durable existe, pero no están los 16 handlers especializados de MSL."
+    },
+    {
+      "id": "creative-studio",
+      "name": "Creative Studio de imagen/video con políticas y costos",
+      "sources": ["MSL"],
+      "status": "partial",
+      "evidence": [
+        "packages/content/src/httpContentProvider.ts",
+        "packages/application/src/contentStudioService.ts"
+      ],
+      "gap": "Existe contrato genérico y almacenamiento verificable; falta adapter concreto MiniMax, brand kits y moderación real."
+    },
+    {
+      "id": "supply-workflows",
+      "name": "Pause, full-scrape, stock sync, autopause y opportunistic-buy",
+      "sources": ["kiiess"],
+      "status": "partial",
+      "evidence": [
+        "packages/application/src/supplierMirrorService.ts",
+        "packages/application/src/supplierStockService.ts"
+      ],
+      "gap": "Mirror, costo y stock-risk existen; faltan workflows operativos equivalentes completos."
+    },
+    {
+      "id": "product-lifecycle-bi",
+      "name": "BI de ciclo, temporada y obsolescencia de producto",
+      "sources": ["kiiess"],
+      "status": "partial",
+      "evidence": [
+        "packages/application/src/operationalIntelligenceService.ts",
+        "packages/application/src/profitEngineService.ts"
+      ],
+      "gap": "Hay evidencia económica y señales, pero no el clasificador active/seasonal/off-season/obsolete."
+    },
+    {
+      "id": "economic-operations-cli",
+      "name": "CLI de ingesta, cobertura, reconciliación y missing inputs",
+      "sources": ["MSL"],
+      "status": "partial",
+      "evidence": [
+        "packages/application/src/profitEngineService.ts",
+        "scripts/smoke-profit-engine-postgres.mjs"
+      ],
+      "gap": "Las capacidades existen como servicios/API/smokes, no como suite CLI operacional equivalente."
+    },
+    {
+      "id": "telegram-ceo-transport",
+      "name": "Telegram CEO, comandos y aprobación dale",
+      "sources": ["MSL", "kiiess"],
+      "status": "missing",
+      "gap": "Android cubre el control principal, pero no existe transporte Telegram."
+    },
+    {
+      "id": "mcp-server",
+      "name": "Servidor MCP con herramientas comerciales",
+      "sources": ["MSL"],
+      "status": "missing",
+      "gap": "No existe paquete ni servidor Model Context Protocol."
+    },
+    {
+      "id": "cortex-neural-graph",
+      "name": "Cortex con grafo, aprendizaje hebbiano y poda",
+      "sources": ["MSL"],
+      "status": "missing",
+      "gap": "La memoria consultiva no replica el comportamiento de grafo neuronal."
+    },
+    {
+      "id": "local-cloud-model-routing",
+      "name": "LiteLLM, llama.cpp/vLLM y fallback local/cloud",
+      "sources": ["kiiess"],
+      "status": "missing",
+      "gap": "El runtime actual usa un gateway DeepSeek específico y no enruta modelos locales."
+    },
+    {
+      "id": "owned-ecommerce-medusa",
+      "name": "Boundary de ecommerce propio Medusa",
+      "sources": ["MSL"],
+      "status": "missing",
+      "gap": "No existe adapter Medusa ni proyección de storefront."
+    },
+    {
+      "id": "web-console",
+      "name": "Consola web de CEO, auditoría y approvals",
+      "sources": ["MSL", "kiiess"],
+      "status": "superseded",
+      "evidence": ["apps/mobile/src", "apps/api/src/app.ts"],
+      "gap": "EAUTO-AI eligió Android como control plane canónico; una consola web sigue siendo opcional."
+    },
+    {
+      "id": "redis-runtime-queue",
+      "name": "Redis como cola de runtime",
+      "sources": ["kiiess"],
+      "status": "superseded",
+      "evidence": [
+        "packages/infrastructure/src/postgresOutboxRepository.ts",
+        "infra/postgres/migrations/003_outbox_leases_and_recovery.sql"
+      ],
+      "gap": "PostgreSQL outbox y leases reemplazan Redis para mantener una única fuente durable."
+    },
+    {
+      "id": "social-channels",
+      "name": "Publicación y crecimiento en redes sociales",
+      "sources": ["MSL"],
+      "status": "missing",
+      "gap": "La capability está modelada, pero no existe adapter productivo."
+    },
+    {
+      "id": "additional-marketplaces",
+      "name": "Amazon, Alibaba y otros marketplaces",
+      "sources": ["MSL"],
+      "status": "missing",
+      "gap": "MercadoLibre Chile es el único marketplace integrado."
+    }
+  ]
+}
