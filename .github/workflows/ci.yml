@@ -23,5 +23,8 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install dependencies quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: List files requiring Prettier
-        run: npx prettier --check docs/sdd/007-product-identification-persistence-review.md docs/sdd/008-product-fingerprint-semantics.md infra/postgres/migrations/030_product_fingerprint_semantics.sql packages/content/src/deterministicProductVisionProvider.ts packages/domain/src/productVisualFingerprint.ts packages/infrastructure/src/postgresProductIdentificationRepository.ts scripts/production-check.mjs scripts/smoke-product-identification-postgres.mjs tests/deterministicProductVisionProvider.test.ts tests/productFingerprintSemantics.test.ts
+      - name: Render formatted files
+        run: |
+          npx prettier scripts/smoke-product-identification-postgres.mjs
+          printf '\n--- PRODUCT FINGERPRINT TEST ---\n'
+          npx prettier tests/productFingerprintSemantics.test.ts
