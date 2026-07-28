@@ -28,7 +28,9 @@ export class PhotoSimilarityProductCandidateProvider implements ForProposingProd
         match.sourceImageUploadId !== input.sourceImageUploadId ||
         match.provider !== this.providerName
       ) {
-        throw new Error("Photo similarity provider returned a candidate outside the requested scope.");
+        throw new Error(
+          "Photo similarity provider returned a candidate outside the requested scope.",
+        );
       }
       return Object.freeze({
         id: `visual:${match.provider}:${match.externalMatchId}`,
