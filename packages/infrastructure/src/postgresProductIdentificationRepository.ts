@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type {
+  ForReadingProductIdentificationReviews,
   ForReadingStoredProductIdentifications,
   ForSavingProductIdentificationResults,
   ForSavingProductIdentificationReviews,
@@ -21,6 +22,7 @@ export class PostgresProductIdentificationRepository
     ForSavingProductIdentificationResults,
     ForReadingStoredProductIdentifications,
     ForSavingProductIdentificationReviews,
+    ForReadingProductIdentificationReviews,
     ForSearchingVisualDuplicates
 {
   constructor(private readonly pool: Pool) {}
@@ -95,6 +97,23 @@ export class PostgresProductIdentificationRepository
         evidenceRef: row.fingerprint_evidence_ref,
       }),
     });
+  }
+
+  async getReview(input: {
+    organizationId: string;
+    accountId: string;
+    identificationId: string;
+  }): Promise<ProductIdentificationReview | null> {
+    const result = await this.pool.query<{ payload_json: ProductIdentificationReview }>(
+      `SELECT payload_json
+       FROM product_identification_reviews
+       WHERE organization_id = $1 AND account_id = $2 AND identification_id = $3`,
+      [input.organizationId, input.accountId, input.identificationId],
+    );
+    const review = result.rows[0]?.payload_json;
+    return review
+      ? Object.freeze({ ...review, evidenceRefs: Object.freeze([...review.evidenceRefs]) })
+      : null;
   }
 
   async saveReview(
