@@ -12,6 +12,8 @@ export * from "./money.js";
 export * from "./objectives.js";
 export * from "./operationalIntelligence.js";
 export * from "./productIdentification.js";
+export * from "./productIdentificationReview.js";
+export * from "./productVisualFingerprint.js";
 export * from "./profitEngine.js";
 export * from "./sessions.js";
 export * from "./supplierMirror.js";

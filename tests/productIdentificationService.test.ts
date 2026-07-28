@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ProductIdentificationService } from "@eauto/application";
-import type {
-  ProductIdentificationPolicy,
-  ProductIdentificationResult,
-  VerifiedSourceImageUpload,
-} from "@eauto/domain";
+import {
+  ProductIdentificationService,
+  type ProductIdentificationArtifact,
+} from "@eauto/application";
+import type { ProductIdentificationPolicy, VerifiedSourceImageUpload } from "@eauto/domain";
 
 const policy: ProductIdentificationPolicy = Object.freeze({
   minimumConfidenceBps: 8_500,
@@ -31,14 +30,25 @@ const upload: VerifiedSourceImageUpload = Object.freeze({
   rejectionReason: null,
 });
 
+const fingerprintProvider = Object.freeze({
+  compute: (request: { evidenceId: string }) =>
+    Promise.resolve({
+      algorithm: "phash-64" as const,
+      version: "test-v1",
+      value: "0".repeat(64),
+      evidenceRef: request.evidenceId,
+    }),
+});
+
 describe("ProductIdentificationService", () => {
-  it("uses only a verified scoped image and persists the governed result", async () => {
-    const saved: ProductIdentificationResult[] = [];
+  it("uses only a verified scoped image and persists the governed artifact", async () => {
+    const saved: ProductIdentificationArtifact[] = [];
     let providerEvidenceId = "";
     const service = new ProductIdentificationService(
       {
         getVerified: () => Promise.resolve(upload),
       },
+      fingerprintProvider,
       {
         identify: (request) => {
           providerEvidenceId = request.evidenceId;
@@ -59,8 +69,8 @@ describe("ProductIdentificationService", () => {
         search: () => Promise.resolve([]),
       },
       {
-        save: (result) => {
-          saved.push(result);
+        save: (artifact) => {
+          saved.push(artifact);
           return Promise.resolve();
         },
       },
@@ -76,13 +86,27 @@ describe("ProductIdentificationService", () => {
 
     expect(result.status).toBe("identified-pending-confirmation");
     expect(providerEvidenceId).toContain("source-image:upload-1:");
-    expect(saved).toEqual([result]);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.result).toBe(result);
+    expect(saved[0]?.fingerprint.algorithm).toBe("phash-64");
+    expect(saved[0]?.fingerprint.evidenceRef).toBe(providerEvidenceId);
   });
 
   it("does not call providers when the image is not verified in scope", async () => {
     let called = false;
     const service = new ProductIdentificationService(
       { getVerified: () => Promise.resolve(null) },
+      {
+        compute: () => {
+          called = true;
+          return Promise.resolve({
+            algorithm: "phash-64",
+            version: "test-v1",
+            value: "0".repeat(64),
+            evidenceRef: "unused",
+          });
+        },
+      },
       {
         identify: () => {
           called = true;
@@ -114,6 +138,7 @@ describe("ProductIdentificationService", () => {
       {
         getVerified: () => Promise.resolve({ ...upload, accountId: "maustian" }),
       },
+      fingerprintProvider,
       { identify: () => Promise.resolve([]) },
       { search: () => Promise.resolve([]) },
       { save: () => Promise.resolve() },
@@ -129,10 +154,38 @@ describe("ProductIdentificationService", () => {
     ).rejects.toThrow(/outside the requested scope/);
   });
 
+  it("rejects a fingerprint that does not cite the verified source image", async () => {
+    const service = new ProductIdentificationService(
+      { getVerified: () => Promise.resolve(upload) },
+      {
+        compute: () =>
+          Promise.resolve({
+            algorithm: "phash-64",
+            version: "test-v1",
+            value: "0".repeat(64),
+            evidenceRef: "foreign-evidence",
+          }),
+      },
+      { identify: () => Promise.resolve([]) },
+      { search: () => Promise.resolve([]) },
+      { save: () => Promise.resolve() },
+    );
+
+    await expect(
+      service.identifyFromPhoto({
+        organizationId: "maustian",
+        accountId: "plasticov",
+        sourceImageUploadId: "upload-1",
+        policy,
+      }),
+    ).rejects.toThrow(/does not cite/);
+  });
+
   it("rejects duplicate search results from another account", async () => {
     let saved = false;
     const service = new ProductIdentificationService(
       { getVerified: () => Promise.resolve(upload) },
+      fingerprintProvider,
       {
         identify: (request) =>
           Promise.resolve([

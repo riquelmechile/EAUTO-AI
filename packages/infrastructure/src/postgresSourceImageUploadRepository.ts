@@ -1,8 +1,17 @@
 import type { Pool } from "pg";
-import type { SourceImageUpload } from "@eauto/domain";
-import type { SourceImageUploadRepository } from "@eauto/application";
+import {
+  isVerifiedSourceImageUpload,
+  type SourceImageUpload,
+  type VerifiedSourceImageUpload,
+} from "@eauto/domain";
+import type {
+  ForReadingVerifiedSourceImages,
+  SourceImageUploadRepository,
+} from "@eauto/application";
 
-export class PostgresSourceImageUploadRepository implements SourceImageUploadRepository {
+export class PostgresSourceImageUploadRepository
+  implements SourceImageUploadRepository, ForReadingVerifiedSourceImages
+{
   constructor(private readonly pool: Pool) {}
 
   async save(upload: SourceImageUpload): Promise<void> {
@@ -62,5 +71,18 @@ export class PostgresSourceImageUploadRepository implements SourceImageUploadRep
       [input.id, input.organizationId, input.accountId],
     );
     return result.rows[0]?.payload_json ?? null;
+  }
+
+  async getVerified(input: {
+    organizationId: string;
+    accountId: string;
+    sourceImageUploadId: string;
+  }): Promise<VerifiedSourceImageUpload | null> {
+    const upload = await this.get({
+      id: input.sourceImageUploadId,
+      organizationId: input.organizationId,
+      accountId: input.accountId,
+    });
+    return upload && isVerifiedSourceImageUpload(upload) ? upload : null;
   }
 }

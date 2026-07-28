@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DeterministicProductVisionProvider } from "@eauto/content";
 
-const request = Object.freeze({
+const sourceRequest = Object.freeze({
   organizationId: "maustian",
   accountId: "plasticov",
   sourceImageUploadId: "upload-1",
@@ -11,6 +11,21 @@ const request = Object.freeze({
 });
 
 describe("DeterministicProductVisionProvider", () => {
+  it("computes a stable cited 64-bit visual fingerprint", async () => {
+    const provider = new DeterministicProductVisionProvider([]);
+
+    const first = await provider.compute(sourceRequest);
+    const second = await provider.compute(sourceRequest);
+
+    expect(first).toEqual(second);
+    expect(first).toMatchObject({
+      algorithm: "phash-64",
+      version: "deterministic-sha256-prefix-v1",
+      evidenceRef: sourceRequest.evidenceId,
+    });
+    expect(first.value).toMatch(/^[01]{64}$/);
+  });
+
   it("maps a verified image hash to cited candidates and scoped duplicates", async () => {
     const provider = new DeterministicProductVisionProvider([
       {
@@ -34,6 +49,8 @@ describe("DeterministicProductVisionProvider", () => {
         ],
       },
     ]);
+    const fingerprint = await provider.compute(sourceRequest);
+    const request = Object.freeze({ ...sourceRequest, fingerprint });
 
     await expect(provider.identify(request)).resolves.toEqual([
       expect.objectContaining({
@@ -51,6 +68,8 @@ describe("DeterministicProductVisionProvider", () => {
 
   it("returns empty proposals for an unknown image instead of inventing identity", async () => {
     const provider = new DeterministicProductVisionProvider([]);
+    const fingerprint = await provider.compute(sourceRequest);
+    const request = Object.freeze({ ...sourceRequest, fingerprint });
 
     await expect(provider.identify(request)).resolves.toEqual([]);
     await expect(provider.search(request)).resolves.toEqual([]);

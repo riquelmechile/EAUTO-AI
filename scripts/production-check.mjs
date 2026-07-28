@@ -1,6 +1,21 @@
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const productionArguments = process.argv.slice(2);
+const requiredProductIdentificationFiles = [
+  "infra/postgres/migrations/028_product_identification_persistence.sql",
+  "infra/postgres/migrations/029_product_identification_scope_and_similarity.sql",
+  "scripts/smoke-product-identification-postgres.mjs",
+];
+
+for (const path of requiredProductIdentificationFiles) {
+  if (!existsSync(resolve(process.cwd(), path))) {
+    console.error(`Missing required Product Identification production file ${path}.`);
+    process.exit(1);
+  }
+}
+
 const checks = [
   ["scripts/production-doctor.mjs", ...productionArguments],
   ["scripts/release-doctor.mjs"],

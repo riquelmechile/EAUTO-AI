@@ -1,9 +1,16 @@
+import { createHash } from "node:crypto";
 import type {
+  ForComputingProductVisualFingerprints,
   ForProposingProductCandidates,
   ForSearchingVisualDuplicates,
+  ProductSourceImageRequest,
   ProductVisionRequest,
 } from "@eauto/application";
-import type { ProductIdentificationCandidate, VisualDuplicateCandidate } from "@eauto/domain";
+import type {
+  ProductIdentificationCandidate,
+  ProductVisualFingerprint,
+  VisualDuplicateCandidate,
+} from "@eauto/domain";
 
 export type DeterministicProductVisionFixture = Readonly<{
   contentHash: string;
@@ -23,7 +30,10 @@ export type DeterministicProductVisionFixture = Readonly<{
 }>;
 
 export class DeterministicProductVisionProvider
-  implements ForProposingProductCandidates, ForSearchingVisualDuplicates
+  implements
+    ForComputingProductVisualFingerprints,
+    ForProposingProductCandidates,
+    ForSearchingVisualDuplicates
 {
   private readonly fixtures: ReadonlyMap<string, DeterministicProductVisionFixture>;
 
@@ -37,6 +47,20 @@ export class DeterministicProductVisionProvider
       indexed.set(fixture.contentHash, fixture);
     }
     this.fixtures = indexed;
+  }
+
+  compute(input: ProductSourceImageRequest): Promise<ProductVisualFingerprint> {
+    const digest = createHash("sha256").update(input.contentHash).digest();
+    let value = "";
+    for (const byte of digest.subarray(0, 8)) value += byte.toString(2).padStart(8, "0");
+    return Promise.resolve(
+      Object.freeze({
+        algorithm: "phash-64" as const,
+        version: "deterministic-sha256-prefix-v1",
+        value,
+        evidenceRef: input.evidenceId,
+      }),
+    );
   }
 
   identify(input: ProductVisionRequest): Promise<readonly ProductIdentificationCandidate[]> {
