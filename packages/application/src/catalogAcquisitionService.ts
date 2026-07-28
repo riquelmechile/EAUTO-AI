@@ -3,10 +3,13 @@ import {
   CatalogAcquisitionValidationError,
   isCatalogEvidenceFresh,
   isVerifiedSourceImageUpload,
+  reviewAcquisitionCandidate,
   validateCatalogAcquisitionPolicy,
   validatePhotoSimilarityMatch,
   validateSupplierCatalogOffer,
   type AcquisitionCandidate,
+  type AcquisitionCandidateStatus,
+  type AcquisitionReviewDecision,
   type CatalogAcquisitionPolicy,
   type PhotoSimilarityMatch,
   type SourceImageUpload,
@@ -49,6 +52,21 @@ export type SupplierCatalogSearchPort = {
 
 export type AcquisitionCandidateRepository = {
   save(candidate: AcquisitionCandidate): Promise<void>;
+  get(input: {
+    id: string;
+    organizationId: string;
+    accountId: string;
+  }): Promise<AcquisitionCandidate | null>;
+  list(input: {
+    organizationId: string;
+    accountId: string;
+    status?: AcquisitionCandidateStatus;
+    limit: number;
+  }): Promise<readonly AcquisitionCandidate[]>;
+  transition(input: {
+    candidate: AcquisitionCandidate;
+    expectedStatus: "needs-review";
+  }): Promise<void>;
 };
 
 export type DiscoverAcquisitionCandidatesRequest = Readonly<{
@@ -56,6 +74,22 @@ export type DiscoverAcquisitionCandidatesRequest = Readonly<{
   accountId: string;
   sourceImageUploadId: string;
   policy: CatalogAcquisitionPolicy;
+}>;
+
+export type ListAcquisitionCandidatesRequest = Readonly<{
+  organizationId: string;
+  accountId: string;
+  status?: AcquisitionCandidateStatus;
+  limit: number;
+}>;
+
+export type ReviewAcquisitionCandidateRequest = Readonly<{
+  id: string;
+  organizationId: string;
+  accountId: string;
+  decision: AcquisitionReviewDecision;
+  reviewedBy: string;
+  note?: string | null;
 }>;
 
 export class CatalogAcquisitionService {
@@ -135,6 +169,42 @@ export class CatalogAcquisitionService {
 
     return Object.freeze(discovered);
   }
+
+  getCandidate(input: {
+    id: string;
+    organizationId: string;
+    accountId: string;
+  }): Promise<AcquisitionCandidate | null> {
+    return this.candidates.get(input);
+  }
+
+  listCandidates(
+    request: ListAcquisitionCandidatesRequest,
+  ): Promise<readonly AcquisitionCandidate[]> {
+    if (!Number.isSafeInteger(request.limit) || request.limit < 1 || request.limit > 100) {
+      throw new CatalogAcquisitionValidationError("Candidate list limit must be between 1 and 100.");
+    }
+    return this.candidates.list(request);
+  }
+
+  async reviewCandidate(
+    request: ReviewAcquisitionCandidateRequest,
+  ): Promise<AcquisitionCandidate | null> {
+    const current = await this.candidates.get({
+      id: request.id,
+      organizationId: request.organizationId,
+      accountId: request.accountId,
+    });
+    if (!current) return null;
+    const reviewed = reviewAcquisitionCandidate(current, {
+      decision: request.decision,
+      reviewedBy: request.reviewedBy,
+      reviewedAt: this.clock.now().toISOString(),
+      note: request.note,
+    });
+    await this.candidates.transition({ candidate: reviewed, expectedStatus: "needs-review" });
+    return reviewed;
+  }
 }
 
 function assertSourceImageScope(
@@ -202,5 +272,8 @@ function buildCandidate(
     status: "needs-review",
     requiresHumanApproval: true,
     createdAt,
+    reviewedAt: null,
+    reviewedBy: null,
+    reviewNote: null,
   });
 }
