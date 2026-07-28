@@ -37,11 +37,7 @@ function createTestApp(taxonomyRuntime?: MercadoLibreTaxonomyRuntime) {
   const runtime = createRuntime(loadConfig({ NODE_ENV: "test", AUTH_MODE: "disabled" }));
   const app = Fastify();
   const requireAccount = vi.fn(
-    (
-      receivedActor: ActorIdentity,
-      accountId: string,
-      permission: Permission,
-    ): Promise<void> => {
+    (receivedActor: ActorIdentity, accountId: string, permission: Permission): Promise<void> => {
       expect(receivedActor).toBe(actor);
       expect(accountId).toBe("plasticov");
       expect(permission).toBe("integrations.read");
