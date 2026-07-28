@@ -97,53 +97,57 @@ function createService(options?: {
         accountName: "Plasticov",
       }),
     ]);
-  const reader: MercadoLibreProductAdsReader = {
-    listAdvertisers: vi.fn(() => Promise.resolve(advertisers)),
-    read: vi.fn(() =>
-      Promise.resolve({
-        campaigns: Object.freeze([
-          Object.freeze({
-            advertiserId: "456",
-            siteId: "MLC",
-            campaignId: "campaign-1",
-            name: "Campaign",
-            status: "active",
-            dateFrom: "2026-07-01",
-            dateTo: "2026-07-28",
-            metrics,
-            sourceHash: "c".repeat(64),
-          }),
-        ]),
-        adGroups: Object.freeze([
-          Object.freeze({
-            advertiserId: "456",
-            siteId: "MLC",
-            campaignId: "campaign-1",
-            adGroupId: "group-1",
-            dateFrom: "2026-07-01",
-            dateTo: "2026-07-28",
-            metrics,
-            sourceHash: "d".repeat(64),
-          }),
-        ]),
-        items: Object.freeze([
-          Object.freeze({
-            advertiserId: "456",
-            siteId: "MLC",
-            campaignId: "campaign-1",
-            adGroupId: "group-1",
-            itemId: "MLC123",
-            status: "active",
-            priceMinor: 10_000,
-            metrics: options?.itemMetrics === undefined ? metrics : options.itemMetrics,
-            dateFrom: "2026-07-01",
-            dateTo: "2026-07-28",
-            sourceHash: "e".repeat(64),
-          }),
-        ]),
-      }),
-    ),
-  };
+  const listAdvertisersMock = vi.fn<MercadoLibreProductAdsReader["listAdvertisers"]>(() =>
+    Promise.resolve(advertisers),
+  );
+  const readMock = vi.fn<MercadoLibreProductAdsReader["read"]>(() =>
+    Promise.resolve({
+      campaigns: Object.freeze([
+        Object.freeze({
+          advertiserId: "456",
+          siteId: "MLC",
+          campaignId: "campaign-1",
+          name: "Campaign",
+          status: "active",
+          dateFrom: "2026-07-01",
+          dateTo: "2026-07-28",
+          metrics,
+          sourceHash: "c".repeat(64),
+        }),
+      ]),
+      adGroups: Object.freeze([
+        Object.freeze({
+          advertiserId: "456",
+          siteId: "MLC",
+          campaignId: "campaign-1",
+          adGroupId: "group-1",
+          dateFrom: "2026-07-01",
+          dateTo: "2026-07-28",
+          metrics,
+          sourceHash: "d".repeat(64),
+        }),
+      ]),
+      items: Object.freeze([
+        Object.freeze({
+          advertiserId: "456",
+          siteId: "MLC",
+          campaignId: "campaign-1",
+          adGroupId: "group-1",
+          itemId: "MLC123",
+          status: "active",
+          priceMinor: 10_000,
+          metrics: options?.itemMetrics === undefined ? metrics : options.itemMetrics,
+          dateFrom: "2026-07-01",
+          dateTo: "2026-07-28",
+          sourceHash: "e".repeat(64),
+        }),
+      ]),
+    }),
+  );
+  const reader = {
+    listAdvertisers: listAdvertisersMock,
+    read: readMock,
+  } satisfies MercadoLibreProductAdsReader;
   const service = new MercadoLibreProductAdsService(
     { get: () => Promise.resolve({ accessToken: "token", sellerId: "123456789" }) },
     reader,
@@ -165,12 +169,12 @@ function createService(options?: {
       maximumRangeDays: 90,
     },
   );
-  return { service, repository, reader };
+  return { service, repository, listAdvertisersMock, readMock };
 }
 
 describe("MercadoLibreProductAdsService", () => {
   it("persists campaigns, Ad Groups, item evidence and detects Profit Engine price drift", async () => {
-    const { service, repository, reader } = createService();
+    const { service, repository, readMock } = createService();
 
     const result = await service.sync({
       organizationId: "maustian",
@@ -196,7 +200,7 @@ describe("MercadoLibreProductAdsService", () => {
     });
     expect(result.reconciliations[0]?.sourceHash).toMatch(/^[a-f0-9]{64}$/);
     expect(await repository.listCampaigns("plasticov")).toHaveLength(1);
-    expect(reader.read).toHaveBeenCalledWith(
+    expect(readMock).toHaveBeenCalledWith(
       expect.objectContaining({ advertiserId: "456", siteId: "MLC", accessToken: "token" }),
     );
   });
@@ -260,7 +264,7 @@ describe("MercadoLibreProductAdsService", () => {
   });
 
   it("rejects ranges longer than the configured official maximum", async () => {
-    const { service, reader } = createService();
+    const { service, listAdvertisersMock } = createService();
     await expect(
       service.sync({
         organizationId: "maustian",
@@ -269,6 +273,6 @@ describe("MercadoLibreProductAdsService", () => {
         dateTo: "2026-07-28",
       }),
     ).rejects.toThrow(/between 1 and 90 days/);
-    expect(reader.listAdvertisers).not.toHaveBeenCalled();
+    expect(listAdvertisersMock).not.toHaveBeenCalled();
   });
 });
