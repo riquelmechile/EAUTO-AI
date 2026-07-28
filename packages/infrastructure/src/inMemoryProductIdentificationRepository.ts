@@ -147,5 +147,7 @@ function fingerprintKey(
   productId: string,
   fingerprint: ProductVisualFingerprint,
 ): string {
-  return [organizationId, accountId, productId, fingerprint.algorithm, fingerprint.version].join(":");
+  return [organizationId, accountId, productId, fingerprint.algorithm, fingerprint.version].join(
+    ":",
+  );
 }
