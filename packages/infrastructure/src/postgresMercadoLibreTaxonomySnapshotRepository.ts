@@ -108,7 +108,10 @@ export class PostgresMercadoLibreTaxonomySnapshotRepository
       [input.organizationId, input.accountId, input.categoryId, kind, sourceHash],
     );
     const existingPayload = existing.rows[0]?.payload_json;
-    if (existingPayload === undefined || hashCanonical(existingPayload) !== hashCanonical(snapshot)) {
+    if (
+      existingPayload === undefined ||
+      hashCanonical(existingPayload) !== hashCanonical(snapshot)
+    ) {
       throw new Error("MercadoLibre taxonomy snapshot source hash conflicts with another payload.");
     }
   }
