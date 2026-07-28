@@ -54,7 +54,7 @@ describe("SupplierMirrorService", () => {
     expect(received).toEqual([observation]);
   });
 
-  it("rejects mismatched observation and evidence timestamps before persistence", async () => {
+  it("rejects mismatched observation and evidence timestamps before persistence", () => {
     let called = false;
     const service = new SupplierMirrorService({
       record: () => {
@@ -63,12 +63,12 @@ describe("SupplierMirrorService", () => {
       },
     });
 
-    await expect(
+    expect(() =>
       service.recordObservation({
         ...observation,
         evidence: { ...observation.evidence, observedAt: "2026-07-27T11:00:00.000Z" },
       }),
-    ).rejects.toThrow(/timestamps must match/);
+    ).toThrow(/timestamps must match/);
     expect(called).toBe(false);
   });
 });
