@@ -14,7 +14,7 @@ concurrency:
 jobs:
   test-diagnostic:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Clone PR branch quietly
         env:
@@ -23,7 +23,9 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install dependencies quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: Show failing test tail
+      - name: Build package entries
+        run: npm run typecheck >/dev/null
+      - name: Show authentic failing test tail
         run: |
           set -o pipefail
-          npm test 2>&1 | tail -n 120
+          npm test 2>&1 | tail -n 160
