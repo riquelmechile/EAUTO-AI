@@ -107,7 +107,8 @@ export class PostgresMercadoLibreTaxonomySnapshotRepository
          AND category_id = $3 AND snapshot_kind = $4 AND source_hash = $5`,
       [input.organizationId, input.accountId, input.categoryId, kind, sourceHash],
     );
-    if (hashCanonical(existing.rows[0]?.payload_json) !== hashCanonical(snapshot)) {
+    const existingPayload = existing.rows[0]?.payload_json;
+    if (existingPayload === undefined || hashCanonical(existingPayload) !== hashCanonical(snapshot)) {
       throw new Error("MercadoLibre taxonomy snapshot source hash conflicts with another payload.");
     }
   }
@@ -204,7 +205,10 @@ function validateScope(input: MercadoLibreTaxonomyScope): void {
   }
 }
 
-function readNamedValues(value: unknown, field: string): ReadonlyArray<Readonly<{ id: string; name: string }>> {
+function readNamedValues(
+  value: unknown,
+  field: string,
+): ReadonlyArray<Readonly<{ id: string; name: string }>> {
   if (!Array.isArray(value)) throw new Error(`${field} must be an array.`);
   return value.map((entry, index) => {
     const record = asRecord(entry, `${field}[${index}]`);
