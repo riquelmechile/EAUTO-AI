@@ -44,13 +44,10 @@ describe("MercadoLibreTaxonomyHttpReader", () => {
 
     const category = await reader().getCategory(scope);
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      new URL("https://api.mercadolibre.com/categories/MLC1234"),
-      expect.objectContaining({
-        redirect: "error",
-        signal: expect.any(AbortSignal),
-      }),
-    );
+    const request = fetchMock.mock.calls[0];
+    expect(request?.[0]).toEqual(new URL("https://api.mercadolibre.com/categories/MLC1234"));
+    expect(request?.[1]?.redirect).toBe("error");
+    expect(request?.[1]?.signal).toBeInstanceOf(AbortSignal);
     expect(category).toMatchObject({
       id: "MLC1234",
       siteId: "MLC",
