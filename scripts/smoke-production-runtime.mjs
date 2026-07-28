@@ -115,6 +115,7 @@ try {
   );
   assert(runtime.shadowLlm !== null, "DeepSeek shadow runtime must be enabled");
   assert(runtime.mercadoLibre !== null, "MercadoLibre Chile runtime must be enabled");
+  assert(runtime.mercadoLibreProductAds !== null, "Product Ads v2 runtime must be enabled");
   assert(
     runtime.mercadoLibreNotificationIngestion !== null,
     "MercadoLibre webhook ingestion must be enabled",
@@ -137,6 +138,7 @@ try {
   console.log("✓ MercadoLibre taxonomy snapshot versions and scope verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ Generic marketplace writes disabled and question.answer wired explicitly");
+  console.log("✓ Product Ads v2 read plane and reconciliation runtime wired");
   console.log("✓ External providers and MercadoLibre runtimes wired");
   console.log("EAUTO_PRODUCTION_SMOKE_OK");
 } catch (error) {

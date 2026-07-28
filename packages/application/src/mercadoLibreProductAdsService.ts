@@ -162,19 +162,34 @@ export class MercadoLibreProductAdsService {
     const campaigns = Object.freeze(
       remote.campaigns.map((campaign) => {
         assertRemoteScope(campaign, advertiser.advertiserId);
-        return Object.freeze({ ...base, ...campaign, advertiserId: advertiser.advertiserId, siteId: "MLC" as const });
+        return Object.freeze({
+          ...base,
+          ...campaign,
+          advertiserId: advertiser.advertiserId,
+          siteId: "MLC" as const,
+        });
       }),
     );
     const adGroups = Object.freeze(
       remote.adGroups.map((adGroup) => {
         assertRemoteScope(adGroup, advertiser.advertiserId);
-        return Object.freeze({ ...base, ...adGroup, advertiserId: advertiser.advertiserId, siteId: "MLC" as const });
+        return Object.freeze({
+          ...base,
+          ...adGroup,
+          advertiserId: advertiser.advertiserId,
+          siteId: "MLC" as const,
+        });
       }),
     );
     const items = Object.freeze(
       remote.items.map((item) => {
         assertRemoteScope(item, advertiser.advertiserId);
-        return Object.freeze({ ...base, ...item, advertiserId: advertiser.advertiserId, siteId: "MLC" as const });
+        return Object.freeze({
+          ...base,
+          ...item,
+          advertiserId: advertiser.advertiserId,
+          siteId: "MLC" as const,
+        });
       }),
     );
     const reconciliations = await this.reconcile({
@@ -245,7 +260,9 @@ export class MercadoLibreProductAdsService {
           : null;
       const listingToAdsDriftMinor =
         listing && item.priceMinor !== undefined ? listing.priceMinor - item.priceMinor : null;
-      const attribution = item.metrics ? ("direct-item-metrics" as const) : ("unavailable" as const);
+      const attribution = item.metrics
+        ? ("direct-item-metrics" as const)
+        : ("unavailable" as const);
       const status = !listing
         ? ("missing-listing" as const)
         : !profit

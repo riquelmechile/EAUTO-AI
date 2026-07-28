@@ -38,14 +38,18 @@ export function registerMercadoLibreProductAdsRoutes(
     const actor = await dependencies.authenticate(request);
     const query = accountQuerySchema.parse(request.query);
     await dependencies.requireAccount(actor, query.accountId, "integrations.read");
-    return { campaigns: await requireProductAds(dependencies.runtime).listCampaigns(query.accountId) };
+    return {
+      campaigns: await requireProductAds(dependencies.runtime).listCampaigns(query.accountId),
+    };
   });
 
   app.get("/v1/integrations/mercadolibre/product-ads/ad-groups", async (request) => {
     const actor = await dependencies.authenticate(request);
     const query = accountQuerySchema.parse(request.query);
     await dependencies.requireAccount(actor, query.accountId, "integrations.read");
-    return { adGroups: await requireProductAds(dependencies.runtime).listAdGroups(query.accountId) };
+    return {
+      adGroups: await requireProductAds(dependencies.runtime).listAdGroups(query.accountId),
+    };
   });
 
   app.get("/v1/integrations/mercadolibre/product-ads/items", async (request) => {

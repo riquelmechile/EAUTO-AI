@@ -14,14 +14,8 @@ import type {
 export class InMemoryMercadoLibreProductAdsRepository
   implements MercadoLibreProductAdsRepository, LatestProfitabilitySnapshotReader
 {
-  private readonly campaigns = new Map<
-    string,
-    readonly MercadoLibreProductAdsCampaignSnapshot[]
-  >();
-  private readonly adGroups = new Map<
-    string,
-    readonly MercadoLibreProductAdsAdGroupSnapshot[]
-  >();
+  private readonly campaigns = new Map<string, readonly MercadoLibreProductAdsCampaignSnapshot[]>();
+  private readonly adGroups = new Map<string, readonly MercadoLibreProductAdsAdGroupSnapshot[]>();
   private readonly items = new Map<string, readonly MercadoLibreProductAdsItemSnapshot[]>();
   private readonly reconciliations = new Map<
     string,
@@ -116,9 +110,7 @@ export class PostgresMercadoLibreProductAdsRepository
     );
   }
 
-  async listAdGroups(
-    accountId: string,
-  ): Promise<readonly MercadoLibreProductAdsAdGroupSnapshot[]> {
+  async listAdGroups(accountId: string): Promise<readonly MercadoLibreProductAdsAdGroupSnapshot[]> {
     return this.listPayloads<MercadoLibreProductAdsAdGroupSnapshot>(
       "mercadolibre_product_ads_ad_group_snapshots",
       accountId,

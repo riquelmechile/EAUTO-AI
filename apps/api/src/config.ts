@@ -188,6 +188,17 @@ const configSchema = z.object({
   MELI_REFRESH_LEASE_MS: z.coerce.number().int().min(5_000).max(300_000).default(30_000),
   MELI_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(15_000),
   MELI_MAXIMUM_SCAN_PAGES: z.coerce.number().int().min(1).max(1_000).default(100),
+  MELI_PRODUCT_ADS_ENABLED: environmentBoolean.default(false),
+  MELI_PRODUCT_ADS_ACCOUNT_ID: optionalString,
+  MELI_PRODUCT_ADS_ADVERTISER_IDS_JSON: z.string().default("{}"),
+  MELI_PRODUCT_ADS_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
+  MELI_PRODUCT_ADS_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_024)
+    .max(20_000_000)
+    .default(2_000_000),
+  MELI_PRODUCT_ADS_MAXIMUM_RANGE_DAYS: z.coerce.number().int().min(1).max(90).default(90),
   MELI_QUESTION_ANSWER_ENABLED: environmentBoolean.default(false),
   MELI_QUESTION_ANSWER_ACCOUNT_ID: optionalString,
   MELI_QUESTION_ANSWER_POLICY_VERSION: z
@@ -399,6 +410,30 @@ function validateLlmConfig(config: z.infer<typeof configSchema>): void {
 }
 
 function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {
+  if (config.MELI_PRODUCT_ADS_ENABLED) {
+    if (!config.MELI_ENABLED || !config.DATABASE_URL) {
+      throw new Error(
+        "MELI_PRODUCT_ADS_ENABLED requires MELI_ENABLED and durable PostgreSQL storage.",
+      );
+    }
+    if (config.MELI_PRODUCT_ADS_ACCOUNT_ID !== "plasticov") {
+      throw new Error("The first Product Ads rollout is restricted to the Plasticov account.");
+    }
+    let mappings: unknown;
+    try {
+      mappings = JSON.parse(config.MELI_PRODUCT_ADS_ADVERTISER_IDS_JSON);
+    } catch {
+      throw new Error("MELI_PRODUCT_ADS_ADVERTISER_IDS_JSON must contain valid JSON.");
+    }
+    if (!isRecord(mappings)) {
+      throw new Error("MELI_PRODUCT_ADS_ADVERTISER_IDS_JSON must contain an object.");
+    }
+    for (const [accountId, advertiserId] of Object.entries(mappings)) {
+      if (!accountId.trim() || typeof advertiserId !== "string" || !/^\d+$/.test(advertiserId)) {
+        throw new Error("Product Ads advertiser mapping must use account IDs and numeric IDs.");
+      }
+    }
+  }
   if (config.MELI_QUESTION_ANSWER_ENABLED) {
     if (!config.MELI_ENABLED || !config.DATABASE_URL) {
       throw new Error(

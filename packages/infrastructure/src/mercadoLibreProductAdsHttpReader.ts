@@ -57,9 +57,7 @@ export class MercadoLibreProductAdsHttpReader implements MercadoLibreProductAdsR
     }
   }
 
-  async listAdvertisers(
-    accessToken: string,
-  ): Promise<readonly MercadoLibreProductAdsAdvertiser[]> {
+  async listAdvertisers(accessToken: string): Promise<readonly MercadoLibreProductAdsAdvertiser[]> {
     const payload = await this.getJson(
       "/advertising/advertisers?product_id=PADS",
       accessToken,
@@ -96,10 +94,19 @@ export class MercadoLibreProductAdsHttpReader implements MercadoLibreProductAdsR
     const adGroups: MercadoLibreRemoteProductAdsAdGroup[] = [];
     const items: MercadoLibreRemoteProductAdsItem[] = [];
     for (const campaign of campaigns) {
-      const campaignAdGroups = await this.listAdGroups({ ...input, campaignId: campaign.campaignId });
+      const campaignAdGroups = await this.listAdGroups({
+        ...input,
+        campaignId: campaign.campaignId,
+      });
       adGroups.push(...campaignAdGroups);
       for (const adGroup of campaignAdGroups) {
-        items.push(...(await this.listAdGroupItems({ ...input, campaignId: campaign.campaignId, adGroupId: adGroup.adGroupId })));
+        items.push(
+          ...(await this.listAdGroupItems({
+            ...input,
+            campaignId: campaign.campaignId,
+            adGroupId: adGroup.adGroupId,
+          })),
+        );
       }
     }
     return Object.freeze({
@@ -247,7 +254,12 @@ export class MercadoLibreProductAdsHttpReader implements MercadoLibreProductAdsR
           siteId: input.siteId,
           campaignId: input.campaignId,
           adGroupId: input.adGroupId,
-          itemId: readStringOrNumber(item, ["item_id", "ad_group_external_id", "external_id", "id"]),
+          itemId: readStringOrNumber(item, [
+            "item_id",
+            "ad_group_external_id",
+            "external_id",
+            "id",
+          ]),
           ...(title ? { title } : {}),
           status: readString(item, ["status"]),
           ...(price === undefined ? {} : { priceMinor: toClpMinor(price) }),
@@ -263,7 +275,11 @@ export class MercadoLibreProductAdsHttpReader implements MercadoLibreProductAdsR
     return Object.freeze(items);
   }
 
-  private async getJson(path: string, accessToken: string, apiVersion: "1" | "2"): Promise<unknown> {
+  private async getJson(
+    path: string,
+    accessToken: string,
+    apiVersion: "1" | "2",
+  ): Promise<unknown> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.config.timeoutMs);
     try {
@@ -291,7 +307,10 @@ export class MercadoLibreProductAdsHttpReader implements MercadoLibreProductAdsR
       }
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`MercadoLibre Product Ads request timed out after ${this.config.timeoutMs} ms.`, { cause: error });
+        throw new Error(
+          `MercadoLibre Product Ads request timed out after ${this.config.timeoutMs} ms.`,
+          { cause: error },
+        );
       }
       throw error;
     } finally {
@@ -362,7 +381,14 @@ function optionalNumberProperty(
 
 function validateApiBaseUrl(value: string): URL {
   const url = new URL(value);
-  if (url.protocol !== "https:" || url.hostname !== "api.mercadolibre.com" || url.username || url.password || url.search || url.hash) {
+  if (
+    url.protocol !== "https:" ||
+    url.hostname !== "api.mercadolibre.com" ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash
+  ) {
     throw new Error("Product Ads API must use https://api.mercadolibre.com.");
   }
   return new URL("/", url);
@@ -389,7 +415,10 @@ function readString(record: Record<string, unknown>, fields: readonly string[]):
   return value;
 }
 
-function readOptionalString(record: Record<string, unknown>, fields: readonly string[]): string | undefined {
+function readOptionalString(
+  record: Record<string, unknown>,
+  fields: readonly string[],
+): string | undefined {
   for (const field of fields) {
     const value = record[field];
     if (typeof value === "string" && value.trim()) return value;
@@ -415,7 +444,10 @@ function readOptionalStringOrNumber(
   return undefined;
 }
 
-function readOptionalNumber(record: Record<string, unknown>, fields: readonly string[]): number | undefined {
+function readOptionalNumber(
+  record: Record<string, unknown>,
+  fields: readonly string[],
+): number | undefined {
   for (const field of fields) {
     const value = record[field];
     if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
@@ -427,9 +459,13 @@ function readNonNegativeNumber(record: Record<string, unknown>, fields: readonly
   return readOptionalNumber(record, fields) ?? 0;
 }
 
-function readNonNegativeInteger(record: Record<string, unknown>, fields: readonly string[]): number {
+function readNonNegativeInteger(
+  record: Record<string, unknown>,
+  fields: readonly string[],
+): number {
   const value = readNonNegativeNumber(record, fields);
-  if (!Number.isSafeInteger(value)) throw new Error(`${fields.join(" or ")} must be a safe integer.`);
+  if (!Number.isSafeInteger(value))
+    throw new Error(`${fields.join(" or ")} must be a safe integer.`);
   return value;
 }
 

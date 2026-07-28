@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 
 await replaceOnce(
   "apps/api/src/config.ts",
-  '  MELI_MAXIMUM_SCAN_PAGES: z.coerce.number().int().min(1).max(1_000).default(100),\n  MELI_QUESTION_ANSWER_ENABLED:',
+  "  MELI_MAXIMUM_SCAN_PAGES: z.coerce.number().int().min(1).max(1_000).default(100),\n  MELI_QUESTION_ANSWER_ENABLED:",
   `  MELI_MAXIMUM_SCAN_PAGES: z.coerce.number().int().min(1).max(1_000).default(100),
   MELI_PRODUCT_ADS_ENABLED: environmentBoolean.default(false),
   MELI_PRODUCT_ADS_ACCOUNT_ID: optionalString,
@@ -20,7 +20,7 @@ await replaceOnce(
 
 await replaceOnce(
   "apps/api/src/config.ts",
-  'function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {\n  if (config.MELI_QUESTION_ANSWER_ENABLED) {',
+  "function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {\n  if (config.MELI_QUESTION_ANSWER_ENABLED) {",
   `function validateMercadoLibreConfig(config: z.infer<typeof configSchema>): void {
   if (config.MELI_PRODUCT_ADS_ENABLED) {
     if (!config.MELI_ENABLED || !config.DATABASE_URL) {
@@ -57,14 +57,14 @@ await replaceOnce(
 
 await replaceOnce(
   "apps/api/src/runtime.ts",
-  '  const mercadoLibre = createMercadoLibreRuntime(config, pool, clock);\n  const mercadoLibreNotifications =',
-  '  const mercadoLibre = createMercadoLibreRuntime(config, pool, clock);\n  const mercadoLibreProductAds = createMercadoLibreProductAdsRuntime(config, pool, clock);\n  const mercadoLibreNotifications =',
+  "  const mercadoLibre = createMercadoLibreRuntime(config, pool, clock);\n  const mercadoLibreNotifications =",
+  "  const mercadoLibre = createMercadoLibreRuntime(config, pool, clock);\n  const mercadoLibreProductAds = createMercadoLibreProductAdsRuntime(config, pool, clock);\n  const mercadoLibreNotifications =",
 );
 
 await replaceOnce(
   "apps/api/src/runtime.ts",
-  '    mercadoLibre,\n    mercadoLibreNotifications,',
-  '    mercadoLibre,\n    mercadoLibreProductAds,\n    mercadoLibreNotifications,',
+  "    mercadoLibre,\n    mercadoLibreNotifications,",
+  "    mercadoLibre,\n    mercadoLibreProductAds,\n    mercadoLibreNotifications,",
 );
 
 await replaceOnce(
