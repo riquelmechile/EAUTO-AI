@@ -46,7 +46,10 @@ describe("MercadoLibreTaxonomyHttpReader", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       new URL("https://api.mercadolibre.com/categories/MLC1234"),
-      expect.objectContaining({ redirect: "error" }),
+      expect.objectContaining({
+        redirect: "error",
+        signal: expect.any(AbortSignal),
+      }),
     );
     expect(category).toMatchObject({
       id: "MLC1234",
@@ -132,12 +135,14 @@ describe("MercadoLibreTaxonomyHttpReader", () => {
   it("rejects unsupported attribute value types", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>().mockResolvedValue(
-        new Response(
-          JSON.stringify([{ id: "X", name: "X", value_type: "json", tags: {}, values: [] }]),
-          { status: 200 },
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify([{ id: "X", name: "X", value_type: "json", tags: {}, values: [] }]),
+            { status: 200 },
+          ),
         ),
-      ),
     );
     await expect(reader().getCategoryAttributes(scope)).rejects.toThrow(/Unsupported/);
   });
@@ -152,6 +157,19 @@ describe("MercadoLibreTaxonomyHttpReader", () => {
     await expect(reader().getCategory(scope)).rejects.toThrow(/429/);
   });
 
+  it("fails closed with a deterministic timeout error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockRejectedValue(new DOMException("request timed out", "TimeoutError")),
+    );
+
+    await expect(reader().getCategory(scope)).rejects.toThrow(
+      /timed out after 5000 ms for \/categories\/MLC1234/,
+    );
+  });
+
   it("rejects responses larger than the configured byte limit", async () => {
     vi.stubGlobal(
       "fetch",
@@ -162,7 +180,10 @@ describe("MercadoLibreTaxonomyHttpReader", () => {
         }),
       ),
     );
-    const smallReader = new MercadoLibreTaxonomyHttpReader({ ...config, maximumResponseBytes: 100 });
+    const smallReader = new MercadoLibreTaxonomyHttpReader({
+      ...config,
+      maximumResponseBytes: 100,
+    });
     await expect(smallReader.getCategory(scope)).rejects.toThrow(/byte limit/);
   });
 });
