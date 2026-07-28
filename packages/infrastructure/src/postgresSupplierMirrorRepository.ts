@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { Pool, PoolClient } from "pg";
 import type {
   MercadoLibreListingSnapshot,
+  ProfitabilitySnapshot,
   RecordedSupplierProduct,
   StockAvailabilityProposal,
   StockSourceType,
@@ -114,6 +115,12 @@ export class PostgresSupplierMirrorRepository
         observation.sku,
         true,
       );
+      if (
+        previous &&
+        new Date(observation.observedAt).getTime() <= new Date(toIso(previous.observed_at)).getTime()
+      ) {
+        throw new Error("Supplier observation must be newer than the current product state.");
+      }
       const previousStock = previous
         ? toSafeInteger(previous.stock_qty, "previousStock")
         : observation.stockQuantity;
@@ -168,7 +175,17 @@ export class PostgresSupplierMirrorRepository
       );
       await client.query(
         `UPDATE supplier_listing_links
-         SET next_audit_at = LEAST(next_audit_at, now()), updated_at = now()
+         SET recovery_confirmation_count = CASE
+               WHEN $5 = true AND $6 > recovery_stock_threshold
+                 THEN CASE
+                   WHEN recovery_confirmation_count < 2147483647
+                     THEN recovery_confirmation_count + 1
+                   ELSE recovery_confirmation_count
+                 END
+               ELSE 0
+             END,
+             next_audit_at = LEAST(next_audit_at, now()),
+             updated_at = now()
          WHERE organization_id = $1 AND account_id = $2
            AND supplier_source_id = $3 AND sku = $4 AND active = true`,
         [
@@ -176,6 +193,8 @@ export class PostgresSupplierMirrorRepository
           observation.accountId,
           observation.supplierSourceId,
           observation.sku,
+          observation.syncSucceeded,
+          observation.stockQuantity,
         ],
       );
       const product = await this.getProduct(
@@ -209,23 +228,29 @@ export class PostgresSupplierMirrorRepository
       previous_unit_cost_minor: string | null;
       unit_cost_minor: string | null;
       sync_succeeded: boolean;
-      consecutive_successful_syncs: number;
+      recovery_confirmation_count: number;
       observed_at: Date | string;
       evidence_id: string;
       evidence_source: string;
       evidence_content_hash: string;
       maximum_evidence_age_ms: string;
       listing_payload: MercadoLibreListingSnapshot;
+      economic_product_cost_minor: string | null;
+      economic_product_cost_evidence_id: string | null;
       profitability_status: SupplierStockInput["profitabilityStatus"] | null;
+      profitability_payload: ProfitabilitySnapshot | null;
     }>(
       `SELECT link.organization_id, source.source_type, link.sku,
          product.previous_stock_qty::text, product.stock_qty::text,
          product.previous_unit_cost_minor::text, product.unit_cost_minor::text,
-         product.sync_succeeded, product.consecutive_successful_syncs,
+         product.sync_succeeded, link.recovery_confirmation_count,
          product.observed_at, product.evidence_id, product.evidence_source,
          product.evidence_content_hash, link.maximum_evidence_age_ms::text,
          listing.payload_json AS listing_payload,
-         profitability.status AS profitability_status
+         economic_product_cost.amount_minor::text AS economic_product_cost_minor,
+         economic_product_cost.evidence_id AS economic_product_cost_evidence_id,
+         profitability.status AS profitability_status,
+         profitability.payload_json AS profitability_payload
        FROM supplier_listing_links link
        JOIN supplier_sources source
          ON source.organization_id = link.organization_id
@@ -239,8 +264,13 @@ export class PostgresSupplierMirrorRepository
         AND product.sku = link.sku
        JOIN mercadolibre_listing_snapshots listing
          ON listing.account_id = link.account_id AND listing.item_id = link.listing_id
+       LEFT JOIN economic_cost_observations economic_product_cost
+         ON economic_product_cost.organization_id = link.organization_id
+        AND economic_product_cost.account_id = link.account_id
+        AND economic_product_cost.listing_id = link.listing_id
+        AND economic_product_cost.cost_kind = 'product-cost'
        LEFT JOIN LATERAL (
-         SELECT snapshot.status
+         SELECT snapshot.status, snapshot.payload_json
          FROM profitability_snapshots snapshot
          WHERE snapshot.account_id = link.account_id
            AND snapshot.listing_id = link.listing_id
@@ -270,6 +300,23 @@ export class PostgresSupplierMirrorRepository
       contentHash: row.evidence_content_hash,
     });
     const currentUnitCostMinor = toNullableSafeInteger(row.unit_cost_minor, "currentUnitCostMinor");
+    const economicProductCostMinor = toNullableSafeInteger(
+      row.economic_product_cost_minor,
+      "economicProductCostMinor",
+    );
+    const profitabilityMatchesCurrentEconomics =
+      row.profitability_status !== null &&
+      row.profitability_payload !== null &&
+      row.profitability_payload.status === row.profitability_status &&
+      row.profitability_payload.accountId === accountId &&
+      row.profitability_payload.listingId === listingId &&
+      row.profitability_payload.salePriceMinor === listing.priceMinor &&
+      currentUnitCostMinor !== null &&
+      currentUnitCostMinor === economicProductCostMinor &&
+      hasEvidenceRef(
+        row.profitability_payload,
+        row.economic_product_cost_evidence_id,
+      );
 
     return Object.freeze({
       organizationId: row.organization_id,
@@ -279,7 +326,7 @@ export class PostgresSupplierMirrorRepository
       sourceType: row.source_type,
       previousStock: toSafeInteger(row.previous_stock_qty, "previousStock"),
       currentStock: toSafeInteger(row.stock_qty, "currentStock"),
-      consecutiveSuccessfulSyncs: row.consecutive_successful_syncs,
+      consecutiveSuccessfulSyncs: row.recovery_confirmation_count,
       syncSucceeded: row.sync_succeeded,
       listingStatus: listing.status,
       previousUnitCostMinor: toNullableSafeInteger(
@@ -287,7 +334,9 @@ export class PostgresSupplierMirrorRepository
         "previousUnitCostMinor",
       ),
       currentUnitCostMinor,
-      profitabilityStatus: row.profitability_status ?? "unknown",
+      profitabilityStatus: profitabilityMatchesCurrentEconomics
+        ? (row.profitability_status as SupplierStockInput["profitabilityStatus"])
+        : "unknown",
       stockEvidence: evidence,
       costEvidence: currentUnitCostMinor === null ? null : evidence,
       asOf: this.now().toISOString(),
@@ -442,6 +491,7 @@ export class PostgresSupplierMirrorRepository
       listingId: assessment.listingId,
       supplierSourceId: assessment.supplierSourceId,
       sourceType: assessment.sourceType,
+      policyVersion: assessment.policyVersion,
       stockDelta: assessment.stockDelta,
       evidenceRefs: assessment.evidenceRefs,
       availabilityProposal: assessment.availabilityProposal,
@@ -450,8 +500,8 @@ export class PostgresSupplierMirrorRepository
     await this.pool.query(
       `INSERT INTO supplier_stock_assessments
         (id, organization_id, account_id, supplier_source_id, listing_id,
-         evaluated_at, content_hash, payload_json)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb)
+         policy_version, evaluated_at, content_hash, payload_json)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)
        ON CONFLICT (content_hash) DO NOTHING`,
       [
         `supplier_assessment_${contentHash}`,
@@ -459,6 +509,7 @@ export class PostgresSupplierMirrorRepository
         assessment.accountId,
         assessment.supplierSourceId,
         assessment.listingId,
+        assessment.policyVersion,
         assessment.evaluatedAt,
         contentHash,
         JSON.stringify(assessment),
@@ -546,7 +597,24 @@ function mapRecordedProduct(row: SupplierProductRow): RecordedSupplierProduct {
 }
 
 function hashCanonical(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+}
+
+function canonicalize(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, nested]) => [key, canonicalize(nested)]),
+    );
+  }
+  return value;
+}
+
+function hasEvidenceRef(snapshot: ProfitabilitySnapshot, evidenceId: string | null): boolean {
+  return evidenceId !== null && snapshot.evidenceRefs.includes(evidenceId);
 }
 
 function toIso(value: Date | string): string {
