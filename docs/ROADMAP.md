@@ -1,6 +1,6 @@
 # Roadmap
 
-> Estado actualizado después de la auditoría técnica de julio de 2026.
+> Estado actualizado el 28 de julio de 2026 después de la auditoría técnica, corrección de CI y cierre de los verticales Catalog Acquisition y Product Identification.
 
 ## Leyenda
 
@@ -17,8 +17,8 @@
 | F1 — Fundación productiva    |   ✅   | PostgreSQL, workers, almacenamiento, seguridad, CI y despliegue inmutable     |
 | F2 — MercadoLibre read plane |   🟡   | Conectar cuentas reales y consolidar la verdad operacional                    |
 | F3 — Agent OS gobernado      |   🟡   | Operar agentes con contratos, skills, sesiones, presupuestos y scorecards     |
-| F4 — Content Studio real     |   🟡   | Pasar de captura y simulación trazable a generación externa verificable       |
-| F5 — Product Launch          |   🟡   | Foto → investigación → economics → assets → publicación preparada             |
+| F4 — Content Studio real     |   🟡   | Identificación durable lista; faltan proveedores media y experiencia Android  |
+| F5 — Product Launch          |   🟡   | Foto → identificación → economics → catálogo → publicación preparada          |
 | F6 — Autonomía limitada      |   🔒   | Promover capacidades solo con evidencia, presupuesto, rollback y outcomes     |
 | F7 — Expansión comercial     |   ⬜   | Ecommerce propio, proveedores, Ads, redes sociales y marketplaces adicionales |
 
@@ -97,35 +97,50 @@
 
 ## F4 — Content Studio real 🟡
 
-### Implementado
+### Implementado y verificado
 
 - [x] Captura desde cámara y galería en Android.
 - [x] Flujo de lanzamiento y assets.
 - [x] Object storage S3-compatible.
 - [x] Upload, URLs firmadas y checksums verificables.
 - [x] Provider de desarrollo trazable que declara no haber generado contenido externo.
+- [x] Product Identification con ID/hash canónico, PostgreSQL e idempotencia.
+- [x] API autenticada para identificar, leer y revisar por cuenta.
+- [x] Review humana terminal con reviewer y timestamp controlados por servidor.
+- [x] Catalog Acquisition con candidatos persistidos y review gobernada.
+- [x] Semántica segura de fingerprints: exact-content separado de perceptual hash.
+- [x] Comparación e índice de duplicados confirmados, aislados por cuenta y algoritmo.
 
 ### Pendiente
 
-- [ ] Integrar visión e identificación de producto.
+- [ ] Conectar un visual provider real allowlisted y validar sus respuestas live.
+- [ ] Incorporar un `phash-64` perceptual real, versionado y verificable.
+- [ ] Añadir pantallas Android de identificación, evidencia y confirmación/rechazo.
 - [ ] Seleccionar y conectar proveedores reales de imagen y video.
 - [ ] Incorporar moderación y políticas de marca.
 - [ ] Crear brand kits separados para Plasticov y Maustian.
-- [ ] Añadir comparación visual y control de duplicados.
 - [ ] Verificar que cada asset externo corresponda al producto y brief aprobados.
 
 ## F5 — Product Launch 🟡
 
+### Implementado y verificado
+
 - [x] Dominio, estados y flujo de propuesta/review/aprobación.
 - [x] Content Studio y evidence bundles como base.
 - [x] Gate económico y policy hash.
-- [ ] Foto → identificación verificable.
-- [ ] Investigación de mercado y competencia.
-- [ ] Unit economics, precio y margen mínimo.
-- [ ] Validación de categoría y atributos MercadoLibre.
-- [ ] Generación de assets y preview Android.
+- [x] Foto → identificación durable y verificable en runtime/API.
+- [x] Catálogo de proveedores y candidatos Photo-to-Similar con review humana.
+- [x] Unit economics, utilidad, precio mínimo, margen piso y propuesta de repricing.
+- [x] Evidencia económica fail-closed ante costos faltantes o vencidos.
+
+### Pendiente
+
+- [ ] Investigación live de mercado y competencia.
+- [ ] Resolución y validación de categoría y atributos MercadoLibre.
+- [ ] Generación de assets externos y preview Android de lanzamiento.
 - [ ] Escritura preparada mediante adapter MercadoLibre.
 - [ ] Verificación posterior de la publicación real.
+- [ ] Outcome económico reconciliado después del lanzamiento.
 
 ## F6 — Autonomía limitada 🔒
 
@@ -162,6 +177,7 @@ No se considera que EAUTO-AI esté operando comercialmente hasta completar todos
 
 - [ ] dominios, servidor y secretos productivos configurados;
 - [ ] `doctor:production` verde con valores reales;
+- [ ] visual provider y media providers reales validados;
 - [ ] OAuth Plasticov y Maustian validado;
 - [ ] webhook real recibido, autenticado y deduplicado;
 - [ ] primera sesión LLM shadow con evidencia y costo registrados;
