@@ -1,4 +1,3 @@
-import type { FastifyRequest } from "fastify";
 import {
   AuthorizationError,
   assertAuthorized,
@@ -17,7 +16,7 @@ import { createRuntime } from "./runtime.js";
 export async function buildCompanyApp(config: AppConfig) {
   const runtime = createRuntime(config);
   const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);
-  const companyRuntime = createCompanyIntelligenceRuntime(runtime, intelligenceRuntime);
+  const companyRuntime = createCompanyIntelligenceRuntime(runtime, intelligenceRuntime, config);
   const authenticator = createAuthenticator({
     mode: config.AUTH_MODE,
     identitiesJson: config.OPERATOR_TOKENS_JSON,
@@ -60,17 +59,4 @@ async function requireAccount(
     throw new AuthorizationError("The requested account is outside the actor scope.");
   }
   assertAuthorized(actor, permission, account.id);
-}
-
-export async function authenticateCompanyRequest(
-  request: FastifyRequest,
-  config: AppConfig,
-): Promise<ActorIdentity> {
-  const authenticator = createAuthenticator({
-    mode: config.AUTH_MODE,
-    identitiesJson: config.OPERATOR_TOKENS_JSON,
-    nodeEnv: config.NODE_ENV,
-  });
-  if (authenticator.developmentActor) return authenticator.developmentActor;
-  throw new AuthorizationError("Use the configured rotating session runtime.");
 }
