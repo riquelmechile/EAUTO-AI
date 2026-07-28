@@ -1,3 +1,4 @@
+import type { FastifyRequest } from "fastify";
 import {
   AuthorizationError,
   assertAuthorized,
@@ -26,7 +27,7 @@ export async function buildCompanyApp(config: AppConfig) {
   const app = await buildApp(config, runtime);
   const routeDependencies = {
     runtime: companyRuntime,
-    authenticate: async (request: Parameters<typeof readBearerToken>[0] extends never ? never : import("fastify").FastifyRequest) => {
+    authenticate: async (request: FastifyRequest) => {
       if (authenticator.developmentActor) return authenticator.developmentActor;
       const accessToken = readBearerToken(request.headers.authorization);
       return runtime.sessionService.authenticateAccess(accessToken);
