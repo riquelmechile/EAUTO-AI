@@ -21,6 +21,10 @@ try {
   run("node", ["scripts/smoke-profit-engine-postgres.mjs"], { DATABASE_URL: databaseUrl });
   stage = "verify-supplier-mirror";
   run("node", ["scripts/smoke-supplier-mirror-postgres.mjs"], { DATABASE_URL: databaseUrl });
+  stage = "verify-supplier-authority";
+  run("node", ["scripts/smoke-supplier-authority-postgres.mjs"], {
+    DATABASE_URL: databaseUrl,
+  });
   stage = "verify-supplier-sync-invariants";
   run("node", ["scripts/smoke-supplier-sync-invariants-postgres.mjs"], {
     DATABASE_URL: databaseUrl,
@@ -84,6 +88,7 @@ try {
   console.log("✓ Scoped repositories and action lifecycle verified");
   console.log("✓ Profit Engine persistence and margin-audit leases verified");
   console.log("✓ Supplier Mirror ingestion, debounce and stock-risk leases verified");
+  console.log("✓ Multi-provider supplier authority and lease isolation verified");
   console.log("✓ Failed sync preservation and monotonic supplier state verified");
   console.log("✓ Verified supplier product cost feeds Profit Engine");
   console.log("✓ Production configuration parsed");
