@@ -73,6 +73,24 @@ const configSchema = z.object({
   CATALOG_VISUAL_PROVIDER_URL: optionalUrl,
   CATALOG_VISUAL_PROVIDER_API_KEY: optionalString,
   CATALOG_VISUAL_PROVIDER_NAME: z.string().min(1).default("external-visual-search"),
+  PRODUCT_FINGERPRINT_PROVIDER_URL: optionalUrl,
+  PRODUCT_FINGERPRINT_PROVIDER_API_KEY: optionalString,
+  PRODUCT_FINGERPRINT_PROVIDER_NAME: z
+    .string()
+    .min(1)
+    .max(128)
+    .default("external-perceptual-fingerprint"),
+  PRODUCT_FINGERPRINT_PROVIDER_VERSION: z
+    .string()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/)
+    .default("phash-64-v1"),
+  PRODUCT_FINGERPRINT_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(30_000),
+  PRODUCT_FINGERPRINT_MAX_RESPONSE_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_024)
+    .max(1_000_000)
+    .default(64_000),
   CATALOG_SUPPLIER_ROUTES_JSON: z.string().default("{}"),
   CATALOG_SUPPLIER_API_KEY: optionalString,
   CATALOG_SUPPLIER_PROVIDER_NAME: z.string().min(1).default("external-supplier-catalog"),
@@ -278,14 +296,30 @@ function validateCatalogAcquisitionConfig(config: z.infer<typeof configSchema>):
     }
     validateExternalUrl(endpoint, `Catalog supplier route ${sourceId}`, config.NODE_ENV);
   }
+
+  const hasFingerprintUrl = config.PRODUCT_FINGERPRINT_PROVIDER_URL !== undefined;
+  const hasFingerprintApiKey = config.PRODUCT_FINGERPRINT_PROVIDER_API_KEY !== undefined;
+  if (hasFingerprintUrl !== hasFingerprintApiKey) {
+    throw new Error("Product fingerprint provider URL and API key must be configured together.");
+  }
+  if (config.PRODUCT_FINGERPRINT_PROVIDER_URL) {
+    validateExternalUrl(
+      config.PRODUCT_FINGERPRINT_PROVIDER_URL,
+      "PRODUCT_FINGERPRINT_PROVIDER_URL",
+      config.NODE_ENV,
+    );
+  }
+
   if (!config.CATALOG_ACQUISITION_ENABLED) return;
   if (
     !config.CATALOG_VISUAL_PROVIDER_URL ||
     !config.CATALOG_VISUAL_PROVIDER_API_KEY ||
+    !config.PRODUCT_FINGERPRINT_PROVIDER_URL ||
+    !config.PRODUCT_FINGERPRINT_PROVIDER_API_KEY ||
     !config.CATALOG_SUPPLIER_API_KEY
   ) {
     throw new Error(
-      "CATALOG_ACQUISITION_ENABLED requires visual URL, visual API key and supplier API key.",
+      "CATALOG_ACQUISITION_ENABLED requires visual URL/key, perceptual fingerprint URL/key and supplier API key.",
     );
   }
   if (Object.keys(routes).length === 0) {

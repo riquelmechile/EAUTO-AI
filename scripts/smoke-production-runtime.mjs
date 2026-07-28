@@ -67,6 +67,7 @@ try {
     ]),
     CONTENT_PROVIDER_API_KEY: "content-smoke-key",
     CATALOG_VISUAL_PROVIDER_API_KEY: "catalog-visual-smoke-key",
+    PRODUCT_FINGERPRINT_PROVIDER_API_KEY: "fingerprint-smoke-key",
     CATALOG_SUPPLIER_API_KEY: "catalog-supplier-smoke-key",
     ACTION_PROVIDER_API_KEY: "action-smoke-key",
     LLM_API_KEY: "llm-smoke-key",
@@ -96,6 +97,10 @@ try {
     "product identification must use the allowlisted catalog visual provider",
   );
   assert(
+    runtime.productFingerprintMode === "external-phash-64",
+    "product identification must use the allowlisted perceptual fingerprint provider",
+  );
+  assert(
     runtime.productIdentificationPolicy.policyVersion.endsWith(":product-identification-v1"),
     "product identification policy must be server-owned and versioned",
   );
@@ -119,6 +124,7 @@ try {
   console.log("✓ Verified supplier product cost feeds Profit Engine");
   console.log("✓ Product identification, human review and safe fingerprint semantics verified");
   console.log("✓ Product identification runtime and server-owned policy wired");
+  console.log("✓ External perceptual fingerprint gateway required and wired");
   console.log("✓ Catalog acquisition persistence and review lifecycle verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");

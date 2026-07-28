@@ -61,6 +61,7 @@ export function registerProductIdentificationRoutes(
       return reply.code(201).send({
         identification,
         mode: dependencies.runtime.productIdentificationMode,
+        fingerprintMode: dependencies.runtime.productFingerprintMode,
         policyVersion: dependencies.runtime.productIdentificationPolicy.policyVersion,
       });
     } catch (error) {

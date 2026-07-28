@@ -143,12 +143,15 @@ describe("Product Identification API", () => {
       const payload = identified.json<{
         identification: StoredProductIdentification;
         mode: string;
+        fingerprintMode: string;
         policyVersion: string;
       }>();
       expect(payload.identification.id).toMatch(/^product_identification_[a-f0-9]{64}$/);
       expect(payload.identification.contentHash).toMatch(/^[a-f0-9]{64}$/);
       expect(payload.identification.result.status).toBe("no-match");
       expect(payload.mode).toBe("deterministic-development");
+      expect(payload.fingerprintMode).toBe("deterministic-sha256-prefix");
+      expect(payload.identification.fingerprint.algorithm).toBe("sha256-prefix-64");
       expect(payload.policyVersion).toContain("product-identification-v1");
 
       const viewerToken = await enroll(app, tokens.viewer);

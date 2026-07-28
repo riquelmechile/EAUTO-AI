@@ -3,6 +3,7 @@ export * from "./agentOsRepositories.js";
 export * from "./deepSeekGateway.js";
 export * from "./httpActionExecutor.js";
 export * from "./httpCatalogAcquisitionProviders.js";
+export * from "./httpProductFingerprintProvider.js";
 export * from "./inMemoryAcquisitionCandidateRepository.js";
 export * from "./inMemoryMercadoLibreRepositories.js";
 export * from "./inMemoryOutboxRepository.js";
