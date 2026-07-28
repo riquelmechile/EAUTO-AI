@@ -91,6 +91,14 @@ try {
     runtime.catalogAcquisitionPolicy.supplierSourceIds.includes("supplier-production"),
     "catalog acquisition policy must use configured supplier routes",
   );
+  assert(
+    runtime.productIdentificationMode === "catalog-visual-external",
+    "product identification must use the allowlisted catalog visual provider",
+  );
+  assert(
+    runtime.productIdentificationPolicy.policyVersion.endsWith(":product-identification-v1"),
+    "product identification policy must be server-owned and versioned",
+  );
   assert(runtime.actionExecutionMode === "external", "action provider must be external");
   assert(runtime.shadowLlm !== null, "DeepSeek shadow runtime must be enabled");
   assert(runtime.mercadoLibre !== null, "MercadoLibre Chile runtime must be enabled");
@@ -109,7 +117,8 @@ try {
   console.log("✓ Multi-provider supplier authority and lease isolation verified");
   console.log("✓ Failed sync preservation and monotonic supplier state verified");
   console.log("✓ Verified supplier product cost feeds Profit Engine");
-  console.log("✓ Product identification, human review and visual similarity verified");
+  console.log("✓ Product identification, human review and safe fingerprint semantics verified");
+  console.log("✓ Product identification runtime and server-owned policy wired");
   console.log("✓ Catalog acquisition persistence and review lifecycle verified");
   console.log("✓ Production configuration parsed");
   console.log("✓ External providers and MercadoLibre runtimes wired");

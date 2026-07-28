@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ActorIdentity, Permission } from "@eauto/domain";
 import { registerCatalogAcquisitionRoutes } from "./catalogAcquisitionRoutes.js";
 import { registerOperationalIntelligenceRoutes } from "./operationalIntelligenceRoutes.js";
+import { registerProductIdentificationRoutes } from "./productIdentificationRoutes.js";
 import { registerShadowLlmRoutes } from "./llmRoutes.js";
 import type { OperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";
 import type { Runtime } from "./runtime.js";
@@ -25,6 +26,7 @@ export function registerAgentOsRoutes(
   dependencies: AgentOsRouteDependencies,
 ): void {
   registerCatalogAcquisitionRoutes(app, dependencies);
+  registerProductIdentificationRoutes(app, dependencies);
   registerShadowLlmRoutes(app, dependencies);
   registerOperationalIntelligenceRoutes(app, dependencies);
 
