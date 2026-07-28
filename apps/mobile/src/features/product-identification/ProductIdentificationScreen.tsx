@@ -208,10 +208,7 @@ export function ProductIdentificationScreen({ roles }: Props) {
           accessibilityRole="button"
           disabled={!image || !canIdentify || working !== null}
           onPress={() => void identify()}
-          style={[
-            styles.primary,
-            (!image || !canIdentify || working !== null) && styles.disabled,
-          ]}
+          style={[styles.primary, (!image || !canIdentify || working !== null) && styles.disabled]}
         >
           <Text style={styles.buttonText}>
             {working === "identify" ? "Identificando…" : "Identificar producto"}
@@ -241,11 +238,14 @@ export function ProductIdentificationScreen({ roles }: Props) {
             <View style={styles.alertBox}>
               <Text style={styles.alertTitle}>Duplicado bloqueante</Text>
               <Text style={styles.meta}>
-                {result.blockingDuplicate.productId} · {formatBps(result.blockingDuplicate.similarityBps)}
+                {result.blockingDuplicate.productId} ·{" "}
+                {formatBps(result.blockingDuplicate.similarityBps)}
               </Text>
             </View>
           ) : null}
-          {candidate ? <CandidateCard candidate={candidate} title="Candidato seleccionado" /> : null}
+          {candidate ? (
+            <CandidateCard candidate={candidate} title="Candidato seleccionado" />
+          ) : null}
           {result.alternativeCandidates.length > 0 ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Alternativas</Text>
@@ -275,7 +275,9 @@ export function ProductIdentificationScreen({ roles }: Props) {
               <Text style={styles.meta}>
                 {review.reviewerId} · {formatDate(review.decidedAt)}
               </Text>
-              {review.productId ? <Text style={styles.meta}>Product ID: {review.productId}</Text> : null}
+              {review.productId ? (
+                <Text style={styles.meta}>Product ID: {review.productId}</Text>
+              ) : null}
               {review.reason ? <Text style={styles.meta}>Motivo: {review.reason}</Text> : null}
             </View>
           ) : (
@@ -357,7 +359,8 @@ function CandidateCard({
         {candidate.model ? ` · ${candidate.model}` : ""}
       </Text>
       <Text style={styles.meta}>
-        {candidate.categoryHint ?? "Categoría no determinada"} · confianza {formatBps(candidate.confidenceBps)}
+        {candidate.categoryHint ?? "Categoría no determinada"} · confianza{" "}
+        {formatBps(candidate.confidenceBps)}
       </Text>
       <Text selectable style={styles.evidence}>
         {candidate.id}
@@ -412,7 +415,10 @@ function statusLabel(status: StoredProductIdentification["result"]["status"]): s
 }
 
 function suggestedProductId(candidateId: string): string {
-  const normalized = candidateId.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  const normalized = candidateId
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
   return `catalog_${normalized || Date.now().toString(36)}`;
 }
 
@@ -502,7 +508,12 @@ const styles = StyleSheet.create({
   permission: { color: "#fbbf24", fontSize: 12 },
   status: { color: "#bae6fd", lineHeight: 20 },
   detail: { borderBottomColor: "#334155", borderBottomWidth: 1, gap: 3, paddingBottom: 9 },
-  detailLabel: { color: "#94a3b8", fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
+  detailLabel: {
+    color: "#94a3b8",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
   detailValue: { color: "#f8fafc", lineHeight: 20 },
   mono: { fontFamily: "monospace", fontSize: 11 },
   alertBox: { backgroundColor: "#451a03", borderRadius: 12, gap: 4, padding: 12 },
@@ -510,7 +521,12 @@ const styles = StyleSheet.create({
   section: { gap: 9 },
   sectionTitle: { color: "#e2e8f0", fontSize: 14, fontWeight: "800" },
   candidate: { backgroundColor: "#0f172a", borderRadius: 12, gap: 4, padding: 12 },
-  candidateLabel: { color: "#7dd3fc", fontSize: 11, fontWeight: "800", textTransform: "uppercase" },
+  candidateLabel: {
+    color: "#7dd3fc",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
   candidateName: { color: "#f8fafc", fontSize: 16, fontWeight: "800" },
   meta: { color: "#94a3b8", lineHeight: 18 },
   evidence: { color: "#94a3b8", fontFamily: "monospace", fontSize: 10, lineHeight: 15 },
