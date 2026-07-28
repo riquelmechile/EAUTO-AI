@@ -12,46 +12,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  catalog-postgres-diagnostic:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
-      - name: Clone PR branch quietly
-        env:
-          REPOSITORY: ${{ github.repository }}
-          HEAD_REF: ${{ github.head_ref }}
-        run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
-      - name: Use project Node version
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22.16.0
           cache: npm
-      - name: Install and build quietly
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build application
+        run: npm run build
+      - name: Prepare production template
+        run: cp .env.production.example .env.production
+      - name: Validate production and release contracts
+        run: npm run doctor:production -- --template --env=.env.production
+      - name: Verify production runtime and PostgreSQL
+        run: npm run smoke:production-runtime
+      - name: Validate production Compose
+        run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
+      - name: Validate Caddy configuration
         run: |
-          npm ci --no-audit --no-fund --loglevel=error
-          npm run build > /tmp/build.log 2>&1 || { tail -n 30 /tmp/build.log; exit 1; }
-      - name: Run catalog PostgreSQL smoke directly
+          docker run --rm \
+            -e API_DOMAIN=api.example.cl \
+            -e S3_DOMAIN=files.example.cl \
+            -e ACME_EMAIL=operations@example.cl \
+            -v "$PWD/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Build production API image
+        run: docker build --pull --target runtime --tag eauto-ai:ci .
+      - name: Start object storage
         run: |
-          compose=(docker compose -p eauto-catalog-diagnostic -f infra/compose/docker-compose.yml)
-          database_url=postgres://eauto:eauto@127.0.0.1:5432/eauto
-          "${compose[@]}" up -d postgres > /tmp/postgres-start.log 2>&1
-          cleanup() { "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true; }
-          trap cleanup EXIT
-          ready=0
-          for attempt in $(seq 1 60); do
-            if "${compose[@]}" exec -T postgres psql -U eauto -d eauto -Atqc 'SELECT 1' 2>/dev/null | grep -qx 1; then
-              ready=1
-              break
-            fi
-            sleep 1
-          done
-          if [ "$ready" -ne 1 ]; then
-            tail -n 30 /tmp/postgres-start.log
-            exit 1
-          fi
-          DATABASE_URL="$database_url" node scripts/migrate.mjs > /tmp/migrate.log 2>&1 || { tail -n 30 /tmp/migrate.log; exit 1; }
-          set +e
-          DATABASE_URL="$database_url" node scripts/smoke-catalog-acquisition-postgres.mjs > /tmp/catalog-smoke.log 2>&1
-          status=$?
-          tail -n 40 /tmp/catalog-smoke.log
-          exit "$status"
+          docker compose -f infra/compose/docker-compose.yml up -d minio
+          docker compose -f infra/compose/docker-compose.yml run --rm minio-init
+      - name: Verify signed object storage flow
+        run: npm run smoke:object-storage
+      - name: Stop object storage
+        if: always()
+        run: docker compose -f infra/compose/docker-compose.yml down --remove-orphans
+      - name: Doctor
+        run: npm run doctor
