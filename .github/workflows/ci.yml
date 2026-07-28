@@ -19,7 +19,7 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: Show reader Prettier diff
+      - name: Show test Prettier diff
         run: |
-          npx prettier --write packages/infrastructure/src/mercadoLibreTaxonomyHttpReader.ts >/dev/null
-          git diff --unified=0 -- packages/infrastructure/src/mercadoLibreTaxonomyHttpReader.ts
+          npx prettier --write tests/mercadoLibreTaxonomyHttpReader.test.ts >/dev/null
+          git diff --unified=0 -- tests/mercadoLibreTaxonomyHttpReader.test.ts
