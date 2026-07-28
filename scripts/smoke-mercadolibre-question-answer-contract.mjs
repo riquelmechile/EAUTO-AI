@@ -79,10 +79,7 @@ try {
   assert.equal(execution.providerReceipt.operation, "question.answer");
   assert.equal(execution.providerReceipt.externalMutation, true);
   assert.equal(requests.length, 2);
-  assert.equal(
-    requests[0].url,
-    "https://api.mercadolibre.com/questions/3957150025?api_version=4",
-  );
+  assert.equal(requests[0].url, "https://api.mercadolibre.com/questions/3957150025?api_version=4");
   assert.equal(requests[1].url, "https://api.mercadolibre.com/answers");
   assert.deepEqual(JSON.parse(requests[1].init.body), {
     question_id: 3957150025,

@@ -17,9 +17,7 @@ export type MercadoLibreQuestionAnswerCredentialProviderConfig = Readonly<{
   refreshLeaseMs: number;
 }>;
 
-export class RotatingMercadoLibreQuestionAnswerCredentialProvider
-  implements ForReadingMercadoLibreQuestionAnswerCredential
-{
+export class RotatingMercadoLibreQuestionAnswerCredentialProvider implements ForReadingMercadoLibreQuestionAnswerCredential {
   constructor(
     private readonly connections: MercadoLibreConnectionRepository,
     private readonly security: MercadoLibreSecurityPort,
@@ -27,7 +25,8 @@ export class RotatingMercadoLibreQuestionAnswerCredentialProvider
     private readonly clock: { now(): Date },
     private readonly config: MercadoLibreQuestionAnswerCredentialProviderConfig,
   ) {
-    if (!config.allowedAccountId.trim()) throw new Error("Allowed MercadoLibre account is required.");
+    if (!config.allowedAccountId.trim())
+      throw new Error("Allowed MercadoLibre account is required.");
     if (!Number.isSafeInteger(config.refreshWindowMs) || config.refreshWindowMs < 60_000) {
       throw new Error("MercadoLibre refresh window must be at least 60000 ms.");
     }
@@ -121,7 +120,10 @@ export class RotatingMercadoLibreQuestionAnswerCredentialProvider
   }
 
   private assertUsableStatus(stored: MercadoLibreCredentialRecord): void {
-    if (stored.connection.status === "reauthorization-required" || stored.connection.status === "revoked") {
+    if (
+      stored.connection.status === "reauthorization-required" ||
+      stored.connection.status === "revoked"
+    ) {
       throw new MercadoLibreIntegrationError(
         "mercadolibre-reauthorization-required",
         `MercadoLibre account ${stored.connection.accountId} requires authorization again.`,

@@ -56,8 +56,10 @@ export class MercadoLibreQuestionAnswerExecutor implements ActionExecutor {
     private readonly config: MercadoLibreQuestionAnswerExecutorConfig,
   ) {
     this.apiBaseUrl = validateApiBaseUrl(config.apiBaseUrl);
-    if (!config.allowedAccountId.trim()) throw new Error("Allowed MercadoLibre account is required.");
-    if (!config.policyVersion.trim()) throw new Error("Question answer policy version is required.");
+    if (!config.allowedAccountId.trim())
+      throw new Error("Allowed MercadoLibre account is required.");
+    if (!config.policyVersion.trim())
+      throw new Error("Question answer policy version is required.");
     if (!Number.isSafeInteger(config.timeoutMs) || config.timeoutMs < 1_000) {
       throw new Error("MercadoLibre question answer timeout must be at least 1000 ms.");
     }
@@ -127,9 +129,14 @@ export class MercadoLibreQuestionAnswerExecutor implements ActionExecutor {
     };
   }
 
-  private readCommand(action: BusinessAction, expectedStatus: "executing" | "executed"): AnswerCommand {
+  private readCommand(
+    action: BusinessAction,
+    expectedStatus: "executing" | "executed",
+  ): AnswerCommand {
     if (action.accountId !== this.config.allowedAccountId) {
-      throw new Error(`MercadoLibre question answers are not enabled for account ${action.accountId}.`);
+      throw new Error(
+        `MercadoLibre question answers are not enabled for account ${action.accountId}.`,
+      );
     }
     if (action.policyVersion !== this.config.policyVersion) {
       throw new Error("MercadoLibre question answer policy version does not match runtime policy.");
@@ -155,7 +162,9 @@ export class MercadoLibreQuestionAnswerExecutor implements ActionExecutor {
     const text = change.to.trim();
     if (!text) throw new Error("MercadoLibre answer text cannot be empty.");
     if (text.length > MAXIMUM_ANSWER_CHARACTERS) {
-      throw new Error(`MercadoLibre answer text cannot exceed ${MAXIMUM_ANSWER_CHARACTERS} characters.`);
+      throw new Error(
+        `MercadoLibre answer text cannot exceed ${MAXIMUM_ANSWER_CHARACTERS} characters.`,
+      );
     }
     return Object.freeze({
       questionId: action.target,
@@ -167,7 +176,8 @@ export class MercadoLibreQuestionAnswerExecutor implements ActionExecutor {
 
   private async readCredential(accountId: string): Promise<MercadoLibreQuestionAnswerCredential> {
     const credential = await this.credentials.get(accountId);
-    if (!credential.accessToken.trim()) throw new Error("MercadoLibre access token is unavailable.");
+    if (!credential.accessToken.trim())
+      throw new Error("MercadoLibre access token is unavailable.");
     if (!/^\d+$/.test(credential.sellerId)) {
       throw new Error("MercadoLibre seller identity is invalid.");
     }
@@ -229,7 +239,9 @@ export class MercadoLibreQuestionAnswerExecutor implements ActionExecutor {
       return normalizeQuestion(payload);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
-        throw new Error(`MercadoLibre question request timed out after ${this.config.timeoutMs} ms.`);
+        throw new Error(
+          `MercadoLibre question request timed out after ${this.config.timeoutMs} ms.`,
+        );
       }
       throw error;
     } finally {

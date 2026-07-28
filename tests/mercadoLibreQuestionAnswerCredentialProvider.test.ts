@@ -91,9 +91,7 @@ function createHarness(expiresAt: string) {
 
 describe("RotatingMercadoLibreQuestionAnswerCredentialProvider", () => {
   it("reveals a still-valid encrypted access token without refreshing", async () => {
-    const { provider, connections, security, client } = createHarness(
-      "2026-07-28T13:00:00.000Z",
-    );
+    const { provider, connections, security, client } = createHarness("2026-07-28T13:00:00.000Z");
 
     const credential = await provider.get("plasticov");
 
@@ -131,7 +129,9 @@ describe("RotatingMercadoLibreQuestionAnswerCredentialProvider", () => {
       new MercadoLibreRemoteError("invalid refresh token", true),
     );
 
-    await expect(provider.get("plasticov")).rejects.toThrow(/requires authorization again|rejected/);
+    await expect(provider.get("plasticov")).rejects.toThrow(
+      /requires authorization again|rejected/,
+    );
     expect(connections.markReauthorizationRequired).toHaveBeenCalledWith("plasticov", now);
     expect(connections.releaseRefreshLease).toHaveBeenCalledWith("plasticov", "lease-owner");
   });

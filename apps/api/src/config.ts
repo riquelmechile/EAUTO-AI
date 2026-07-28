@@ -195,12 +195,7 @@ const configSchema = z.object({
     .min(1)
     .max(128)
     .default("mercadolibre-question-answer-v1"),
-  MELI_QUESTION_ANSWER_TIMEOUT_MS: z.coerce
-    .number()
-    .int()
-    .min(1_000)
-    .max(120_000)
-    .default(15_000),
+  MELI_QUESTION_ANSWER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(15_000),
   MELI_QUESTION_ANSWER_MAX_RESPONSE_BYTES: z.coerce
     .number()
     .int()
