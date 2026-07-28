@@ -31,11 +31,7 @@ const now = new Date("2026-07-27T14:00:00.000Z");
 const repository = new PostgresSupplierMirrorRepository(pool, () => now);
 const mirror = new SupplierMirrorService(repository);
 const profitRepository = new PostgresProfitEngineRepository(pool, () => now);
-const profitEngine = new ProfitEngineService(
-  profitRepository,
-  profitRepository,
-  profitRepository,
-);
+const profitEngine = new ProfitEngineService(profitRepository, profitRepository, profitRepository);
 
 try {
   await seedScope();
@@ -63,10 +59,7 @@ try {
   });
   const firstRecoveryRecord = await mirror.recordObservation(firstRecovery);
   assert(firstRecoveryRecord.recorded, "the first recovery observation must be recorded");
-  assert(
-    firstRecoveryRecord.product.previousStock === 0,
-    "the mirror must retain previous stock",
-  );
+  assert(firstRecoveryRecord.product.previousStock === 0, "the mirror must retain previous stock");
   assert(firstRecoveryRecord.product.currentStock === 5, "the mirror must expose current stock");
 
   await assertRejects(

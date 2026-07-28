@@ -183,14 +183,7 @@ async function seedScope() {
     `INSERT INTO mercadolibre_listing_snapshots
       (account_id, organization_id, seller_id, item_id, observed_at, payload_json)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
-    [
-      accountId,
-      organizationId,
-      sellerId,
-      listingId,
-      listing.observedAt,
-      JSON.stringify(listing),
-    ],
+    [accountId, organizationId, sellerId, listingId, listing.observedAt, JSON.stringify(listing)],
   );
   await pool.query(
     `INSERT INTO economic_listing_policies
@@ -231,7 +224,10 @@ async function assertEconomicCost(expectedAmount, expectedEvidenceId) {
      WHERE account_id = $1 AND listing_id = $2 AND cost_kind = 'product-cost'`,
     [accountId, listingId],
   );
-  assert(result.rows[0]?.amount_minor === String(expectedAmount), "unexpected economic product cost");
+  assert(
+    result.rows[0]?.amount_minor === String(expectedAmount),
+    "unexpected economic product cost",
+  );
   assert(result.rows[0]?.evidence_id === expectedEvidenceId, "unexpected economic cost evidence");
 }
 

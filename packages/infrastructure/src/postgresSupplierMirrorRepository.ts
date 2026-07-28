@@ -117,7 +117,8 @@ export class PostgresSupplierMirrorRepository
       );
       if (
         previous &&
-        new Date(observation.observedAt).getTime() <= new Date(toIso(previous.observed_at)).getTime()
+        new Date(observation.observedAt).getTime() <=
+          new Date(toIso(previous.observed_at)).getTime()
       ) {
         throw new Error("Supplier observation must be newer than the current product state.");
       }
@@ -313,10 +314,7 @@ export class PostgresSupplierMirrorRepository
       row.profitability_payload.salePriceMinor === listing.priceMinor &&
       currentUnitCostMinor !== null &&
       currentUnitCostMinor === economicProductCostMinor &&
-      hasEvidenceRef(
-        row.profitability_payload,
-        row.economic_product_cost_evidence_id,
-      );
+      hasEvidenceRef(row.profitability_payload, row.economic_product_cost_evidence_id);
 
     return Object.freeze({
       organizationId: row.organization_id,
@@ -597,7 +595,9 @@ function mapRecordedProduct(row: SupplierProductRow): RecordedSupplierProduct {
 }
 
 function hashCanonical(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+  return createHash("sha256")
+    .update(JSON.stringify(canonicalize(value)))
+    .digest("hex");
 }
 
 function canonicalize(value: unknown): unknown {

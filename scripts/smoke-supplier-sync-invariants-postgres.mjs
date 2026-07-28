@@ -111,10 +111,7 @@ try {
     afterDelayed.consecutive_successful_syncs === 1,
     "out-of-order evidence changed product telemetry",
   );
-  assert(
-    (await recoveryConfirmationCount()) === 1,
-    "out-of-order evidence changed link debounce",
-  );
+  assert((await recoveryConfirmationCount()) === 1, "out-of-order evidence changed link debounce");
 
   const secondRecovery = await mirror.recordObservation(
     observation({
@@ -216,14 +213,7 @@ async function seedScope() {
     `INSERT INTO mercadolibre_listing_snapshots
       (account_id, organization_id, seller_id, item_id, observed_at, payload_json)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
-    [
-      accountId,
-      organizationId,
-      sellerId,
-      listingId,
-      listing.observedAt,
-      JSON.stringify(listing),
-    ],
+    [accountId, organizationId, sellerId, listingId, listing.observedAt, JSON.stringify(listing)],
   );
 }
 
