@@ -25,19 +25,28 @@ AFTER INSERT ON profitability_snapshots
 FOR EACH ROW
 EXECUTE FUNCTION wake_supplier_stock_after_profitability();
 
+WITH latest_profitability AS (
+  SELECT DISTINCT ON (snapshot.organization_id, snapshot.account_id, snapshot.listing_id)
+    snapshot.organization_id,
+    snapshot.account_id,
+    snapshot.listing_id,
+    snapshot.calculated_at
+  FROM profitability_snapshots snapshot
+  ORDER BY
+    snapshot.organization_id,
+    snapshot.account_id,
+    snapshot.listing_id,
+    snapshot.calculated_at DESC,
+    snapshot.created_at DESC
+)
 UPDATE supplier_listing_links link
 SET next_audit_at = LEAST(link.next_audit_at, profitability.calculated_at),
     updated_at = now()
-FROM LATERAL (
-  SELECT snapshot.calculated_at
-  FROM profitability_snapshots snapshot
-  WHERE snapshot.organization_id = link.organization_id
-    AND snapshot.account_id = link.account_id
-    AND snapshot.listing_id = link.listing_id
-  ORDER BY snapshot.calculated_at DESC, snapshot.created_at DESC
-  LIMIT 1
-) profitability
-WHERE link.active = true
+FROM latest_profitability profitability
+WHERE link.organization_id = profitability.organization_id
+  AND link.account_id = profitability.account_id
+  AND link.listing_id = profitability.listing_id
+  AND link.active = true
   AND link.availability_authoritative = true;
 
 COMMIT;
