@@ -1,4 +1,5 @@
 import type {
+  ForReadingProductIdentificationReviews,
   ForReadingStoredProductIdentifications,
   ForSavingProductIdentificationResults,
   ForSavingProductIdentificationReviews,
@@ -19,6 +20,7 @@ export class InMemoryProductIdentificationRepository
     ForSavingProductIdentificationResults,
     ForReadingStoredProductIdentifications,
     ForSavingProductIdentificationReviews,
+    ForReadingProductIdentificationReviews,
     ForSearchingVisualDuplicates
 {
   private readonly identifications = new Map<string, StoredProductIdentification>();
@@ -60,6 +62,22 @@ export class InMemoryProductIdentificationRepository
       return Promise.resolve(null);
     }
     return Promise.resolve(stored);
+  }
+
+  getReview(input: {
+    organizationId: string;
+    accountId: string;
+    identificationId: string;
+  }): Promise<ProductIdentificationReview | null> {
+    const review = this.reviews.get(input.identificationId);
+    if (
+      !review ||
+      review.organizationId !== input.organizationId ||
+      review.accountId !== input.accountId
+    ) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(review);
   }
 
   saveReview(
