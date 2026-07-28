@@ -26,7 +26,7 @@ const productCostEvidenceId = `supplier-product-cost-${suffix}`;
 const fulfillmentCostEvidenceId = `supplier-fulfillment-cost-${suffix}`;
 const firstObservedAt = "2026-07-27T12:00:00.000Z";
 const firstRecoveryObservedAt = "2026-07-27T13:00:00.000Z";
-const confirmedRecoveryObservedAt = "2026-07-27T13:30:00.000Z";
+const confirmedRecoveryObservedAt = "2026-07-27T14:16:00.000Z";
 const now = new Date("2026-07-27T14:00:00.000Z");
 const repository = new PostgresSupplierMirrorRepository(pool, () => now);
 const mirror = new SupplierMirrorService(repository);
@@ -124,6 +124,7 @@ try {
     "one available observation must not create a reactivation proposal",
   );
 
+  now.setTime(new Date(confirmedRecoveryObservedAt).getTime());
   const confirmedRecovery = observation({
     stockQuantity: 5,
     observedAt: confirmedRecoveryObservedAt,
