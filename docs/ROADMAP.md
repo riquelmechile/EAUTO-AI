@@ -1,6 +1,6 @@
 # Roadmap
 
-> Estado actualizado después de la auditoría técnica de julio de 2026.
+> Estado actualizado después de la auditoría técnica del 28 de julio de 2026.
 
 ## Leyenda
 
@@ -17,7 +17,7 @@
 | F1 — Fundación productiva    |   ✅   | PostgreSQL, workers, almacenamiento, seguridad, CI y despliegue inmutable     |
 | F2 — MercadoLibre read plane |   🟡   | Conectar cuentas reales y consolidar la verdad operacional                    |
 | F3 — Agent OS gobernado      |   🟡   | Operar agentes con contratos, skills, sesiones, presupuestos y scorecards     |
-| F4 — Content Studio real     |   🟡   | Pasar de captura y simulación trazable a generación externa verificable       |
+| F4 — Content Studio real     |   🟡   | Identificar productos y conectar generación externa verificable               |
 | F5 — Product Launch          |   🟡   | Foto → investigación → economics → assets → publicación preparada             |
 | F6 — Autonomía limitada      |   🔒   | Promover capacidades solo con evidencia, presupuesto, rollback y outcomes     |
 | F7 — Expansión comercial     |   ⬜   | Ecommerce propio, proveedores, Ads, redes sociales y marketplaces adicionales |
@@ -104,26 +104,38 @@
 - [x] Object storage S3-compatible.
 - [x] Upload, URLs firmadas y checksums verificables.
 - [x] Provider de desarrollo trazable que declara no haber generado contenido externo.
+- [x] Product Identification con dominio, persistencia, runtime y API autenticada.
+- [x] Revisión humana terminal y fingerprints por organización/cuenta.
+- [x] Separación segura entre igualdad SHA-256 y similitud perceptual.
+- [x] Android para identificar, inspeccionar evidencia y confirmar/rechazar.
+- [x] Catalog Acquisition y Photo-to-Similar con revisión humana.
 
 ### Pendiente
 
-- [ ] Integrar visión e identificación de producto.
+- [ ] Conectar un proveedor visual real y allowlisted.
+- [ ] Integrar un servicio perceptual real que produzca `phash-64`.
 - [ ] Seleccionar y conectar proveedores reales de imagen y video.
 - [ ] Incorporar moderación y políticas de marca.
 - [ ] Crear brand kits separados para Plasticov y Maustian.
-- [ ] Añadir comparación visual y control de duplicados.
 - [ ] Verificar que cada asset externo corresponda al producto y brief aprobados.
 
 ## F5 — Product Launch 🟡
 
+### Implementado
+
 - [x] Dominio, estados y flujo de propuesta/review/aprobación.
 - [x] Content Studio y evidence bundles como base.
 - [x] Gate económico y policy hash.
-- [ ] Foto → identificación verificable.
-- [ ] Investigación de mercado y competencia.
-- [ ] Unit economics, precio y margen mínimo.
+- [x] Foto → identificación verificable → decisión humana.
+- [x] Unit economics determinista, margen, precio mínimo y propuestas de repricing.
+- [x] Supplier Mirror, costo verificado y control de vigencia.
+- [x] Catalog Acquisition y candidatos de proveedor persistidos.
+
+### Pendiente
+
+- [ ] Investigación de mercado y competencia con evidencia versionada.
 - [ ] Validación de categoría y atributos MercadoLibre.
-- [ ] Generación de assets y preview Android.
+- [ ] Generación real de assets y preview Android aprobado.
 - [ ] Escritura preparada mediante adapter MercadoLibre.
 - [ ] Verificación posterior de la publicación real.
 
@@ -165,6 +177,7 @@ No se considera que EAUTO-AI esté operando comercialmente hasta completar todos
 - [ ] OAuth Plasticov y Maustian validado;
 - [ ] webhook real recibido, autenticado y deduplicado;
 - [ ] primera sesión LLM shadow con evidencia y costo registrados;
+- [ ] proveedor visual real y perceptual hash validados con imágenes conocidas;
 - [ ] backup externo completo;
 - [ ] restore drill exitoso en un entorno aislado;
 - [ ] AAB firmado instalado en un dispositivo real;
