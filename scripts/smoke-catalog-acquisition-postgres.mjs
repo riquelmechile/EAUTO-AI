@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import { Pool } from "pg";
 import { reviewAcquisitionCandidate } from "@eauto/domain";
 import { PostgresAcquisitionCandidateRepository } from "@eauto/infrastructure";
@@ -44,11 +45,13 @@ const candidate = Object.freeze({
 
 try {
   await seedScope();
-  await repository.save(candidate);
-  await repository.save(candidate);
+  const inserted = await repository.save(candidate);
+  const repeated = await repository.save(candidate);
+  assert(isDeepStrictEqual(inserted, candidate), "inserted candidate must be canonical");
+  assert(isDeepStrictEqual(repeated, candidate), "identical save must return canonical candidate");
 
   const loaded = await repository.get({ id: candidate.id, organizationId, accountId });
-  assert(JSON.stringify(loaded) === JSON.stringify(candidate), "saved candidate must round-trip");
+  assert(isDeepStrictEqual(loaded, candidate), "saved candidate must round-trip structurally");
   const crossScope = await repository.get({
     id: candidate.id,
     organizationId,
@@ -83,6 +86,15 @@ try {
     "review identity must persist durably",
   );
 
+  const rediscovered = await repository.save({
+    ...candidate,
+    createdAt: "2026-07-28T16:00:00.000Z",
+  });
+  assert(
+    isDeepStrictEqual(rediscovered, reviewed),
+    "rediscovery must return the reviewed canonical candidate",
+  );
+
   await assertRejects(
     repository.transition({ candidate: reviewed, expectedStatus: "needs-review" }),
     /transition conflicted/,
@@ -106,7 +118,7 @@ try {
   );
 
   console.log(
-    "✓ Catalog acquisition persistence, idempotency, scope isolation and review CAS verified",
+    "✓ Catalog acquisition persistence, lifecycle-safe idempotency, scope isolation and review CAS verified",
   );
 } finally {
   await cleanup();
