@@ -180,6 +180,35 @@ export type MercadoLibreReputation = Readonly<{
   observedAt: string;
 }>;
 
+export type MercadoLibreSubmittedAttribute = Readonly<{
+  id: string;
+  valueId: string | null;
+  valueName: string | null;
+}>;
+
+export type MercadoLibreTaxonomyPreflightReason =
+  | "attribute-evidence-mismatch"
+  | "category-not-leaf"
+  | "category-not-listable"
+  | "category-site-mismatch"
+  | "duplicate-submitted-attribute"
+  | "evidence-stale"
+  | "invalid-attribute-value"
+  | "missing-required-attribute"
+  | "unknown-attribute";
+
+export type MercadoLibreTaxonomyPreflightResult = Readonly<{
+  status: "ready" | "blocked" | "incomplete";
+  categoryId: string;
+  reasons: readonly MercadoLibreTaxonomyPreflightReason[];
+  missingRequiredAttributeIds: readonly string[];
+  invalidAttributeIds: readonly string[];
+  evidenceRefs: readonly string[];
+  policyVersion: string;
+  evaluatedAt: string;
+  writesPerformed: false;
+}>;
+
 type RequestOptions = RequestInit & { retryAuthentication?: boolean };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -327,6 +356,21 @@ export const api = {
   mercadoLibreReputation: (accountId: string) =>
     request<{ reputation: MercadoLibreReputation | null }>(
       `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/reputation`,
+    ),
+
+  mercadoLibreTaxonomyPreflight: (
+    accountId: string,
+    input: Readonly<{
+      categoryId: string;
+      submittedAttributes: readonly MercadoLibreSubmittedAttribute[];
+    }>,
+  ) =>
+    request<MercadoLibreTaxonomyPreflightResult>(
+      `/v1/integrations/mercadolibre/${encodeURIComponent(accountId)}/taxonomy/preflight`,
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
     ),
 
   requestSourceImageUpload: (input: {
