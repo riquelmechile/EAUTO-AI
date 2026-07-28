@@ -57,7 +57,8 @@ export class MercadoLibreTaxonomyHttpReader implements ForReadingMercadoLibreTax
     const payload = await this.getJson(
       `/categories/${encodeURIComponent(input.categoryId)}/attributes`,
     );
-    if (!Array.isArray(payload)) throw new Error("MercadoLibre category attributes must be an array.");
+    if (!Array.isArray(payload))
+      throw new Error("MercadoLibre category attributes must be an array.");
     const attributes = payload.map((value, index) => normalizeAttribute(value, index));
     return Object.freeze({
       categoryId: input.categoryId,
@@ -70,20 +71,37 @@ export class MercadoLibreTaxonomyHttpReader implements ForReadingMercadoLibreTax
   }
 
   private async getJson(path: string): Promise<unknown> {
-    const response = await fetch(new URL(path, this.config.apiBaseUrl), {
-      redirect: "error",
-      signal: AbortSignal.timeout(this.config.timeoutMs),
-      headers: { accept: "application/json" },
-    });
-    if (!response.ok) {
-      const text = (await readBoundedText(response, this.config.maximumResponseBytes)).slice(0, 500);
-      throw new Error(`MercadoLibre taxonomy read failed (${response.status}) for ${path}: ${text}`);
-    }
-    const text = await readBoundedText(response, this.config.maximumResponseBytes);
     try {
-      return JSON.parse(text) as unknown;
-    } catch {
-      throw new Error(`MercadoLibre taxonomy returned invalid JSON for ${path}.`);
+      const response = await fetch(new URL(path, this.config.apiBaseUrl), {
+        redirect: "error",
+        signal: AbortSignal.timeout(this.config.timeoutMs),
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) {
+        const text = (await readBoundedText(response, this.config.maximumResponseBytes)).slice(
+          0,
+          500,
+        );
+        throw new Error(
+          `MercadoLibre taxonomy read failed (${response.status}) for ${path}: ${text}`,
+        );
+      }
+      const text = await readBoundedText(response, this.config.maximumResponseBytes);
+      try {
+        return JSON.parse(text) as unknown;
+      } catch {
+        throw new Error(`MercadoLibre taxonomy returned invalid JSON for ${path}.`);
+      }
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === "AbortError" || error.name === "TimeoutError")
+      ) {
+        throw new Error(
+          `MercadoLibre taxonomy read timed out after ${this.config.timeoutMs} ms for ${path}.`,
+        );
+      }
+      throw error;
     }
   }
 }
@@ -94,7 +112,10 @@ function normalizeAttribute(value: unknown, index: number): MercadoLibreCategory
   const allowedValues = Array.isArray(attribute.values)
     ? attribute.values.map((allowed, allowedIndex) => {
         const normalized = asRecord(allowed, `attribute[${index}].values[${allowedIndex}]`);
-        return Object.freeze({ id: readStringOrNumber(normalized, "id"), name: readString(normalized, "name") });
+        return Object.freeze({
+          id: readStringOrNumber(normalized, "id"),
+          name: readString(normalized, "name"),
+        });
       })
     : [];
   return Object.freeze({
@@ -107,7 +128,9 @@ function normalizeAttribute(value: unknown, index: number): MercadoLibreCategory
   });
 }
 
-function readValueType(attribute: Record<string, unknown>): MercadoLibreCategoryAttributeContract["valueType"] {
+function readValueType(
+  attribute: Record<string, unknown>,
+): MercadoLibreCategoryAttributeContract["valueType"] {
   const value = readString(attribute, "value_type");
   if (["string", "number", "list", "boolean", "number_unit"].includes(value)) {
     return value as MercadoLibreCategoryAttributeContract["valueType"];
@@ -130,7 +153,10 @@ async function readBoundedText(response: Response, maximumBytes: number): Promis
   return new TextDecoder().decode(buffer);
 }
 
-function readNamedIds(value: unknown, field: string): ReadonlyArray<Readonly<{ id: string; name: string }>> {
+function readNamedIds(
+  value: unknown,
+  field: string,
+): ReadonlyArray<Readonly<{ id: string; name: string }>> {
   if (!Array.isArray(value)) throw new Error(`${field} must be an array.`);
   return value.map((entry, index) => {
     const record = asRecord(entry, `${field}[${index}]`);
@@ -139,7 +165,8 @@ function readNamedIds(value: unknown, field: string): ReadonlyArray<Readonly<{ i
 }
 
 function validateScope(organizationId: string, accountId: string): void {
-  if (!organizationId.trim() || !accountId.trim()) throw new Error("Organization and account scope are required.");
+  if (!organizationId.trim() || !accountId.trim())
+    throw new Error("Organization and account scope are required.");
 }
 
 function validateCategoryId(categoryId: string): void {
@@ -165,7 +192,8 @@ function optionalRecord(value: unknown): Record<string, unknown> | null {
 
 function readString(record: Record<string, unknown>, field: string): string {
   const value = record[field];
-  if (typeof value !== "string" || !value.trim()) throw new Error(`${field} must be a non-empty string.`);
+  if (typeof value !== "string" || !value.trim())
+    throw new Error(`${field} must be a non-empty string.`);
   return value;
 }
 
