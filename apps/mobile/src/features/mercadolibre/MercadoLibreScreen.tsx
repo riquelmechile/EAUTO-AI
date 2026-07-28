@@ -10,6 +10,7 @@ import {
   type MercadoLibreQuestion,
   type MercadoLibreStatus,
 } from "../../lib/api";
+import { MercadoLibreTaxonomyPreflight } from "./MercadoLibreTaxonomyPreflight";
 
 const MOBILE_RETURN_URI = "eautoai://mercadolibre/oauth-complete";
 const ACCOUNTS = [
@@ -218,6 +219,8 @@ function AccountCard({
       {!canManage ? (
         <Text style={styles.permission}>Su rol puede consultar, pero no conectar cuentas.</Text>
       ) : null}
+
+      <MercadoLibreTaxonomyPreflight accountId={accountId} />
 
       {status?.connected ? (
         <View style={styles.metrics}>
