@@ -13,3 +13,4 @@ export * from "./ports.js";
 export * from "./profitEngineService.js";
 export * from "./sessionService.js";
 export * from "./sourceImageUploadService.js";
+export * from "./supplierStockService.js";
