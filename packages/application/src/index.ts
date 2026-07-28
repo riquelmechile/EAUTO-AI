@@ -8,6 +8,7 @@ export * from "./llmService.js";
 export * from "./marginAuditDaemon.js";
 export * from "./mercadoLibreService.js";
 export * from "./mercadoLibreNotifications.js";
+export * from "./mercadoLibreTaxonomyCache.js";
 export * from "./mercadoLibreTaxonomyPreflightService.js";
 export * from "./operationalIntelligenceService.js";
 export * from "./outbox.js";

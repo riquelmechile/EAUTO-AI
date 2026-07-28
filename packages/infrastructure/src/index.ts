@@ -21,6 +21,7 @@ export * from "./photoSimilarityProductCandidateProvider.js";
 export * from "./postgresAcquisitionCandidateRepository.js";
 export * from "./postgresActionRepository.js";
 export * from "./postgresMercadoLibreRepositories.js";
+export * from "./postgresMercadoLibreTaxonomySnapshotRepository.js";
 export * from "./postgresOutboxRepository.js";
 export * from "./postgresProductIdentificationRepository.js";
 export * from "./postgresProfitEngineRepositories.js";
