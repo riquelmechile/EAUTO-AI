@@ -126,14 +126,10 @@ describe("supplier stock domain", () => {
       policy,
     );
 
+    const staleSignal = assessment.signals.find((signal) => signal.kind === "evidence.stale");
     expect(assessment.availabilityProposal).toBeNull();
-    expect(assessment.signals).toContainEqual(
-      expect.objectContaining({
-        kind: "evidence.stale",
-        severity: "critical",
-        details: expect.objectContaining({ evidenceKind: "stock" }),
-      }),
-    );
+    expect(staleSignal).toMatchObject({ kind: "evidence.stale", severity: "critical" });
+    expect(staleSignal?.details.evidenceKind).toBe("stock");
   });
 
   it("reports sync failure without producing an availability proposal", () => {
