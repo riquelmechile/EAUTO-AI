@@ -44,13 +44,15 @@ Under a PostgreSQL advisory transaction lock scoped to `supplierSourceId + SKU`:
 1. source scope and configured source type are verified;
 2. an exact duplicate content hash returns the current state without changing counters;
 3. a different observation whose timestamp is older than or equal to current state is rejected and rolled back;
-4. a new ordered observation is appended once and advances current/previous stock and cost;
-5. product-level successful-sync telemetry advances only for new successful observations;
-6. each linked listing keeps its own recovery confirmation count;
-7. that count advances only for a new successful observation above the link's recovery threshold and resets otherwise;
-8. linked stock audits become due.
+4. a new ordered observation is appended once;
+5. a successful observation may advance current/previous stock, cost and evidence;
+6. a failed observation is retained in history, resets recovery confirmation, but cannot replace the last verified stock, cost or evidence;
+7. product-level successful-sync telemetry advances only for new successful observations;
+8. each linked listing keeps its own recovery confirmation count;
+9. that count advances only for a new successful observation above the link's recovery threshold and resets otherwise;
+10. linked stock audits become due.
 
-This prevents delayed scraper responses from rolling the mirror backward and prevents repeated delivery of one observation from satisfying recovery debounce.
+The repository performs scope, duplicate and temporal checks. PostgreSQL migration 019 adds a trigger-level fail-closed boundary so future adapters cannot overwrite verified supplier state with a failed or temporally regressive sync.
 
 ## Link scope
 
@@ -88,6 +90,8 @@ A later unique successful observation that remains above the threshold records c
 - profitability is verified against current price and cost;
 - the current supplier cost is unchanged from the economically verified cost.
 
+A failed sync or a successful observation at/below the recovery threshold resets confirmation to zero. Delayed and duplicate observations cannot advance it.
+
 Every resulting proposal remains `pending-approval`.
 
 ## Bounded daemon
@@ -122,6 +126,7 @@ Assessments and proposals are idempotent by canonical content hash. Assessment t
 - Supplier observations cannot directly mutate MercadoLibre.
 - Cost changes force Profit Engine reevaluation before reactivation.
 - Old, mismatched or incomplete profitability snapshots cannot authorize reactivation.
+- Failed syncs cannot overwrite verified supplier state.
 - Out-of-order observations cannot replace current state.
 - Cross-account and cross-source data are rejected.
 
@@ -130,13 +135,14 @@ Assessments and proposals are idempotent by canonical content hash. Assessment t
 - First supplier observation creates current state.
 - Exact duplicate content is not appended twice and changes no confirmation counter.
 - A different out-of-order observation is rejected and cannot replace current state.
+- Failed sync remains observable, preserves verified stock/cost and resets recovery confirmation.
 - First unique successful observation above a link threshold records confirmation `1` and creates no reactivation proposal when policy requires two.
 - Second unique successful observation above the threshold records confirmation `2`.
-- A failed sync or stock at/below threshold resets the link confirmation count.
+- Stock at/below threshold resets the link confirmation count.
 - Profitability that does not match current listing price, product cost and evidence is treated as unknown.
 - Competing workers cannot lease the same link.
 - Verified confirmed recovery creates one idempotent reactivation proposal.
 - Proposal remains pending approval and preserves policy version.
 - Repeated identical audits create no duplicate assessment or proposal.
-- Production smoke executes migrations, ordered ingestion, economic verification, leasing and evaluation against PostgreSQL.
+- Production smoke executes migrations, ordered ingestion, failure preservation, economic verification, leasing and evaluation against PostgreSQL.
 - Worker runs stock audit independently from other processors.
