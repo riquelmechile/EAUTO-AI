@@ -23,5 +23,7 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install dependencies quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: List files requiring Prettier
-        run: npx prettier --check docs/sdd/009-product-identification-runtime-api.md apps/api/src/agentOsRoutes.ts apps/api/src/productIdentificationRoutes.ts apps/api/src/runtime.ts packages/application/src/productIdentificationService.ts packages/infrastructure/src/index.ts packages/infrastructure/src/inMemoryProductIdentificationRepository.ts packages/infrastructure/src/inMemorySourceImageUploadRepository.ts packages/infrastructure/src/photoSimilarityProductCandidateProvider.ts packages/infrastructure/src/postgresProductIdentificationRepository.ts scripts/smoke-production-runtime.mjs tests/inMemoryProductIdentificationRepository.test.ts tests/photoSimilarityProductCandidateProvider.test.ts tests/productIdentificationApi.test.ts
+      - name: Show exact Prettier diff
+        run: |
+          npx prettier --write apps/api/src/productIdentificationRoutes.ts packages/infrastructure/src/inMemoryProductIdentificationRepository.ts packages/infrastructure/src/photoSimilarityProductCandidateProvider.ts >/dev/null
+          git diff --unified=3 -- apps/api/src/productIdentificationRoutes.ts packages/infrastructure/src/inMemoryProductIdentificationRepository.ts packages/infrastructure/src/photoSimilarityProductCandidateProvider.ts
