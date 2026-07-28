@@ -23,8 +23,7 @@ jobs:
         run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
       - name: Install dependencies quietly
         run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
-      - name: Render formatted files
+      - name: Show Prettier diff only
         run: |
-          npx prettier scripts/smoke-product-identification-postgres.mjs
-          printf '\n--- PRODUCT FINGERPRINT TEST ---\n'
-          npx prettier tests/productFingerprintSemantics.test.ts
+          npx prettier --write scripts/smoke-product-identification-postgres.mjs tests/productFingerprintSemantics.test.ts >/dev/null
+          git diff --unified=3 -- scripts/smoke-product-identification-postgres.mjs tests/productFingerprintSemantics.test.ts
