@@ -12,5 +12,6 @@ export * from "./objectives.js";
 export * from "./operationalIntelligence.js";
 export * from "./profitEngine.js";
 export * from "./sessions.js";
+export * from "./supplierMirror.js";
 export * from "./supplierStock.js";
 export * from "./uploads.js";
