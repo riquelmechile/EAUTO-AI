@@ -12,14 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version: 22.16.0
-          cache: npm
-      - run: npm ci --no-audit --no-fund --loglevel=error
+      - name: Clone branch quietly
+        env:
+          REPOSITORY: ${{ github.repository }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: git clone --quiet --depth 1 --branch "$HEAD_REF" "https://github.com/$REPOSITORY.git" .
+      - name: Install quietly
+        run: npm ci --no-audit --no-fund --loglevel=error >/dev/null
       - name: Show exact Prettier diff
         run: |
           npx prettier --write docs/sdd/012-mercadolibre-taxonomy-preflight.md packages/domain/src/mercadoLibreTaxonomy.ts packages/application/src/mercadoLibreTaxonomyPreflightService.ts tests/mercadoLibreTaxonomyPreflight.test.ts packages/domain/src/index.ts packages/application/src/index.ts >/dev/null
