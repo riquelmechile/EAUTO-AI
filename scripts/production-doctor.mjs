@@ -126,7 +126,10 @@ function parseEnvironment(source) {
     const equals = line.indexOf("=");
     if (equals < 1) continue;
     const key = line.slice(0, equals).trim();
-    const value = line.slice(equals + 1).trim().replace(/^['"]|['"]$/gu, "");
+    const value = line
+      .slice(equals + 1)
+      .trim()
+      .replace(/^['"]|['"]$/gu, "");
     result[key] = value;
   }
   return result;
