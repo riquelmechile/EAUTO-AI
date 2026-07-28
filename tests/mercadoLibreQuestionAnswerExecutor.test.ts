@@ -113,9 +113,7 @@ describe("MercadoLibreQuestionAnswerExecutor", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toEqual(
       new URL("https://api.mercadolibre.com/questions/3957150025?api_version=4"),
     );
-    expect(fetchMock.mock.calls[1]?.[0]).toEqual(
-      new URL("https://api.mercadolibre.com/answers"),
-    );
+    expect(fetchMock.mock.calls[1]?.[0]).toEqual(new URL("https://api.mercadolibre.com/answers"));
     const post = fetchMock.mock.calls[1]?.[1];
     expect(post?.method).toBe("POST");
     const postBody = post?.body;
