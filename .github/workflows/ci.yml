@@ -40,7 +40,17 @@ jobs:
       - name: Validate production and release contracts
         run: npm run doctor:production -- --template --env=.env.production
       - name: Verify production runtime and PostgreSQL
-        run: npm run smoke:production-runtime
+        run: |
+          set -o pipefail
+          npm run smoke:production-runtime 2>&1 | tee /tmp/production-smoke.log
+      - name: Upload PostgreSQL smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: supplier-postgres-smoke-diagnostics
+          path: /tmp/production-smoke.log
+          if-no-files-found: error
+          retention-days: 1
       - name: Validate production Compose
         run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
       - name: Validate Caddy configuration
