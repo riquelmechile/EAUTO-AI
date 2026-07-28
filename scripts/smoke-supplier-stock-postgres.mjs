@@ -182,7 +182,7 @@ async function seed() {
        variable_rate_observed_at, variable_rate_content_hash, target_margin_bps,
        maximum_increase_bps, maximum_evidence_age_ms, policy_version, next_audit_at)
      VALUES ($1,$2,$3,1600,$4,'mercadolibre',$5,$6,3000,2000,86400000,'supplier-smoke-v1',$5)`,
-    [accountId === organizationId ? organizationId : organizationId, accountId, listingId, `fee-${suffix}`, now.toISOString(), "f".repeat(64)],
+    [organizationId, accountId, listingId, `fee-${suffix}`, now.toISOString(), "f".repeat(64)],
   );
   await pool.query(
     `INSERT INTO supplier_sources
