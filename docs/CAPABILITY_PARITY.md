@@ -6,12 +6,12 @@ EAUTO-AI integra el núcleo comercial y de gobernanza de MSL y kiiess y, desde S
 
 La fuente canónica es `config/capability-parity.json`. El comando `npm run doctor:parity` comprueba que toda capacidad declarada como implementada tenga evidencia real dentro del repositorio.
 
-| Estado      | Cantidad | Significado                                                          |
-| ----------- | -------: | -------------------------------------------------------------------- |
+| Estado       | Cantidad | Significado                                                         |
+| ------------ | -------: | ------------------------------------------------------------------- |
 | Implementada |       23 | Existe una capacidad equivalente, scoped y verificable en EAUTO-AI. |
-| Parcial      |        0 | No quedan capacidades parciales en la matriz actual.                |
-| Ausente      |        7 | Es una expansión distinta que todavía no existe.                    |
-| Reemplazada  |        2 | La tecnología fue sustituida intencionalmente.                      |
+| Parcial      |        0 | No quedan capacidades parciales en la matriz actual.                 |
+| Ausente      |        7 | Es una expansión distinta que todavía no existe.                     |
+| Reemplazada  |        2 | La tecnología fue sustituida intencionalmente.                       |
 
 ## Núcleo ya implementado
 
