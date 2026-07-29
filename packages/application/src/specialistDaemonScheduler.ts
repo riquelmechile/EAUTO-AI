@@ -272,14 +272,18 @@ export class SpecialistDaemonScheduler {
       subject: definition.evidenceSubject,
       maximumAgeMs: definition.maximumEvidenceAgeMs,
     });
-    if (!pack.complete) {
+    const missingRequiredKinds = definition.requiredEvidenceKinds.filter(
+      (kind) => !pack.documents.some((document) => document.kind === kind),
+    );
+    if (!pack.complete || missingRequiredKinds.length > 0) {
+      const missingInputs = [...new Set([...pack.missingInputs, ...missingRequiredKinds])];
       await this.completeState(
         state,
         definition,
         "waiting-evidence",
         pack.id,
         null,
-        `missing-evidence:${pack.missingInputs.join(",")}`,
+        `missing-evidence:${missingInputs.join(",")}`,
         signals,
       );
       return "waiting-evidence";

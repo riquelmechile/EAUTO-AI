@@ -106,6 +106,65 @@ export type IntelligenceReadiness = Readonly<{
   externalWrites: false;
 }>;
 
+export type AccountBrainDimensionSummary = Readonly<{
+  dimension: string;
+  status: "healthy" | "attention" | "critical" | "insufficient-evidence";
+  scoreBps: number | null;
+  missingInputs: readonly string[];
+  findings: readonly Readonly<{
+    id: string;
+    title: string;
+    severity: "info" | "warning" | "critical";
+  }>[];
+}>;
+
+export type AccountBrainSummary = Readonly<{
+  id: string;
+  accountId: string;
+  generatedAt: string;
+  complete: boolean;
+  overallScoreBps: number | null;
+  dimensions: readonly AccountBrainDimensionSummary[];
+  strategicPriorities: readonly string[];
+  missingInputs: readonly string[];
+}>;
+
+export type SpecialistDaemonStateSummary = Readonly<{
+  daemonId: string;
+  enabled: boolean;
+  nextRunAt: string;
+  lastStatus: "never" | "queued" | "skipped" | "waiting-evidence" | "failed";
+  lastError: string | null;
+  lastRunAt: string | null;
+}>;
+
+export type SupplyWorkflowSummary = Readonly<{
+  id: string;
+  kind: string;
+  supplierId: string;
+  listingId: string | null;
+  status: string;
+  dryRun: true;
+  missingInputs: readonly string[];
+  createdAt: string;
+}>;
+
+export type ProductLifecycleSummary = Readonly<{
+  listingId: string;
+  state:
+    "active" | "seasonal" | "off-season" | "obsolete-candidate" | "insufficient-data" | "uncertain";
+  confidence: "low" | "medium" | "high";
+  reasons: readonly string[];
+  missingInputs: readonly string[];
+  assessedAt: string;
+}>;
+
+export type CreativeLaunchResult = Readonly<{
+  assets: readonly Readonly<{ id: string; kind: string; uri: string }>[];
+  provider: "minimax";
+  publicationPerformed: false;
+}>;
+
 async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const session = await sessionStore.load();
   const response = await fetch(`${API_URL}${path}`, {
@@ -121,6 +180,7 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
     return request<T>(path, init, false);
   }
   if (!response.ok) throw new Error(`API ${response.status}: ${await response.text()}`);
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
@@ -186,5 +246,43 @@ export const agentOsApi = {
     request<{ proposal: ShadowProposalSummary; executionCreated: false }>(
       `/v1/intelligence/${encodeURIComponent(accountId)}/proposals/${encodeURIComponent(proposalId)}/decision`,
       { method: "POST", body: JSON.stringify({ status }) },
+    ),
+  accountBrain: (accountId: string) =>
+    request<AccountBrainSummary>(`/v1/company/${encodeURIComponent(accountId)}/brain`),
+  rebuildAccountBrain: (accountId: string, maximumAgeMs = 900_000) =>
+    request<AccountBrainSummary>(`/v1/company/${encodeURIComponent(accountId)}/brain/rebuild`, {
+      method: "POST",
+      body: JSON.stringify({ maximumAgeMs }),
+    }),
+  initializeDaemons: (accountId: string) =>
+    request<void>(`/v1/company/${encodeURIComponent(accountId)}/daemons/initialize`, {
+      method: "POST",
+    }),
+  daemons: (accountId: string) =>
+    request<{ catalog: readonly string[]; states: readonly SpecialistDaemonStateSummary[] }>(
+      `/v1/company/${encodeURIComponent(accountId)}/daemons`,
+    ),
+  supplyWorkflows: (accountId: string) =>
+    request<{ workflows: readonly SupplyWorkflowSummary[] }>(
+      `/v1/company/${encodeURIComponent(accountId)}/supply/workflows?limit=50`,
+    ),
+  lifecycle: (accountId: string) =>
+    request<{ assessments: readonly ProductLifecycleSummary[] }>(
+      `/v1/company/${encodeURIComponent(accountId)}/lifecycle?limit=100`,
+    ),
+  createCreativeLaunch: (
+    accountId: string,
+    input: Readonly<{
+      productId: string;
+      sourceImageUploadId: string;
+      instructions?: string;
+      requestedChannels: readonly (
+        "mercadolibre" | "instagram" | "facebook" | "tiktok" | "owned"
+      )[];
+    }>,
+  ) =>
+    request<CreativeLaunchResult>(
+      `/v1/company/${encodeURIComponent(accountId)}/creative/launches`,
+      { method: "POST", body: JSON.stringify(input) },
     ),
 };

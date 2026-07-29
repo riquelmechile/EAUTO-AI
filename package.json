@@ -39,6 +39,7 @@
     "smoke:core": "node scripts/smoke-core.mjs",
     "smoke:credentials": "node scripts/smoke-credentials.mjs",
     "smoke:gentleman-parity": "node scripts/smoke-gentleman-parity-postgres.mjs",
+    "smoke:idempotency-collisions": "node scripts/smoke-idempotency-collision-postgres.mjs",
     "smoke:object-storage": "node scripts/smoke-object-storage.mjs",
     "smoke:production-runtime": "node scripts/smoke-production-runtime.mjs",
     "smoke:postgres-schema": "node scripts/smoke-postgres-schema.mjs",

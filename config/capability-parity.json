@@ -142,101 +142,89 @@
       "id": "agent-message-bus",
       "name": "Bus general de mensajes entre agentes",
       "sources": ["MSL"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "packages/application/src/operationalIntelligenceService.ts",
-        "packages/infrastructure/src/postgresOutboxRepository.ts"
-      ],
-      "gap": "Existen work orders y outbox durable, pero no envelopes generales request/response entre pares."
+        "packages/application/src/agentCollaborationService.ts",
+        "packages/infrastructure/src/postgresCompanyIntelligenceRepository.ts"
+      ]
     },
     {
       "id": "evidence-response-router",
       "name": "Router de solicitudes de evidencia entre especialistas",
       "sources": ["MSL"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "packages/infrastructure/src/verifiedOperationalEvidenceReader.ts",
-        "packages/application/src/operationalIntelligenceService.ts"
-      ],
-      "gap": "La evidencia se compone desde read models; falta routing explícito a responders especializados."
+        "packages/application/src/agentCollaborationService.ts",
+        "packages/infrastructure/src/companyIntelligenceSources.ts"
+      ]
     },
     {
       "id": "semantic-memory",
-      "name": "Memoria semántica consultiva con retrieval gate",
+      "name": "Memoria consultiva full-text con retrieval gate",
       "sources": ["MSL", "kiiess"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "packages/application/src/operationalIntelligenceService.ts",
-        "packages/infrastructure/src/operationalIntelligenceRepositories.ts"
-      ],
-      "gap": "Hay memoria con provenance y outcomes verificados, pero no embeddings, Engram ni grafo Cortex."
+        "packages/application/src/agentCollaborationService.ts",
+        "infra/postgres/migrations/032_gentleman_capability_parity.sql"
+      ]
     },
     {
       "id": "account-brain",
-      "name": "Account Brain, assets estratégicos y aprendizaje por cuenta",
+      "name": "Account Brain, prioridades y aprendizaje scoped por cuenta",
       "sources": ["MSL"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "packages/application/src/operationalIntelligenceService.ts",
-        "packages/application/src/profitEngineService.ts"
-      ],
-      "gap": "La inteligencia está account-scoped, pero falta el modelo estratégico consolidado de activos y comparaciones."
+        "packages/application/src/accountBrainService.ts",
+        "apps/api/src/companyBrainRoutes.ts"
+      ]
     },
     {
       "id": "specialist-daemons",
-      "name": "Catálogo amplio de daemons especialistas proactivos",
+      "name": "Catálogo de dieciséis perfiles especialistas proactivos",
       "sources": ["MSL"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "apps/api/src/worker.ts",
-        "packages/application/src/marginAuditDaemon.ts",
-        "packages/application/src/supplierStockAuditDaemon.ts"
-      ],
-      "gap": "El worker durable existe, pero no están los 16 handlers especializados de MSL."
+        "packages/application/src/specialistDaemonScheduler.ts",
+        "packages/domain/src/specialistDaemons.ts"
+      ]
     },
     {
       "id": "creative-studio",
-      "name": "Creative Studio de imagen/video con políticas y costos",
+      "name": "Creative Studio MiniMax de imagen/video con almacenamiento privado",
       "sources": ["MSL"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "packages/content/src/httpContentProvider.ts",
-        "packages/application/src/contentStudioService.ts"
-      ],
-      "gap": "Existe contrato genérico y almacenamiento verificable; falta adapter concreto MiniMax, brand kits y moderación real."
+        "packages/content/src/minimaxContentProvider.ts",
+        "apps/api/src/companyCreativeRoutes.ts",
+        "apps/mobile/src/features/content-studio/ContentStudioScreen.tsx"
+      ]
     },
     {
       "id": "supply-workflows",
-      "name": "Pause, full-scrape, stock sync, autopause y opportunistic-buy",
+      "name": "Pause, full-scrape, stock sync, autopause y opportunistic-buy en dry-run",
       "sources": ["kiiess"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "packages/application/src/supplierMirrorService.ts",
-        "packages/application/src/supplierStockService.ts"
-      ],
-      "gap": "Mirror, costo y stock-risk existen; faltan workflows operativos equivalentes completos."
+        "packages/application/src/supplyWorkflowService.ts",
+        "packages/infrastructure/src/postgresSupplyWorkflowEvidenceReader.ts"
+      ]
     },
     {
       "id": "product-lifecycle-bi",
       "name": "BI de ciclo, temporada y obsolescencia de producto",
       "sources": ["kiiess"],
-      "status": "partial",
+      "status": "implemented",
       "evidence": [
-        "packages/application/src/operationalIntelligenceService.ts",
-        "packages/application/src/profitEngineService.ts"
-      ],
-      "gap": "Hay evidencia económica y señales, pero no el clasificador active/seasonal/off-season/obsolete."
+        "packages/application/src/productLifecycleService.ts",
+        "packages/infrastructure/src/companyIntelligenceSources.ts"
+      ]
     },
     {
       "id": "economic-operations-cli",
       "name": "CLI de ingesta, cobertura, reconciliación y missing inputs",
       "sources": ["MSL"],
-      "status": "partial",
-      "evidence": [
-        "packages/application/src/profitEngineService.ts",
-        "scripts/smoke-profit-engine-postgres.mjs"
-      ],
-      "gap": "Las capacidades existen como servicios/API/smokes, no como suite CLI operacional equivalente."
+      "status": "implemented",
+      "evidence": ["packages/application/src/economicOperationsService.ts", "scripts/economic.mjs"]
     },
     {
       "id": "telegram-ceo-transport",
@@ -257,7 +245,7 @@
       "name": "Cortex con grafo, aprendizaje hebbiano y poda",
       "sources": ["MSL"],
       "status": "missing",
-      "gap": "La memoria consultiva no replica el comportamiento de grafo neuronal."
+      "gap": "La memoria full-text no replica el comportamiento de grafo neuronal."
     },
     {
       "id": "local-cloud-model-routing",
