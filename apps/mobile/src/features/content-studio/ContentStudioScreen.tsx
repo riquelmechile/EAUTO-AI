@@ -2,7 +2,7 @@ import { useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import { Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { Panel } from "../../components/Panel";
-import { api } from "../../lib/api";
+import { agentOsApi } from "../../lib/agentOsApi";
 import { uploadVerifiedSourceImage, type LocalSourceImage } from "../../lib/sourceImageUpload";
 
 export function ContentStudioScreen() {
@@ -45,15 +45,15 @@ export function ContentStudioScreen() {
         image,
         onStatus: setStatus,
       });
-      setStatus("Creando activos del lanzamiento…");
-      const result = await api.createLaunch({
-        id: `launch_${Date.now()}`,
-        accountId: "plasticov",
+      setStatus("Generando activos privados con MiniMax…");
+      const result = await agentOsApi.createCreativeLaunch("plasticov", {
+        productId: `product_${Date.now()}`,
         sourceImageUploadId: uploaded.uploadId,
         ...(instructions.trim() ? { instructions: instructions.trim() } : {}),
+        requestedChannels: ["mercadolibre"],
       });
       setStatus(
-        `${result.assets.length} activos preparados desde una imagen verificada. No se publicó nada.`,
+        `${result.assets.length} activos guardados de forma privada mediante ${result.provider}. No se publicó nada.`,
       );
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Falló la preparación.");
@@ -64,7 +64,7 @@ export function ContentStudioScreen() {
 
   return (
     <View style={styles.stack}>
-      <Panel title="Content Studio">
+      <Panel title="Creative Studio · MiniMax">
         {image ? <Image source={{ uri: image.uri }} style={styles.preview} /> : null}
         <View style={styles.row}>
           <Pressable
@@ -97,9 +97,12 @@ export function ContentStudioScreen() {
           onPress={() => void createLaunch()}
           style={[styles.primary, working && styles.disabled]}
         >
-          <Text style={styles.buttonText}>{working ? "Procesando…" : "Preparar lanzamiento"}</Text>
+          <Text style={styles.buttonText}>{working ? "Procesando…" : "Generar activos privados"}</Text>
         </Pressable>
         <Text style={styles.status}>{status}</Text>
+        <Text style={styles.warning}>
+          Este flujo genera y almacena activos. No crea publicaciones ni modifica MercadoLibre.
+        </Text>
       </Panel>
     </View>
   );
@@ -148,4 +151,5 @@ const styles = StyleSheet.create({
     textAlignVertical: "top",
   },
   status: { color: "#bae6fd", lineHeight: 20 },
+  warning: { color: "#fdba74", fontSize: 12, lineHeight: 18 },
 });
