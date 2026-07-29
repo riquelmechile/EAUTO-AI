@@ -224,10 +224,7 @@
       "name": "CLI de ingesta, cobertura, reconciliación y missing inputs",
       "sources": ["MSL"],
       "status": "implemented",
-      "evidence": [
-        "packages/application/src/economicOperationsService.ts",
-        "scripts/economic.mjs"
-      ]
+      "evidence": ["packages/application/src/economicOperationsService.ts", "scripts/economic.mjs"]
     },
     {
       "id": "telegram-ceo-transport",
