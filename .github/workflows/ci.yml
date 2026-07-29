@@ -5,84 +5,72 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  migrate-creative-gate:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22.16.0
           cache: npm
-      - run: npm ci --no-audit --no-fund
-      - name: Update production creative gate
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Audit high and critical vulnerabilities
+        run: npm audit --audit-level=high
+      - name: Check formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build application
+        run: npm run build
+      - name: Verify MercadoLibre question answer contract
+        run: npm run smoke:mercadolibre-question-answer
+      - name: Verify credential generation and validation
+        run: npm run smoke:credentials
+      - name: Verify capability parity claims
+        run: npm run doctor:parity
+      - name: Verify Gentleman capability parity
+        run: npm run doctor:gentleman-parity
+      - name: Prepare production template
+        run: cp .env.production.example .env.production
+      - name: Validate production and release contracts
+        run: npm run doctor:production -- --template --env=.env.production
+      - name: Verify production runtime and PostgreSQL
+        run: npm run smoke:production-runtime
+      - name: Validate production Compose
+        run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
+      - name: Validate Caddy configuration
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("scripts/production-doctor.mjs")
-          source = path.read_text()
-          old_call = 'expectValue("CONTENT_GENERATION_ENABLED", "true");'
-          if old_call not in source:
-              raise SystemExit("legacy creative gate not found")
-          source = source.replace(old_call, "validateContentProvider();", 1)
-
-          marker = "function validateCatalogRoutes() {"
-          if marker not in source:
-              raise SystemExit("catalog gate marker not found")
-          validator = '''function validateContentProvider() {
-            const kind = configured.CONTENT_PROVIDER_KIND;
-            if (kind === "minimax") {
-              if (configured.CONTENT_GENERATION_ENABLED !== "false") {
-                failures.push("MiniMax Creative Studio requires the legacy generic content gateway to remain disabled.");
-              }
-              if (configured.CONTENT_PROVIDER_NAME !== "minimax") {
-                failures.push("CONTENT_PROVIDER_NAME must be minimax when CONTENT_PROVIDER_KIND=minimax.");
-              }
-              const endpoint = configured.CONTENT_PROVIDER_URL;
-              if (!endpoint || (templateMode && isPlaceholder(endpoint))) return;
-              try {
-                const parsed = new URL(endpoint);
-                if (parsed.origin !== "https://api.minimax.io" || parsed.pathname !== "/v1/image_generation") {
-                  failures.push("MiniMax Creative Studio must use https://api.minimax.io/v1/image_generation.");
-                }
-                if (parsed.username || parsed.password || parsed.hash || parsed.search) {
-                  failures.push("MiniMax Creative Studio endpoint cannot embed credentials, query or fragment.");
-                }
-              } catch {
-                failures.push("CONTENT_PROVIDER_URL must be a valid MiniMax HTTPS URL.");
-              }
-              return;
-            }
-            if (kind === "generic") {
-              if (configured.CONTENT_GENERATION_ENABLED !== "true") {
-                failures.push("The generic content gateway requires CONTENT_GENERATION_ENABLED=true.");
-              }
-              return;
-            }
-            failures.push("CONTENT_PROVIDER_KIND must be generic or minimax.");
-          }
-
-          '''
-          source = source.replace(marker, validator + marker, 1)
-          path.write_text(source)
-          PY
-          npx prettier --write scripts/production-doctor.mjs
-          npm run doctor:production -- --template --env=.env.production.example
-      - name: Commit production gate
+          docker run --rm \
+            -e API_DOMAIN=api.example.cl \
+            -e S3_DOMAIN=files.example.cl \
+            -e ACME_EMAIL=operations@example.cl \
+            -v "$PWD/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Build production API image
+        run: docker build --pull --target runtime --tag eauto-ai:ci .
+      - name: Start object storage
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/production-doctor.mjs
-          git commit -m "fix(production): validate concrete creative provider"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          docker compose -f infra/compose/docker-compose.yml up -d minio
+          docker compose -f infra/compose/docker-compose.yml run --rm minio-init
+      - name: Verify signed object storage flow
+        run: npm run smoke:object-storage
+      - name: Stop object storage
+        if: always()
+        run: docker compose -f infra/compose/docker-compose.yml down --remove-orphans
+      - name: Doctor
+        run: npm run doctor
