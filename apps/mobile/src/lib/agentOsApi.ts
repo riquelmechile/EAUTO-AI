@@ -152,12 +152,7 @@ export type SupplyWorkflowSummary = Readonly<{
 export type ProductLifecycleSummary = Readonly<{
   listingId: string;
   state:
-    | "active"
-    | "seasonal"
-    | "off-season"
-    | "obsolete-candidate"
-    | "insufficient-data"
-    | "uncertain";
+    "active" | "seasonal" | "off-season" | "obsolete-candidate" | "insufficient-data" | "uncertain";
   confidence: "low" | "medium" | "high";
   reasons: readonly string[];
   missingInputs: readonly string[];
@@ -281,7 +276,9 @@ export const agentOsApi = {
       productId: string;
       sourceImageUploadId: string;
       instructions?: string;
-      requestedChannels: readonly ("mercadolibre" | "instagram" | "facebook" | "tiktok" | "owned")[];
+      requestedChannels: readonly (
+        "mercadolibre" | "instagram" | "facebook" | "tiktok" | "owned"
+      )[];
     }>,
   ) =>
     request<CreativeLaunchResult>(
