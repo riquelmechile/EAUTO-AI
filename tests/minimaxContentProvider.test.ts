@@ -73,7 +73,11 @@ describe("MiniMaxContentProvider", () => {
     expect(new Headers(generationRequest?.[1]?.headers).get("authorization")).toBe(
       "Bearer minimax-secret",
     );
-    const payload = JSON.parse(String(generationRequest?.[1]?.body)) as Record<string, unknown>;
+    const requestBody = generationRequest?.[1]?.body;
+    if (typeof requestBody !== "string") {
+      throw new Error("Expected the MiniMax request body to be JSON text.");
+    }
+    const payload = JSON.parse(requestBody) as Record<string, unknown>;
     expect(payload).toMatchObject({ model: "image-01", response_format: "url", n: 1 });
   });
 
