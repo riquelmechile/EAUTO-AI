@@ -45,7 +45,16 @@ export function registerCompanyCollaborationRoutes(
       await dependencies.runtime.messages.publish({
         organizationId: actor.organizationId,
         accountId: params.accountId,
-        ...body,
+        idempotencyKey: body.idempotencyKey,
+        senderAgentId: body.senderAgentId,
+        recipientAgentId: body.recipientAgentId,
+        kind: body.kind,
+        subject: body.subject,
+        payload: body.payload,
+        ...(body.conversationId ? { conversationId: body.conversationId } : {}),
+        ...(body.correlationId ? { correlationId: body.correlationId } : {}),
+        ...(body.causationId ? { causationId: body.causationId } : {}),
+        ...(body.evidenceRefs ? { evidenceRefs: body.evidenceRefs } : {}),
       }),
     );
   });
@@ -61,7 +70,8 @@ export function registerCompanyCollaborationRoutes(
       messages: await dependencies.runtime.messages.list({
         organizationId: actor.organizationId,
         accountId: params.accountId,
-        ...query,
+        limit: query.limit,
+        ...(query.conversationId ? { conversationId: query.conversationId } : {}),
       }),
     };
   });
@@ -87,7 +97,15 @@ export function registerCompanyCollaborationRoutes(
       await dependencies.runtime.evidenceRouter.request({
         organizationId: actor.organizationId,
         accountId: params.accountId,
-        ...body,
+        idempotencyKey: body.idempotencyKey,
+        conversationId: body.conversationId,
+        correlationId: body.correlationId,
+        requesterAgentId: body.requesterAgentId,
+        subject: body.subject,
+        purpose: body.purpose,
+        maximumAgeMs: body.maximumAgeMs,
+        ...(body.responderId ? { responderId: body.responderId } : {}),
+        ...(body.requiredKinds ? { requiredKinds: body.requiredKinds } : {}),
       }),
     );
   });
