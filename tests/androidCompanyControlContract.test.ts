@@ -31,12 +31,12 @@ describe("Android company control contract", () => {
       {
         mobile: "/daemons/initialize`",
         backend: '"/v1/company/:accountId/daemons/initialize"',
-        source: operationRoutes,
+        source: brainRoutes,
       },
       {
         mobile: "/daemons`",
         backend: '"/v1/company/:accountId/daemons"',
-        source: operationRoutes,
+        source: brainRoutes,
       },
       {
         mobile: "/supply/workflows?limit=50`",
