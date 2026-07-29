@@ -30,9 +30,7 @@ jobs:
       - name: Audit high and critical vulnerabilities
         run: npm audit --audit-level=high
       - name: Check formatting
-        run: |
-          npm run format
-          git diff --exit-code
+        run: npm run format:check
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
@@ -56,7 +54,24 @@ jobs:
       - name: Verify production runtime and PostgreSQL
         run: npm run smoke:production-runtime
       - name: Verify idempotency collision guards
-        run: npm run smoke:idempotency-collisions
+        run: |
+          compose=(docker compose -p eauto-idempotency-smoke -f infra/compose/docker-compose.yml)
+          cleanup() { "${compose[@]}" down --volumes --remove-orphans; }
+          trap cleanup EXIT
+          "${compose[@]}" up -d postgres
+          for attempt in $(seq 1 30); do
+            if "${compose[@]}" exec -T postgres pg_isready -U eauto -d eauto; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo "PostgreSQL did not become ready"
+              exit 1
+            fi
+            sleep 1
+          done
+          export DATABASE_URL=postgres://eauto:eauto@127.0.0.1:5432/eauto
+          npm run migrate
+          npm run smoke:idempotency-collisions
       - name: Validate production Compose
         run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
       - name: Validate Caddy configuration
