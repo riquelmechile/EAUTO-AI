@@ -5,151 +5,72 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  wire-runtime:
+  quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22.16.0
           cache: npm
-      - run: npm ci --no-audit --no-fund
-      - name: Wire Fastify worker and MiniMax
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Audit high and critical vulnerabilities
+        run: npm audit --audit-level=high
+      - name: Check formatting
+        run: npm run format:check
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Test
+        run: npm test
+      - name: Build application
+        run: npm run build
+      - name: Verify MercadoLibre question answer contract
+        run: npm run smoke:mercadolibre-question-answer
+      - name: Verify credential generation and validation
+        run: npm run smoke:credentials
+      - name: Verify capability parity claims
+        run: npm run doctor:parity
+      - name: Verify Gentleman capability parity
+        run: npm run doctor:gentleman-parity
+      - name: Prepare production template
+        run: cp .env.production.example .env.production
+      - name: Validate production and release contracts
+        run: npm run doctor:production -- --template --env=.env.production
+      - name: Verify production runtime and PostgreSQL
+        run: npm run smoke:production-runtime
+      - name: Validate production Compose
+        run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
+      - name: Validate Caddy configuration
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          def replace(path, old, new):
-              file = Path(path)
-              text = file.read_text()
-              if old not in text:
-                  raise SystemExit(f'missing expected block in {path}: {old[:80]!r}')
-              file.write_text(text.replace(old, new, 1))
-
-          replace('apps/api/src/runtime.ts',
-              '  HttpContentProvider,\n} from "@eauto/content";',
-              '  HttpContentProvider,\n  MiniMaxContentProvider,\n} from "@eauto/content";')
-          replace('apps/api/src/runtime.ts',
-              'import type { AppConfig } from "./config.js";\n',
-              'import type { AppConfig } from "./config.js";\nimport { loadCompanyIntelligenceConfig } from "./companyIntelligenceConfig.js";\n')
-          replace('apps/api/src/runtime.ts',
-              '  if (config.CONTENT_GENERATION_ENABLED) {\n',
-              '''  const companyConfig = loadCompanyIntelligenceConfig();
-  if (companyConfig.CONTENT_PROVIDER_KIND === "minimax") {
-    if (!companyConfig.MINIMAX_API_KEY) throw new Error("MiniMax API key is required.");
-    return Object.freeze({
-      provider: new MiniMaxContentProvider(storage, {
-        apiKey: companyConfig.MINIMAX_API_KEY,
-        imageModel: companyConfig.MINIMAX_IMAGE_MODEL,
-        videoModel: companyConfig.MINIMAX_VIDEO_MODEL,
-        promptVersion: companyConfig.MINIMAX_PROMPT_VERSION,
-        generateVideo: companyConfig.MINIMAX_GENERATE_VIDEO,
-        timeoutMs: config.CONTENT_PROVIDER_TIMEOUT_MS,
-        pollIntervalMs: companyConfig.MINIMAX_POLL_INTERVAL_MS,
-        maximumPolls: companyConfig.MINIMAX_MAXIMUM_POLLS,
-        maximumResponseBytes: config.CONTENT_PROVIDER_MAX_RESPONSE_BYTES,
-        maximumAssetBytes: config.CONTENT_MAX_ASSET_BYTES,
-      }),
-      mode: "external" as const,
-    });
-  }
-  if (config.CONTENT_GENERATION_ENABLED) {
-''')
-
-          replace('apps/api/src/app.ts',
-              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\n',
-              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\nimport { createCompanyIntelligenceRuntime } from "./companyIntelligenceRuntime.js";\nimport { registerCompanyIntelligenceRoutes } from "./companyIntelligenceRoutes.js";\n')
-          replace('apps/api/src/app.ts',
-              '  const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\n',
-              '  const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\n  const companyRuntime = createCompanyIntelligenceRuntime(runtime, intelligenceRuntime);\n')
-          replace('apps/api/src/app.ts',
-              '  app.get("/v1/me", async (request) => {\n',
-              '''  registerCompanyIntelligenceRoutes(app, {
-    runtime: companyRuntime,
-    authenticate: (request) => authenticate(request, runtime, authenticator),
-    requireAccount: async (actor, accountId, permission) => {
-      await requireAccount(runtime, actor, accountId, permission);
-    },
-  });
-
-  app.get("/v1/me", async (request) => {
-''')
-          replace('apps/api/src/app.ts',
-              '  app.addHook("onClose", async () => {\n    await intelligenceRuntime.close();\n    await runtime.close();\n  });',
-              '  app.addHook("onClose", async () => {\n    await companyRuntime.close();\n    await intelligenceRuntime.close();\n    await runtime.close();\n  });')
-
-          replace('apps/api/src/worker.ts',
-              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\n',
-              'import { createOperationalIntelligenceRuntime } from "./operationalIntelligenceRuntime.js";\nimport { createCompanyIntelligenceRuntime } from "./companyIntelligenceRuntime.js";\n')
-          replace('apps/api/src/worker.ts',
-              'const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\n',
-              'const intelligenceRuntime = createOperationalIntelligenceRuntime(runtime, config);\nconst companyRuntime = createCompanyIntelligenceRuntime(runtime, intelligenceRuntime);\n')
-          replace('apps/api/src/worker.ts',
-              'async function run(): Promise<void> {\n  log("info", "worker-started", {',
-              'async function run(): Promise<void> {\n  await companyRuntime.initialize();\n  log("info", "worker-started", {')
-          replace('apps/api/src/worker.ts',
-              '    intelligenceWorker: intelligenceRuntime.processor !== null,\n',
-              '    intelligenceWorker: intelligenceRuntime.processor !== null,\n    companyIntelligenceWorker: companyRuntime.enabled,\n')
-          replace('apps/api/src/worker.ts',
-              '''    intelligenceRuntime.processor
-      ? intelligenceRuntime.config.INTELLIGENCE_POLL_INTERVAL_MS
-      : config.OUTBOX_POLL_INTERVAL_MS,
-  );''',
-              '''    intelligenceRuntime.processor
-      ? intelligenceRuntime.config.INTELLIGENCE_POLL_INTERVAL_MS
-      : config.OUTBOX_POLL_INTERVAL_MS,
-    companyRuntime.enabled
-      ? companyRuntime.config.COMPANY_INTELLIGENCE_POLL_INTERVAL_MS
-      : config.OUTBOX_POLL_INTERVAL_MS,
-  );''')
-          replace('apps/api/src/worker.ts',
-              '    let intelligence = { leased: 0, completed: 0, failed: 0 };\n',
-              '    let intelligence = { leased: 0, completed: 0, failed: 0 };\n    let company = { evidence: { leased: 0, fulfilled: 0, failed: 0 }, daemons: { leased: 0, queued: 0, skipped: 0, waitingEvidence: 0, failed: 0 } };\n')
-          replace('apps/api/src/worker.ts',
-              '    if (marginAuditDaemon) {\n',
-              '''    if (companyRuntime.enabled) {
-      try {
-        company = await companyRuntime.processBatch();
-      } catch (error) {
-        cycleFailed = true;
-        logProcessorFailure("company-intelligence", error);
-      }
-    }
-
-    if (marginAuditDaemon) {
-''')
-          replace('apps/api/src/worker.ts',
-              '      intelligence.leased > 0 ||\n      marginAudit.leased > 0 ||',
-              '      intelligence.leased > 0 ||\n      company.evidence.leased > 0 ||\n      company.daemons.leased > 0 ||\n      marginAudit.leased > 0 ||')
-          replace('apps/api/src/worker.ts',
-              '        intelligence,\n        marginAudit,',
-              '        intelligence,\n        company,\n        marginAudit,')
-          replace('apps/api/src/worker.ts',
-              '        intelligence.leased === 0 &&\n        marginAudit.leased === 0 &&',
-              '        intelligence.leased === 0 &&\n        company.evidence.leased === 0 &&\n        company.daemons.leased === 0 &&\n        marginAudit.leased === 0 &&')
-          replace('apps/api/src/worker.ts',
-              '  await Promise.allSettled([intelligenceRuntime.close(), runtime.close()]);',
-              '  await Promise.allSettled([companyRuntime.close(), intelligenceRuntime.close(), runtime.close()]);')
-          PY
-          npx prettier --write apps/api/src/runtime.ts apps/api/src/app.ts apps/api/src/worker.ts
-      - name: Commit runtime wiring
+          docker run --rm \
+            -e API_DOMAIN=api.example.cl \
+            -e S3_DOMAIN=files.example.cl \
+            -e ACME_EMAIL=operations@example.cl \
+            -v "$PWD/infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.11.4-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Build production API image
+        run: docker build --pull --target runtime --tag eauto-ai:ci .
+      - name: Start object storage
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/api/src/runtime.ts apps/api/src/app.ts apps/api/src/worker.ts
-          git commit -m "feat(api): wire company intelligence and MiniMax"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-      - run: npm run format:check
-      - run: npm run typecheck
-      - run: npm run lint
+          docker compose -f infra/compose/docker-compose.yml up -d minio
+          docker compose -f infra/compose/docker-compose.yml run --rm minio-init
+      - name: Verify signed object storage flow
+        run: npm run smoke:object-storage
+      - name: Stop object storage
+        if: always()
+        run: docker compose -f infra/compose/docker-compose.yml down --remove-orphans
+      - name: Doctor
+        run: npm run doctor
