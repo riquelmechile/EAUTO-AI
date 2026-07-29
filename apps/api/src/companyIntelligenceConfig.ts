@@ -47,18 +47,33 @@ export function loadCompanyIntelligenceConfig(
   environment: NodeJS.ProcessEnv = process.env,
 ): CompanyIntelligenceConfig {
   const parsed = schema.safeParse(environment);
-  if (!parsed.success) throw new Error(`Invalid company intelligence environment: ${parsed.error.message}`);
+  if (!parsed.success) {
+    throw new Error(`Invalid company intelligence environment: ${parsed.error.message}`);
+  }
   const accountIds = Object.freeze(
-    [...new Set(parsed.data.COMPANY_INTELLIGENCE_ACCOUNT_IDS.split(",").map((value) => value.trim()).filter(Boolean))],
+    [
+      ...new Set(
+        parsed.data.COMPANY_INTELLIGENCE_ACCOUNT_IDS.split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+      ),
+    ],
   );
+  const inheritedContentKey = environment.CONTENT_PROVIDER_API_KEY?.trim() || undefined;
+  const miniMaxApiKey = parsed.data.MINIMAX_API_KEY ?? inheritedContentKey;
   if (parsed.data.COMPANY_INTELLIGENCE_ENABLED && accountIds.length === 0) {
     throw new Error("COMPANY_INTELLIGENCE_ENABLED requires at least one account ID.");
   }
-  if (parsed.data.CONTENT_PROVIDER_KIND === "minimax" && !parsed.data.MINIMAX_API_KEY) {
-    throw new Error("CONTENT_PROVIDER_KIND=minimax requires MINIMAX_API_KEY.");
+  if (parsed.data.CONTENT_PROVIDER_KIND === "minimax" && !miniMaxApiKey) {
+    throw new Error(
+      "CONTENT_PROVIDER_KIND=minimax requires MINIMAX_API_KEY or CONTENT_PROVIDER_API_KEY.",
+    );
   }
-  if (environment.NODE_ENV === "production" && accountIds.some((accountId) => accountId !== "plasticov")) {
+  if (
+    environment.NODE_ENV === "production" &&
+    accountIds.some((accountId) => accountId !== "plasticov")
+  ) {
     throw new Error("The first company-intelligence production rollout is restricted to Plasticov.");
   }
-  return Object.freeze({ ...parsed.data, accountIds });
+  return Object.freeze({ ...parsed.data, MINIMAX_API_KEY: miniMaxApiKey, accountIds });
 }
