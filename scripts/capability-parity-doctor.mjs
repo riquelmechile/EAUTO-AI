@@ -3,7 +3,9 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const requireFullParity = process.argv.includes("--require-full-parity");
+const requireNoPartial = process.argv.includes("--require-no-partial");
 const manifestPath = resolve(process.cwd(), "config/capability-parity.json");
+const documentationPath = resolve(process.cwd(), "docs/CAPABILITY_PARITY.md");
 const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
 const allowedStatuses = new Set(["implemented", "partial", "missing", "superseded"]);
 const allowedSources = new Set(["MSL", "kiiess"]);
@@ -74,6 +76,21 @@ for (const capability of manifest.capabilities) {
   console.log(`${symbol(capability.status)} ${capability.id}: ${capability.status}`);
 }
 
+const documentation = await readFile(documentationPath, "utf8");
+const documentedCounts = {
+  implemented: documentedCount(documentation, "Implementada"),
+  partial: documentedCount(documentation, "Parcial"),
+  missing: documentedCount(documentation, "Ausente"),
+  superseded: documentedCount(documentation, "Reemplazada"),
+};
+for (const status of Object.keys(counts)) {
+  if (documentedCounts[status] !== counts[status]) {
+    failures.push(
+      `Capability documentation mismatch for ${status}: manifest=${counts[status]}, docs=${String(documentedCounts[status])}.`,
+    );
+  }
+}
+
 console.log("\nCapability parity summary");
 console.log(`✓ implemented: ${counts.implemented}`);
 console.log(`△ partial: ${counts.partial}`);
@@ -81,6 +98,9 @@ console.log(`○ missing: ${counts.missing}`);
 console.log(`↺ superseded: ${counts.superseded}`);
 for (const failure of failures) console.error(`✗ ${failure}`);
 
+if (requireNoPartial && counts.partial > 0) {
+  failures.push(`Partial capabilities remain: ${counts.partial}.`);
+}
 if (requireFullParity && (counts.partial > 0 || counts.missing > 0)) {
   failures.push(
     `Full parity is not reached: ${counts.partial} partial and ${counts.missing} missing capabilities.`,
@@ -88,6 +108,12 @@ if (requireFullParity && (counts.partial > 0 || counts.missing > 0)) {
 }
 if (failures.length > 0) process.exitCode = 1;
 else console.log("CAPABILITY_PARITY_MANIFEST_OK");
+
+function documentedCount(documentation, label) {
+  const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = documentation.match(new RegExp(`\\|\\s*${escaped}\\s*\\|\\s*(\\d+)\\s*\\|`, "u"));
+  return match ? Number(match[1]) : null;
+}
 
 function symbol(status) {
   if (status === "implemented") return "✓";
