@@ -2,100 +2,104 @@
 
 ## Veredicto
 
-EAUTO-AI ya integra el núcleo comercial y de gobernanza más importante de ambos proyectos, pero **no existe paridad total**.
+EAUTO-AI integra el núcleo comercial y de gobernanza de MSL y kiiess y, desde SDD 019, también incorpora las nueve capacidades que estaban pendientes en la primera auditoría.
 
-La fuente canónica es `config/capability-parity.json`. El comando `npm run doctor:parity` comprueba que toda capacidad declarada como implementada o parcial tenga evidencia real dentro del repositorio.
+La fuente canónica es `config/capability-parity.json`. El comando `npm run doctor:parity` comprueba que toda capacidad declarada como implementada tenga evidencia real dentro del repositorio.
 
-Resumen actual:
+| Estado      | Cantidad | Significado                                                          |
+| ----------- | -------: | -------------------------------------------------------------------- |
+| Implementada |       23 | Existe una capacidad equivalente, scoped y verificable en EAUTO-AI. |
+| Parcial      |        0 | No quedan capacidades parciales en la matriz actual.                |
+| Ausente      |        7 | Es una expansión distinta que todavía no existe.                    |
+| Reemplazada  |        2 | La tecnología fue sustituida intencionalmente.                      |
 
-| Estado       | Cantidad | Significado                                                                      |
-| ------------ | -------: | -------------------------------------------------------------------------------- |
-| Implementada |       14 | Existe una capacidad equivalente y verificable en EAUTO-AI.                      |
-| Parcial      |        9 | Existe parte del comportamiento, pero falta una pieza funcional de MSL o kiiess. |
-| Ausente      |        7 | No existe implementación equivalente.                                            |
-| Reemplazada  |        2 | La tecnología fue sustituida intencionalmente por otra arquitectura.             |
+## Núcleo ya implementado
 
-## Capacidades implementadas
+- aprobación, ejecución, receipts y estado `uncertain`;
+- aislamiento Plasticov/Maustian;
+- Agent OS, work sessions, heartbeats y scorecards;
+- transactional outbox, leases, retries y dead-letter;
+- evidence packs y read models verificables;
+- Profit Engine y margin audit;
+- MercadoLibre read plane y `question.answer` gobernado;
+- Product Ads v2;
+- Supplier Mirror y stock risk;
+- Catalog Acquisition y Photo-to-Similar;
+- Android, PostgreSQL, MinIO, backups y release.
 
-| Capacidad                        | Equivalencia EAUTO-AI                                                                  |
-| -------------------------------- | -------------------------------------------------------------------------------------- |
-| Aprobación y ejecución gobernada | Máquina de estados, policy hash, receipts, verificación y estado `uncertain`.          |
-| Plasticov y Maustian aisladas    | Scope obligatorio por organización/cuenta y constraints PostgreSQL.                    |
-| Agent OS                         | Contratos, skills, preflight, planner, sesiones, heartbeats, presupuesto y scorecards. |
-| Procesamiento durable            | Transactional outbox, leases, retries, dead-letter y worker recuperable.               |
-| Evidencia operacional            | Evidence packs con freshness, provenance, autoridad y missing inputs.                  |
-| Rentabilidad                     | Profit Engine, repricing, margin floor y auditoría periódica.                          |
-| MercadoLibre read plane          | OAuth, refresh, listings, órdenes, preguntas, reclamos, reputación y webhooks.         |
-| `question.answer`                | Primera escritura dedicada, aprobada y verificada, restringida a Plasticov.            |
-| Product Ads v2                   | Campañas, Ad Groups, ítems y reconciliación de precios/costos directos.                |
-| Supplier Mirror                  | Autoridad, freshness, costo verificado, stock-risk y auditoría.                        |
-| Catalog Acquisition              | Candidatos, evidencia, revisión humana y reconciliación.                               |
-| Photo-to-Similar                 | Identificación, fingerprints, búsqueda visual y confirmación humana.                   |
-| Control móvil                    | Android es el control plane canónico del CEO.                                          |
-| Producción                       | PostgreSQL, MinIO, backups, Docker, Caddy, GHCR, EAS y CI inmutable.                   |
+## Ola Gentleman completada
 
-## Capacidades parciales
+### Bus general entre agentes
 
-| Capacidad de referencia  | Qué existe                                             | Qué falta                                                                  |
-| ------------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------- |
-| Agent Message Bus de MSL | Outbox y work orders durables                          | Envelopes generales request/response entre agentes.                        |
-| Evidence Response Router | Evidence reader y packs                                | Routing explícito hacia responders especialistas.                          |
-| Memoria semántica        | Memoria consultiva con provenance y outcome verificado | Embeddings, búsqueda semántica, Engram y aprendizaje tipo Cortex.          |
-| Account Brain            | Inteligencia account-scoped y economía por cuenta      | Grafo consolidado de activos, scoring estratégico y comparación histórica. |
-| 16 daemons MSL           | Worker 24/7, inteligencia, margin audit y stock audit  | Catálogo completo de especialistas proactivos.                             |
-| Creative Studio          | Gateway genérico, assets privados y checksums          | MiniMax concreto, brand kits, moderación y control de costo proveedor.     |
-| Supply workflows kiiess  | Supplier Mirror, stock-risk y costo                    | `supplier.pause`, full scrape, autopause y opportunistic-buy completos.    |
-| Product lifecycle BI     | Señales, rentabilidad y evidencia                      | Clasificador `active/seasonal/off-season/obsolete/uncertain`.              |
-| Economic CLI MSL         | Servicios, API y smokes                                | CLI operacional de ingest/status/coverage/reconcile/missing.               |
+`AgentMessageBusService` publica mensajes scoped, idempotentes y correlacionados. PostgreSQL controla leases, retries y dead-letter; un mensaje duplicado no duplica el trabajo.
 
-## Capacidades ausentes
+### Evidence Response Router
+
+Las solicitudes de evidencia eligen un responder compatible, congelan documentos con provenance y declaran `missingInputs`. Una respuesta incompleta no pasa a completa por narración de un agente.
+
+### Memoria semántica
+
+La memoria consultiva usa observaciones estructuradas, topic keys, keywords, full-text ranking, retrieval gate, expiración, outcome verificado y reconciliación `compatible/supersedes/conflicts`. No reemplaza los read models autoritativos.
+
+### Account Brain
+
+Construye snapshots por cuenta para economía, catálogo, clientes, supply, publicidad, contenido y reputación. Declara evidencia, memoria usada, score, findings, prioridades y datos faltantes.
+
+### Dieciséis daemons especialistas
+
+Un scheduler declarativo reutiliza exactamente los dieciséis contratos del Agent OS. Cada daemon obtiene evidencia fresca y solo crea work orders gobernadas en modo `ask`.
+
+### Creative Studio concreto
+
+El adapter MiniMax usa el host oficial fijo, generación de imagen, video asincrónico, polling acotado y file retrieval. Los archivos se descargan con límites y se guardan en object storage privado antes de ser registrados. No publica en canales.
+
+### Supply workflows completos
+
+Están modelados `supplier.pause`, `supplier.full-scrape`, `stock.sync`, `stock.autopause` y `purchase.opportunistic`. Consultan Supplier Mirror, listing, Profit Engine y policy version. Permanecen en dry-run y producen propuestas, nunca compras o pausas directas.
+
+### Lifecycle BI
+
+Clasifica `active`, `seasonal`, `off-season`, `obsolete-candidate`, `insufficient-data` y `uncertain`. Evidencia stale o insuficiente degrada la clasificación en vez de inventar certeza.
+
+### CLI económica operacional
+
+Disponibles:
+
+```bash
+npm run economic:ingest -- --account=plasticov
+npm run economic:status -- --account=plasticov
+npm run economic:coverage -- --account=plasticov
+npm run economic:reconcile -- --account=plasticov
+npm run economic:missing -- --account=plasticov
+npm run economic:inspect-evidence -- --account=plasticov --listing=MLC123
+```
+
+La CLI audita y reconcilia PostgreSQL; no habilita escrituras MercadoLibre.
+
+## Capacidades distintas que siguen ausentes
 
 1. Telegram como transporte CEO y aprobación “dale”.
-2. Servidor MCP con herramientas comerciales.
-3. Cortex como grafo neuronal con aprendizaje hebbiano y poda.
+2. Servidor MCP.
+3. Cortex como grafo neuronal hebbiano/darwiniano.
 4. Routing local/cloud con LiteLLM, llama.cpp o vLLM.
-5. Boundary concreto de ecommerce propio Medusa.
+5. Boundary Medusa para ecommerce propio.
 6. Adaptadores productivos para redes sociales.
-7. Integraciones con Amazon, Alibaba u otros marketplaces.
+7. Amazon, Alibaba y otros marketplaces.
+
+La memoria semántica implementada no se declara Cortex. El bus de agentes no se declara MCP. Creative Studio no se declara publicación social.
 
 ## Decisiones de reemplazo
 
-- **Consola web:** Android es el control plane canónico. Una web sigue siendo útil, pero no es requisito para operar desde el teléfono.
-- **Redis como cola:** PostgreSQL transactional outbox y leases mantienen la fuente autoritativa única y reemplazan la cola Redis para el núcleo durable.
-
-## Orden recomendado para alcanzar paridad funcional
-
-### Ola 1 — Canales operativos
-
-- Telegram con identidad, `/ceo`, inbox y aprobación/rechazo source-aware.
-- MCP read-only primero; escrituras únicamente a través de `ActionService`.
-
-### Ola 2 — Inteligencia y memoria
-
-- Gateway OpenAI-compatible agnóstico al proveedor.
-- Perfiles DeepSeek, LiteLLM y runtime local.
-- Embeddings y retrieval gate sobre memoria consultiva.
-- Evidence request/router y responders especializados.
-
-### Ola 3 — Proactividad
-
-- Scheduler declarativo de daemons.
-- Morning report, unanswered questions, Product Ads monitor, product research y lifecycle BI.
-- Account Brain consolidado por cuenta.
-
-### Ola 4 — Expansión
-
-- Adapter MiniMax o proveedor creativo elegido.
-- Medusa/ecommerce propio.
-- Redes sociales y marketplaces adicionales.
+- **Consola web:** Android continúa como control plane canónico.
+- **Redis como cola:** PostgreSQL transactional outbox y leases mantienen una única fuente durable.
 
 ## Regla de aceptación
 
-Una capacidad no pasa a `implemented` porque exista en el README. Debe tener:
+Una capacidad pasa a `implemented` solo cuando tiene:
 
 1. contrato de dominio o aplicación;
-2. persistencia o adapter cuando corresponda;
+2. persistencia o adapter cuando corresponde;
 3. aislamiento por organización/cuenta;
 4. tests adversariales;
 5. doctor o smoke productivo;
-6. política fail-closed para cualquier efecto externo.
+6. política fail-closed para efectos externos.
