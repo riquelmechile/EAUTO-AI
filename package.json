@@ -56,11 +56,12 @@
     "prettier": "^3.6.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.65.0",
+    "uuid": "11.1.1",
     "vitest": "4.1.10"
   },
   "overrides": {
     "xcode": {
-      "uuid": "11.1.1"
+      "uuid": "$uuid"
     }
   }
 }
