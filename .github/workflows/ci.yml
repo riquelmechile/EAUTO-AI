@@ -3,6 +3,8 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -41,8 +43,8 @@ jobs:
         run: npm run smoke:mercadolibre-question-answer
       - name: Verify credential generation and validation
         run: npm run smoke:credentials
-      - name: Verify capability parity claims
-        run: npm run doctor:parity
+      - name: Verify truthful capability parity claims
+        run: npm run doctor:parity -- --require-no-partial
       - name: Verify Gentleman capability parity
         run: npm run doctor:gentleman-parity
       - name: Prepare production template
@@ -51,6 +53,8 @@ jobs:
         run: npm run doctor:production -- --template --env=.env.production
       - name: Verify production runtime and PostgreSQL
         run: npm run smoke:production-runtime
+      - name: Verify idempotency collision guards
+        run: npm run smoke:idempotency-collisions
       - name: Validate production Compose
         run: docker compose --env-file .env.production -f infra/compose/docker-compose.production.yml config --quiet
       - name: Validate Caddy configuration
