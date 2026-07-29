@@ -3,27 +3,49 @@ RETURNS trigger
 LANGUAGE plpgsql
 AS $$
 DECLARE
-  existing_hash text;
+  existing_payload jsonb;
+  existing_semantic jsonb;
+  incoming_semantic jsonb;
+  operational_keys text[] := ARRAY[
+    'id',
+    'conversationId',
+    'correlationId',
+    'status',
+    'attempts',
+    'availableAt',
+    'leaseOwner',
+    'leaseUntil',
+    'failureReason',
+    'createdAt',
+    'updatedAt',
+    'completedAt',
+    'contentHash'
+  ];
 BEGIN
   EXECUTE format(
-    'SELECT content_hash FROM %I WHERE organization_id = $1 AND account_id = $2 AND idempotency_key = $3 LIMIT 1',
+    'SELECT payload_json FROM %I WHERE organization_id = $1 AND account_id = $2 AND idempotency_key = $3 LIMIT 1',
     TG_TABLE_NAME
   )
-  INTO existing_hash
+  INTO existing_payload
   USING NEW.organization_id, NEW.account_id, NEW.idempotency_key;
 
-  IF existing_hash IS NOT NULL AND existing_hash <> NEW.content_hash THEN
-    RAISE EXCEPTION USING
-      ERRCODE = '23505',
-      MESSAGE = format(
-        'idempotency collision in %s for organization=%s account=%s key=%s',
-        TG_TABLE_NAME,
-        NEW.organization_id,
-        NEW.account_id,
-        NEW.idempotency_key
-      ),
-      DETAIL = 'The same idempotency key was reused with a different content hash.',
-      HINT = 'Use a new idempotency key or retry the exact original request.';
+  IF existing_payload IS NOT NULL THEN
+    existing_semantic := existing_payload - operational_keys;
+    incoming_semantic := NEW.payload_json - operational_keys;
+
+    IF existing_semantic IS DISTINCT FROM incoming_semantic THEN
+      RAISE EXCEPTION USING
+        ERRCODE = '23505',
+        MESSAGE = format(
+          'idempotency collision in %s for organization=%s account=%s key=%s',
+          TG_TABLE_NAME,
+          NEW.organization_id,
+          NEW.account_id,
+          NEW.idempotency_key
+        ),
+        DETAIL = 'The same idempotency key was reused with a different semantic payload.',
+        HINT = 'Use a new idempotency key or retry the same command payload.';
+    END IF;
   END IF;
 
   RETURN NEW;
