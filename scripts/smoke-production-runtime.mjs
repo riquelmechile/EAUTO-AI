@@ -111,7 +111,7 @@ try {
   await companyRuntime.initialize();
   assert(runtime.persistenceMode === "postgres", "production runtime must use Postgres");
   assert(
-    runtime.contentGenerationMode === "deterministic",
+    runtime.contentGenerationMode === "disabled",
     "legacy generic content gateway must remain disabled",
   );
   assert(
