@@ -56,8 +56,12 @@ describe("Android company control contract", () => {
     ] as const;
 
     for (const contract of contracts) {
-      expect(mobile, `missing mobile route fragment ${contract.mobile}`).toContain(contract.mobile);
-      expect(contract.source, `missing backend route ${contract.backend}`).toContain(contract.backend);
+      expect(mobile, `missing mobile route fragment ${contract.mobile}`).toContain(
+        contract.mobile,
+      );
+      expect(contract.source, `missing backend route ${contract.backend}`).toContain(
+        contract.backend,
+      );
     }
   });
 
