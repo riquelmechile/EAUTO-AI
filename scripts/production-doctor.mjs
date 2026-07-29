@@ -115,7 +115,7 @@ if (configured.ACTION_EXECUTION_ENABLED === "true") {
 
 expectValue("NODE_ENV", "production");
 expectValue("AUTH_MODE", "static-token");
-expectValue("CONTENT_GENERATION_ENABLED", "true");
+validateContentProvider();
 expectValue("CATALOG_ACQUISITION_ENABLED", "true");
 expectValue("ACTION_EXECUTION_ENABLED", "false");
 expectValue("LLM_ENABLED", "true");
@@ -248,6 +248,48 @@ function validateDatabaseUrl() {
       "DATABASE_URL must be a valid PostgreSQL URL; percent-encode reserved password characters.",
     );
   }
+}
+
+function validateContentProvider() {
+  const kind = configured.CONTENT_PROVIDER_KIND;
+  if (kind === "minimax") {
+    if (configured.CONTENT_GENERATION_ENABLED !== "false") {
+      failures.push(
+        "MiniMax Creative Studio requires the legacy generic content gateway to remain disabled.",
+      );
+    }
+    if (configured.CONTENT_PROVIDER_NAME !== "minimax") {
+      failures.push("CONTENT_PROVIDER_NAME must be minimax when CONTENT_PROVIDER_KIND=minimax.");
+    }
+    const endpoint = configured.CONTENT_PROVIDER_URL;
+    if (!endpoint || (templateMode && isPlaceholder(endpoint))) return;
+    try {
+      const parsed = new URL(endpoint);
+      if (
+        parsed.origin !== "https://api.minimax.io" ||
+        parsed.pathname !== "/v1/image_generation"
+      ) {
+        failures.push(
+          "MiniMax Creative Studio must use https://api.minimax.io/v1/image_generation.",
+        );
+      }
+      if (parsed.username || parsed.password || parsed.hash || parsed.search) {
+        failures.push(
+          "MiniMax Creative Studio endpoint cannot embed credentials, query or fragment.",
+        );
+      }
+    } catch {
+      failures.push("CONTENT_PROVIDER_URL must be a valid MiniMax HTTPS URL.");
+    }
+    return;
+  }
+  if (kind === "generic") {
+    if (configured.CONTENT_GENERATION_ENABLED !== "true") {
+      failures.push("The generic content gateway requires CONTENT_GENERATION_ENABLED=true.");
+    }
+    return;
+  }
+  failures.push("CONTENT_PROVIDER_KIND must be generic or minimax.");
 }
 
 function validateCatalogRoutes() {
