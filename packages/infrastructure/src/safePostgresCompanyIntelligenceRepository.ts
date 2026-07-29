@@ -1,8 +1,8 @@
 import type { Pool } from "pg";
 import type { SemanticMemoryEntry } from "@eauto/domain";
-import { PostgresCompanyIntelligenceRepository } from "./postgresCompanyIntelligenceRepository.js";
+import { PostgresCompanyIntelligenceRepository as BasePostgresCompanyIntelligenceRepository } from "./postgresCompanyIntelligenceRepository.js";
 
-export class SafePostgresCompanyIntelligenceRepository extends PostgresCompanyIntelligenceRepository {
+export class PostgresCompanyIntelligenceRepository extends BasePostgresCompanyIntelligenceRepository {
   constructor(private readonly semanticPool: Pool) {
     super(semanticPool);
   }
