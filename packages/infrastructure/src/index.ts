@@ -39,4 +39,5 @@ export * from "./postgresSourceImageUploadRepository.js";
 export * from "./postgresSupplierMirrorRepository.js";
 export * from "./routedActionExecutor.js";
 export * from "./s3ObjectStorage.js";
+export * from "./safePostgresCompanyIntelligenceRepository.js";
 export * from "./verifiedOperationalEvidenceReader.js";
