@@ -18,7 +18,12 @@ const optional = z.preprocess(
 const schema = z.object({
   COMPANY_INTELLIGENCE_ENABLED: bool.default(false),
   COMPANY_INTELLIGENCE_WORKER_ID: z.string().min(1).default("eauto-company-intelligence"),
-  COMPANY_INTELLIGENCE_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(2_000),
+  COMPANY_INTELLIGENCE_POLL_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(250)
+    .max(60_000)
+    .default(2_000),
   COMPANY_INTELLIGENCE_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(20),
   COMPANY_INTELLIGENCE_LEASE_MS: z.coerce.number().int().min(5_000).max(300_000).default(60_000),
   COMPANY_INTELLIGENCE_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
@@ -50,15 +55,13 @@ export function loadCompanyIntelligenceConfig(
   if (!parsed.success) {
     throw new Error(`Invalid company intelligence environment: ${parsed.error.message}`);
   }
-  const accountIds = Object.freeze(
-    [
-      ...new Set(
-        parsed.data.COMPANY_INTELLIGENCE_ACCOUNT_IDS.split(",")
-          .map((value) => value.trim())
-          .filter(Boolean),
-      ),
-    ],
-  );
+  const accountIds = Object.freeze([
+    ...new Set(
+      parsed.data.COMPANY_INTELLIGENCE_ACCOUNT_IDS.split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ]);
   const inheritedContentKey = environment.CONTENT_PROVIDER_API_KEY?.trim() || undefined;
   const miniMaxApiKey = parsed.data.MINIMAX_API_KEY ?? inheritedContentKey;
   if (parsed.data.COMPANY_INTELLIGENCE_ENABLED && accountIds.length === 0) {
@@ -73,7 +76,9 @@ export function loadCompanyIntelligenceConfig(
     environment.NODE_ENV === "production" &&
     accountIds.some((accountId) => accountId !== "plasticov")
   ) {
-    throw new Error("The first company-intelligence production rollout is restricted to Plasticov.");
+    throw new Error(
+      "The first company-intelligence production rollout is restricted to Plasticov.",
+    );
   }
   return Object.freeze({ ...parsed.data, MINIMAX_API_KEY: miniMaxApiKey, accountIds });
 }

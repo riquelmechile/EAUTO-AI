@@ -18,10 +18,7 @@ export function registerCompanyOperationsRoutes(
   registerEconomicRoutes(app, dependencies);
 }
 
-function registerSupplyRoutes(
-  app: FastifyInstance,
-  dependencies: CompanyRouteDependencies,
-): void {
+function registerSupplyRoutes(app: FastifyInstance, dependencies: CompanyRouteDependencies): void {
   app.post("/v1/company/:accountId/supply/workflows", async (request, reply) => {
     const actor = await dependencies.authenticate(request);
     const params = accountParamsSchema.parse(request.params);

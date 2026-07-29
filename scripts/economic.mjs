@@ -9,8 +9,15 @@ const command = process.argv[2];
 const options = parseOptions(process.argv.slice(3));
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL is required.");
-if (!command || !new Set(["ingest", "status", "coverage", "reconcile", "missing", "inspect-evidence"]).has(command)) {
-  throw new Error("Usage: node scripts/economic.mjs <ingest|status|coverage|reconcile|missing|inspect-evidence> --account=<id> [--organization=maustian] [--listing=<id>] [--limit=1000]");
+if (
+  !command ||
+  !new Set(["ingest", "status", "coverage", "reconcile", "missing", "inspect-evidence"]).has(
+    command,
+  )
+) {
+  throw new Error(
+    "Usage: node scripts/economic.mjs <ingest|status|coverage|reconcile|missing|inspect-evidence> --account=<id> [--organization=maustian] [--listing=<id>] [--limit=1000]",
+  );
 }
 const accountId = required(options.account, "--account");
 const organizationId = options.organization ?? "maustian";
@@ -56,7 +63,8 @@ try {
 function parseOptions(values) {
   const result = {};
   for (const value of values) {
-    if (!value.startsWith("--") || !value.includes("=")) throw new Error(`Invalid option ${value}.`);
+    if (!value.startsWith("--") || !value.includes("="))
+      throw new Error(`Invalid option ${value}.`);
     const separator = value.indexOf("=");
     const key = value.slice(2, separator);
     const optionValue = value.slice(separator + 1).trim();

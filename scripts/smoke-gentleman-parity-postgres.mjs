@@ -50,13 +50,24 @@ try {
     evidenceRefs: ["profitability:1"],
   });
   assert(first.id === duplicate.id, "agent message idempotency failed");
-  const lease = await bus.lease({ recipientAgentId: "pricing", owner: "worker-a", leaseMs: 30_000 });
+  const lease = await bus.lease({
+    recipientAgentId: "pricing",
+    owner: "worker-a",
+    leaseMs: 30_000,
+  });
   assert(lease.length === 1, "message must be leased exactly once");
-  const competing = await bus.lease({ recipientAgentId: "pricing", owner: "worker-b", leaseMs: 30_000 });
+  const competing = await bus.lease({
+    recipientAgentId: "pricing",
+    owner: "worker-b",
+    leaseMs: 30_000,
+  });
   assert(competing.length === 0, "competing worker leased the same message");
   await bus.complete(lease[0]);
   assert((await bus.list({ organizationId, accountId })).length === 1, "message list failed");
-  assert((await bus.list({ organizationId, accountId: otherAccountId })).length === 0, "message tenant isolation failed");
+  assert(
+    (await bus.list({ organizationId, accountId: otherAccountId })).length === 0,
+    "message tenant isolation failed",
+  );
 
   const responder = {
     id: "verified-reader",
@@ -104,7 +115,13 @@ try {
   const routed = await router.processBatch();
   assert(routed.fulfilled === 1, "evidence response router failed");
   assert(
-    (await repository.getEvidenceResponse({ organizationId, accountId, requestId: evidenceRequest.id }))?.complete === true,
+    (
+      await repository.getEvidenceResponse({
+        organizationId,
+        accountId,
+        requestId: evidenceRequest.id,
+      })
+    )?.complete === true,
     "evidence response was not persisted",
   );
 
@@ -130,7 +147,8 @@ try {
   });
   assert(memorySearch[0]?.entry.id === memoryEntry.id, "semantic full-text retrieval failed");
   assert(
-    (await memory.retrieve({ organizationId, accountId: otherAccountId, query: "pricing margin" })).length === 0,
+    (await memory.retrieve({ organizationId, accountId: otherAccountId, query: "pricing margin" }))
+      .length === 0,
     "semantic memory tenant isolation failed",
   );
 
@@ -151,10 +169,21 @@ try {
   );
   const brainSnapshot = await brain.rebuild({ organizationId, accountId, maximumAgeMs: 900_000 });
   assert(brainSnapshot.complete, "Account Brain should be complete in the seeded smoke");
-  assert((await brain.latest({ organizationId, accountId }))?.id === brainSnapshot.id, "Account Brain latest failed");
+  assert(
+    (await brain.latest({ organizationId, accountId }))?.id === brainSnapshot.id,
+    "Account Brain latest failed",
+  );
 
-  await repository.ensureStates({ organizationId, accountId, definitions: SPECIALIST_DAEMON_CATALOG, now: now.toISOString() });
-  assert((await repository.listStates({ organizationId, accountId })).length === 16, "sixteen daemon states were not initialized");
+  await repository.ensureStates({
+    organizationId,
+    accountId,
+    definitions: SPECIALIST_DAEMON_CATALOG,
+    now: now.toISOString(),
+  });
+  assert(
+    (await repository.listStates({ organizationId, accountId })).length === 16,
+    "sixteen daemon states were not initialized",
+  );
   const daemonLease = await repository.leaseDueStates({
     owner: "daemon-worker-a",
     now,
@@ -175,7 +204,13 @@ try {
     {
       read: () =>
         Promise.resolve({
-          availableKinds: ["supplier-evidence", "listing-snapshot", "inventory-snapshot", "economic-snapshot", "policy-version"],
+          availableKinds: [
+            "supplier-evidence",
+            "listing-snapshot",
+            "inventory-snapshot",
+            "economic-snapshot",
+            "policy-version",
+          ],
           evidenceRefs: ["supplier:1", "listing:1", "economic:1", "policy:v1"],
           missingInputs: [],
         }),
@@ -202,8 +237,14 @@ try {
     dryRun: true,
     idempotencyKey: `supply-${suffix}`,
   });
-  assert(workflow.status === "proposed" && workflow.dryRun, "supply workflow must remain a dry-run proposal");
-  assert((await supply.list({ organizationId, accountId })).length === 1, "supply workflow list failed");
+  assert(
+    workflow.status === "proposed" && workflow.dryRun,
+    "supply workflow must remain a dry-run proposal",
+  );
+  assert(
+    (await supply.list({ organizationId, accountId })).length === 1,
+    "supply workflow list failed",
+  );
 
   const lifecycle = new ProductLifecycleService(
     repository,
@@ -228,7 +269,10 @@ try {
   );
   const assessment = await lifecycle.assess({ organizationId, accountId, listingId: "MLC1" });
   assert(assessment.state === "active", "lifecycle classification failed");
-  assert((await lifecycle.latest({ organizationId, accountId, listingId: "MLC1" }))?.state === "active", "lifecycle latest failed");
+  assert(
+    (await lifecycle.latest({ organizationId, accountId, listingId: "MLC1" }))?.state === "active",
+    "lifecycle latest failed",
+  );
 
   console.log("GENTLEMAN_PARITY_POSTGRES_SMOKE_OK");
 } finally {
@@ -237,7 +281,10 @@ try {
 }
 
 async function seedScope() {
-  await pool.query(`INSERT INTO organizations (id,name) VALUES ($1,$2)`, [organizationId, "Gentleman Smoke"]);
+  await pool.query(`INSERT INTO organizations (id,name) VALUES ($1,$2)`, [
+    organizationId,
+    "Gentleman Smoke",
+  ]);
   for (const id of [accountId, otherAccountId]) {
     await pool.query(
       `INSERT INTO commerce_accounts
@@ -249,7 +296,9 @@ async function seedScope() {
 }
 
 async function cleanup() {
-  await pool.query(`DELETE FROM organizations WHERE id=$1`, [organizationId]).catch(() => undefined);
+  await pool
+    .query(`DELETE FROM organizations WHERE id=$1`, [organizationId])
+    .catch(() => undefined);
 }
 
 function assert(condition, message) {

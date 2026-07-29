@@ -118,7 +118,10 @@ for (const table of [
 ]) {
   assert(migration.includes(`CREATE TABLE ${table}`), `Migration 032 is missing ${table}.`);
 }
-assert(migration.includes("search_document tsvector"), "Semantic memory full-text index is missing.");
+assert(
+  migration.includes("search_document tsvector"),
+  "Semantic memory full-text index is missing.",
+);
 assert(
   migration.includes("FOREIGN KEY (organization_id, account_id)"),
   "Tenant foreign keys are missing.",
@@ -128,7 +131,10 @@ const supply = await readFile(
   resolve(process.cwd(), "packages/application/src/supplyWorkflowService.ts"),
   "utf8",
 );
-assert(supply.includes("Supply workflows are dry-run only"), "Supply workflows are not fail-closed.");
+assert(
+  supply.includes("Supply workflows are dry-run only"),
+  "Supply workflows are not fail-closed.",
+);
 const supplyEvidence = await readFile(
   resolve(process.cwd(), "packages/infrastructure/src/postgresSupplyWorkflowEvidenceReader.ts"),
   "utf8",
@@ -143,21 +149,33 @@ for (const source of [
 }
 
 const companyApp = await readFile(resolve(process.cwd(), "apps/api/src/companyApp.ts"), "utf8");
-assert(companyApp.includes("registerCompanyIntelligenceRoutes"), "Company routes are not registered.");
+assert(
+  companyApp.includes("registerCompanyIntelligenceRoutes"),
+  "Company routes are not registered.",
+);
 assert(companyApp.includes("registerCompanyCreativeRoutes"), "Creative routes are not registered.");
 const runtime = await readFile(
   resolve(process.cwd(), "apps/api/src/companyIntelligenceRuntime.ts"),
   "utf8",
 );
-assert(runtime.includes("MiniMaxContentProvider"), "MiniMax is not wired into the company runtime.");
+assert(
+  runtime.includes("MiniMaxContentProvider"),
+  "MiniMax is not wired into the company runtime.",
+);
 assert(
   runtime.includes("PostgresSupplyWorkflowEvidenceReader"),
   "Authoritative supply evidence is not wired.",
 );
 const server = await readFile(resolve(process.cwd(), "apps/api/src/server.ts"), "utf8");
-assert(server.includes("buildCompanyApp"), "Production server does not use the composed company app.");
+assert(
+  server.includes("buildCompanyApp"),
+  "Production server does not use the composed company app.",
+);
 const worker = await readFile(resolve(process.cwd(), "apps/api/src/companyWorker.ts"), "utf8");
-assert(worker.includes("companyRuntime.processBatch"), "Company intelligence is not wired into the worker.");
+assert(
+  worker.includes("companyRuntime.processBatch"),
+  "Company intelligence is not wired into the worker.",
+);
 const apiPackage = JSON.parse(
   await readFile(resolve(process.cwd(), "apps/api/package.json"), "utf8"),
 );

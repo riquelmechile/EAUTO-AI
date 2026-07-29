@@ -33,13 +33,17 @@ export class PostgresSupplyWorkflowEvidenceReader implements SupplyWorkflowEvide
       const supplierFresh = isFresh(supplier.observedAt, input.asOf, input.maximumAgeMs);
       if (supplierFresh && supplier.syncSucceeded) {
         availableKinds.add("supplier-evidence");
-        evidenceRefs.add(`supplier-product:${supplier.sourceId}:${supplier.sku}:${supplier.contentHash}`);
+        evidenceRefs.add(
+          `supplier-product:${supplier.sourceId}:${supplier.sku}:${supplier.contentHash}`,
+        );
       } else {
         missingInputs.add(supplierFresh ? "supplier-sync" : "fresh-supplier-evidence");
       }
       if (supplierFresh) {
         availableKinds.add("inventory-snapshot");
-        evidenceRefs.add(`supplier-stock:${supplier.sourceId}:${supplier.sku}:${supplier.stockQty}`);
+        evidenceRefs.add(
+          `supplier-stock:${supplier.sourceId}:${supplier.sku}:${supplier.stockQty}`,
+        );
       }
     } else {
       missingInputs.add("supplier-evidence");
@@ -83,17 +87,14 @@ export class PostgresSupplyWorkflowEvidenceReader implements SupplyWorkflowEvide
     accountId: string;
     supplierId: string;
     listingId: string | null;
-  }): Promise<
-    | Readonly<{
-        sourceId: string;
-        sku: string;
-        stockQty: number;
-        syncSucceeded: boolean;
-        observedAt: string;
-        contentHash: string;
-      }>
-    | null
-  > {
+  }): Promise<Readonly<{
+    sourceId: string;
+    sku: string;
+    stockQty: number;
+    syncSucceeded: boolean;
+    observedAt: string;
+    contentHash: string;
+  }> | null> {
     const result = await this.pool.query<{
       supplier_source_id: string;
       sku: string;

@@ -60,7 +60,11 @@ export class S3ObjectStorage implements ObjectStoragePort {
     objectKey: string;
     expiresInSeconds: number;
   }): Promise<string> {
-    if (!Number.isSafeInteger(input.expiresInSeconds) || input.expiresInSeconds < 60 || input.expiresInSeconds > 3_600) {
+    if (
+      !Number.isSafeInteger(input.expiresInSeconds) ||
+      input.expiresInSeconds < 60 ||
+      input.expiresInSeconds > 3_600
+    ) {
       throw new Error("Presigned download expiry must be between 60 and 3600 seconds.");
     }
     const inspected = await this.inspectObject(input.objectKey);

@@ -215,11 +215,7 @@ function delay(milliseconds: number): Promise<void> {
 async function closeRuntimes(): Promise<void> {
   if (closed) return;
   closed = true;
-  await Promise.allSettled([
-    companyRuntime.close(),
-    intelligenceRuntime.close(),
-    runtime.close(),
-  ]);
+  await Promise.allSettled([companyRuntime.close(), intelligenceRuntime.close(), runtime.close()]);
 }
 
 void run().catch(async (error: unknown) => {
