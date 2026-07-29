@@ -56,9 +56,7 @@ describe("Android company control contract", () => {
     ] as const;
 
     for (const contract of contracts) {
-      expect(mobile, `missing mobile route fragment ${contract.mobile}`).toContain(
-        contract.mobile,
-      );
+      expect(mobile, `missing mobile route fragment ${contract.mobile}`).toContain(contract.mobile);
       expect(contract.source, `missing backend route ${contract.backend}`).toContain(
         contract.backend,
       );
@@ -66,9 +64,7 @@ describe("Android company control contract", () => {
   });
 
   it("routes Content Studio through the governed MiniMax company client", async () => {
-    const screen = await source(
-      "apps/mobile/src/features/content-studio/ContentStudioScreen.tsx",
-    );
+    const screen = await source("apps/mobile/src/features/content-studio/ContentStudioScreen.tsx");
     expect(screen).toContain('agentOsApi.createCreativeLaunch("plasticov"');
     expect(screen).not.toContain("api.createLaunch(");
     expect(screen).toContain("No crea publicaciones ni modifica MercadoLibre");
