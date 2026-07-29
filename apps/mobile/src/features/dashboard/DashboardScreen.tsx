@@ -78,7 +78,9 @@ export function DashboardScreen() {
             <View key={account.id} style={styles.accountCard}>
               <View style={styles.accountIdentity}>
                 <View style={styles.accountAvatar}>
-                  <Text style={styles.accountAvatarText}>{account.name.slice(0, 1).toUpperCase()}</Text>
+                  <Text style={styles.accountAvatarText}>
+                    {account.name.slice(0, 1).toUpperCase()}
+                  </Text>
                 </View>
                 <View>
                   <Text style={styles.account}>{account.name}</Text>

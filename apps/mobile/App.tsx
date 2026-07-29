@@ -22,13 +22,7 @@ import { sessionStore, type MobileSession } from "./src/lib/session";
 import { theme } from "./src/theme";
 
 type Tab =
-  | "dashboard"
-  | "agents"
-  | "intelligence"
-  | "mercadolibre"
-  | "product"
-  | "inbox"
-  | "studio";
+  "dashboard" | "agents" | "intelligence" | "mercadolibre" | "product" | "inbox" | "studio";
 
 const TABS: readonly { id: Tab; label: string; icon: string }[] = [
   { id: "dashboard", label: "Empresa", icon: "⌂" },

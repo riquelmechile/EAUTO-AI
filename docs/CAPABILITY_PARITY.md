@@ -9,9 +9,9 @@ La fuente canónica es `config/capability-parity.json`. El comando `npm run doct
 | Estado       | Cantidad | Significado                                                         |
 | ------------ | -------: | ------------------------------------------------------------------- |
 | Implementada |       23 | Existe una capacidad equivalente, scoped y verificable en EAUTO-AI. |
-| Parcial      |        0 | No quedan capacidades parciales en la matriz actual.                 |
-| Ausente      |        7 | Es una expansión distinta que todavía no existe.                     |
-| Reemplazada  |        2 | La tecnología fue sustituida intencionalmente.                       |
+| Parcial      |        0 | No quedan capacidades parciales en la matriz actual.                |
+| Ausente      |        7 | Es una expansión distinta que todavía no existe.                    |
+| Reemplazada  |        2 | La tecnología fue sustituida intencionalmente.                      |
 
 ## Núcleo ya implementado
 

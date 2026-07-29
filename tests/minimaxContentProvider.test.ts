@@ -80,9 +80,11 @@ describe("MiniMaxContentProvider", () => {
   it("fails closed when MiniMax returns a provider error", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn<typeof fetch>().mockResolvedValueOnce(
-        json({ base_resp: { status_code: 1008, status_msg: "insufficient balance" } }),
-      ),
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          json({ base_resp: { status_code: 1008, status_msg: "insufficient balance" } }),
+        ),
     );
     const provider = new MiniMaxContentProvider(
       {
