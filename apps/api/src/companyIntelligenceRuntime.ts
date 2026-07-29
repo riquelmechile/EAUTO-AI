@@ -12,6 +12,7 @@ import {
   SupplyWorkflowService,
   SPECIALIST_DAEMON_CATALOG,
   type ProductLifecycleSource,
+  type SupplyWorkflowEvidenceReader,
 } from "@eauto/application";
 import { MiniMaxContentProvider } from "@eauto/content";
 import {
@@ -24,6 +25,7 @@ import {
   PostgresEconomicOperationsRepository,
   PostgresProductLifecycleSource,
   PostgresProfitEngineRepository,
+  PostgresSupplyWorkflowEvidenceReader,
   S3ObjectStorage,
 } from "@eauto/infrastructure";
 import type { AppConfig } from "./config.js";
@@ -65,12 +67,10 @@ export function createCompanyIntelligenceRuntime(
     clock,
     ids,
   );
-  const supply = new SupplyWorkflowService(
-    repository,
-    new OperationalSupplyWorkflowEvidenceReader(intelligenceRuntime.evidenceReader),
-    clock,
-    ids,
-  );
+  const supplyEvidence: SupplyWorkflowEvidenceReader = baseRuntime.databasePool
+    ? new PostgresSupplyWorkflowEvidenceReader(baseRuntime.databasePool)
+    : new OperationalSupplyWorkflowEvidenceReader(intelligenceRuntime.evidenceReader);
+  const supply = new SupplyWorkflowService(repository, supplyEvidence, clock, ids);
   const lifecycleSource: ProductLifecycleSource = baseRuntime.databasePool
     ? new PostgresProductLifecycleSource(
         baseRuntime.databasePool,
