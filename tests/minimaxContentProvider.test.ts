@@ -30,11 +30,19 @@ describe("MiniMaxContentProvider", () => {
         }),
       );
     vi.stubGlobal("fetch", fetchMock);
-    const stored: Array<{ objectKey: string; body: Uint8Array; metadata: Readonly<Record<string, string>> }> = [];
+    const stored: Array<{
+      objectKey: string;
+      body: Uint8Array;
+      metadata: Readonly<Record<string, string>>;
+    }> = [];
     const provider = new MiniMaxContentProvider(
       {
         putGeneratedObject: (input) => {
-          stored.push({ objectKey: input.objectKey, body: input.body, metadata: input.metadata });
+          stored.push({
+            objectKey: input.objectKey,
+            body: input.body,
+            metadata: input.metadata,
+          });
           return Promise.resolve({ objectUri: `s3://eauto/${input.objectKey}` });
         },
       },
