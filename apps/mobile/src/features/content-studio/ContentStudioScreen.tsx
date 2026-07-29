@@ -97,7 +97,9 @@ export function ContentStudioScreen() {
           onPress={() => void createLaunch()}
           style={[styles.primary, working && styles.disabled]}
         >
-          <Text style={styles.buttonText}>{working ? "Procesando…" : "Generar activos privados"}</Text>
+          <Text style={styles.buttonText}>
+            {working ? "Procesando…" : "Generar activos privados"}
+          </Text>
         </Pressable>
         <Text style={styles.status}>{status}</Text>
         <Text style={styles.warning}>
