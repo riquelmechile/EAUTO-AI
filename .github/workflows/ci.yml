@@ -30,7 +30,9 @@ jobs:
       - name: Audit high and critical vulnerabilities
         run: npm audit --audit-level=high
       - name: Check formatting
-        run: npm run format:check
+        run: |
+          npm run format
+          git diff --exit-code
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
