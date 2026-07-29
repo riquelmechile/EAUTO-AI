@@ -208,7 +208,8 @@ function registerEconomicRoutes(
     return economic().ingest({
       organizationId: actor.organizationId,
       accountId: params.accountId,
-      ...body,
+      ...(body.listingId ? { listingId: body.listingId } : {}),
+      ...(body.limit ? { limit: body.limit } : {}),
     });
   });
 
@@ -226,7 +227,8 @@ function registerEconomicRoutes(
       rows: await economic().reconcile({
         organizationId: actor.organizationId,
         accountId: params.accountId,
-        ...body,
+        ...(body.listingId ? { listingId: body.listingId } : {}),
+        ...(body.limit ? { limit: body.limit } : {}),
       }),
     };
   });
