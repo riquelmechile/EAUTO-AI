@@ -35,17 +35,25 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
   const load = useCallback(async () => {
     setBusy(true);
     try {
-      const [ready, evidence, workOrders, proposalResult, brainResult, daemonResult, supplyResult, lifecycleResult] =
-        await Promise.all([
-          agentOsApi.intelligenceReadiness(accountId),
-          agentOsApi.evidencePacks(accountId),
-          agentOsApi.workOrders(accountId),
-          agentOsApi.proposals(accountId),
-          optional(agentOsApi.accountBrain(accountId)),
-          optional(agentOsApi.daemons(accountId)),
-          optional(agentOsApi.supplyWorkflows(accountId)),
-          optional(agentOsApi.lifecycle(accountId)),
-        ]);
+      const [
+        ready,
+        evidence,
+        workOrders,
+        proposalResult,
+        brainResult,
+        daemonResult,
+        supplyResult,
+        lifecycleResult,
+      ] = await Promise.all([
+        agentOsApi.intelligenceReadiness(accountId),
+        agentOsApi.evidencePacks(accountId),
+        agentOsApi.workOrders(accountId),
+        agentOsApi.proposals(accountId),
+        optional(agentOsApi.accountBrain(accountId)),
+        optional(agentOsApi.daemons(accountId)),
+        optional(agentOsApi.supplyWorkflows(accountId)),
+        optional(agentOsApi.lifecycle(accountId)),
+      ]);
       setReadiness(ready);
       setPacks(evidence.packs);
       setOrders(workOrders.workOrders);
@@ -146,7 +154,11 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
           escrituras externas bloqueadas
         </Text>
         <View style={styles.decisionRow}>
-          <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.secondary}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void load()}
+            style={styles.secondary}
+          >
             <Text style={styles.buttonText}>Actualizar</Text>
           </Pressable>
           <Pressable
@@ -162,26 +174,47 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
 
       <Panel title="Account Brain y automatización">
         <View style={styles.metrics}>
-          <Metric label="Brain" value={brain?.overallScoreBps === null || !brain ? 0 : Math.round(brain.overallScoreBps / 100)} />
+          <Metric
+            label="Brain"
+            value={
+              brain?.overallScoreBps === null || !brain
+                ? 0
+                : Math.round(brain.overallScoreBps / 100)
+            }
+          />
           <Metric label="Daemons" value={activeDaemons.length} />
-          <Metric label="Bloqueados" value={blockedDaemons.length} urgent={blockedDaemons.length > 0} />
+          <Metric
+            label="Bloqueados"
+            value={blockedDaemons.length}
+            urgent={blockedDaemons.length > 0}
+          />
         </View>
         <Text style={styles.meta}>
-          Brain {brain ? `${brain.complete ? "completo" : "incompleto"} · ${formatDate(brain.generatedAt)}` : "sin snapshot"}
-          {brain?.overallScoreBps === null || !brain ? "" : ` · ${Math.round(brain.overallScoreBps / 100)}%`}
+          Brain{" "}
+          {brain
+            ? `${brain.complete ? "completo" : "incompleto"} · ${formatDate(brain.generatedAt)}`
+            : "sin snapshot"}
+          {brain?.overallScoreBps === null || !brain
+            ? ""
+            : ` · ${Math.round(brain.overallScoreBps / 100)}%`}
         </Text>
         {brain?.strategicPriorities.length ? (
           brain.strategicPriorities.slice(0, 7).map((priority) => (
-            <Text key={priority} style={styles.warning}>• {priority}</Text>
+            <Text key={priority} style={styles.warning}>
+              • {priority}
+            </Text>
           ))
         ) : (
           <Text style={styles.empty}>No hay prioridades estratégicas persistidas.</Text>
         )}
         {blockedDaemons.slice(0, 8).map((daemon) => (
           <View key={daemon.daemonId} style={styles.row}>
-            <Text style={styles.cardTitle}>{daemon.daemonId} · {daemon.lastStatus}</Text>
+            <Text style={styles.cardTitle}>
+              {daemon.daemonId} · {daemon.lastStatus}
+            </Text>
             <Text style={styles.meta}>
-              próximo {formatDate(daemon.nextRunAt)}{daemon.lastError ? ` · ${daemon.lastError}` : ""}
+              próximo {formatDate(daemon.nextRunAt)}
+              {daemon.lastError ? ` · ${daemon.lastError}` : ""}
             </Text>
           </View>
         ))}
@@ -191,20 +224,31 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
         <View style={styles.metrics}>
           <Metric label="Dry-runs" value={supply.length} />
           <Metric label="Productos" value={lifecycle.length} />
-          <Metric label="Riesgos" value={lifecycleRisks.length} urgent={lifecycleRisks.length > 0} />
+          <Metric
+            label="Riesgos"
+            value={lifecycleRisks.length}
+            urgent={lifecycleRisks.length > 0}
+          />
         </View>
         {supply.slice(0, 6).map((workflow) => (
           <View key={workflow.id} style={styles.row}>
-            <Text style={styles.cardTitle}>{workflow.kind} · {workflow.status}</Text>
+            <Text style={styles.cardTitle}>
+              {workflow.kind} · {workflow.status}
+            </Text>
             <Text style={styles.meta}>
-              {workflow.supplierId}{workflow.listingId ? ` · ${workflow.listingId}` : ""} · dry-run
+              {workflow.supplierId}
+              {workflow.listingId ? ` · ${workflow.listingId}` : ""} · dry-run
             </Text>
           </View>
         ))}
         {lifecycleRisks.slice(0, 8).map((assessment) => (
           <View key={`${assessment.listingId}-${assessment.assessedAt}`} style={styles.row}>
-            <Text style={styles.cardTitle}>{assessment.listingId} · {assessment.state}</Text>
-            <Text style={styles.meta}>{assessment.confidence} · {assessment.reasons.join(" · ")}</Text>
+            <Text style={styles.cardTitle}>
+              {assessment.listingId} · {assessment.state}
+            </Text>
+            <Text style={styles.meta}>
+              {assessment.confidence} · {assessment.reasons.join(" · ")}
+            </Text>
           </View>
         ))}
         {supply.length === 0 && lifecycle.length === 0 ? (
@@ -224,7 +268,8 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
               </View>
               <Text style={styles.copy}>{proposal.rationale}</Text>
               <Text style={styles.meta}>
-                Agente {proposal.agentId} · impacto esperado {formatImpact(proposal.expectedImpactMinorClp)}
+                Agente {proposal.agentId} · impacto esperado{" "}
+                {formatImpact(proposal.expectedImpactMinorClp)}
               </Text>
               <View style={styles.decisionRow}>
                 <Pressable
@@ -255,18 +300,24 @@ export function OperationalIntelligenceScreen({ roles }: Readonly<{ roles: reado
       <Panel title="Evidencia y work orders">
         {packs.slice(0, 8).map((pack) => (
           <View key={pack.id} style={styles.row}>
-            <Text style={styles.cardTitle}>{pack.subject} · {pack.documents.length} documentos</Text>
+            <Text style={styles.cardTitle}>
+              {pack.subject} · {pack.documents.length} documentos
+            </Text>
             <Text style={styles.meta}>
-              {pack.complete ? "completo" : `incompleto: ${pack.missingInputs.join(", ")}`} · vence {formatDate(pack.expiresAt)}
+              {pack.complete ? "completo" : `incompleto: ${pack.missingInputs.join(", ")}`} · vence{" "}
+              {formatDate(pack.expiresAt)}
             </Text>
           </View>
         ))}
         {activeOrders.slice(0, 12).map((order) => (
           <View key={order.id} style={styles.row}>
-            <Text style={styles.cardTitle}>{order.agentId} · {order.status}</Text>
+            <Text style={styles.cardTitle}>
+              {order.agentId} · {order.status}
+            </Text>
             <Text style={styles.copy}>{order.requestedAction}</Text>
             <Text style={styles.meta}>
-              utilidad {order.expectedUtility.toFixed(2)} · intento {order.attempts}/{order.maximumAttempts} · {order.wakeReason}
+              utilidad {order.expectedUtility.toFixed(2)} · intento {order.attempts}/
+              {order.maximumAttempts} · {order.wakeReason}
             </Text>
             {order.failureReason ? <Text style={styles.warning}>{order.failureReason}</Text> : null}
           </View>
@@ -338,7 +389,13 @@ const styles = StyleSheet.create({
   metricUrgent: { borderColor: "#f97316", borderWidth: 1 },
   metricValue: { color: "#7dd3fc", fontSize: 20, fontWeight: "900" },
   metricLabel: { color: "#94a3b8", fontSize: 10 },
-  secondary: { alignItems: "center", backgroundColor: "#334155", borderRadius: 12, flex: 1, padding: 11 },
+  secondary: {
+    alignItems: "center",
+    backgroundColor: "#334155",
+    borderRadius: 12,
+    flex: 1,
+    padding: 11,
+  },
   buttonText: { color: "white", fontWeight: "800" },
   card: { backgroundColor: "#0f172a", borderRadius: 12, gap: 8, padding: 11 },
   cardHeader: {
@@ -359,8 +416,20 @@ const styles = StyleSheet.create({
   riskMedium: { backgroundColor: "#78350f", color: "#fde68a" },
   riskLow: { backgroundColor: "#14532d", color: "#bbf7d0" },
   decisionRow: { flexDirection: "row", gap: 8 },
-  approve: { alignItems: "center", backgroundColor: "#166534", borderRadius: 10, flex: 1, padding: 10 },
-  reject: { alignItems: "center", backgroundColor: "#991b1b", borderRadius: 10, flex: 1, padding: 10 },
+  approve: {
+    alignItems: "center",
+    backgroundColor: "#166534",
+    borderRadius: 10,
+    flex: 1,
+    padding: 10,
+  },
+  reject: {
+    alignItems: "center",
+    backgroundColor: "#991b1b",
+    borderRadius: 10,
+    flex: 1,
+    padding: 10,
+  },
   disabled: { opacity: 0.4 },
   row: { borderBottomColor: "#334155", borderBottomWidth: 1, gap: 4, paddingVertical: 9 },
 });
