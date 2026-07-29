@@ -43,6 +43,8 @@ jobs:
         run: npm run smoke:credentials
       - name: Verify capability parity claims
         run: npm run doctor:parity
+      - name: Verify Gentleman capability parity
+        run: npm run doctor:gentleman-parity
       - name: Prepare production template
         run: cp .env.production.example .env.production
       - name: Validate production and release contracts
