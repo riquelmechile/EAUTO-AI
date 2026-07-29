@@ -155,7 +155,7 @@
       "status": "implemented",
       "evidence": [
         "packages/application/src/agentCollaborationService.ts",
-        "packages/infrastructure/src/operationalCompanyAdapters.ts"
+        "packages/infrastructure/src/companyIntelligenceSources.ts"
       ]
     },
     {
@@ -216,7 +216,7 @@
       "status": "implemented",
       "evidence": [
         "packages/application/src/productLifecycleService.ts",
-        "packages/infrastructure/src/operationalCompanyAdapters.ts"
+        "packages/infrastructure/src/companyIntelligenceSources.ts"
       ]
     },
     {
