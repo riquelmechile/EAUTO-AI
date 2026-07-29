@@ -45,9 +45,9 @@ La memoria consultiva usa observaciones estructuradas, topic keys, keywords, ful
 
 Construye snapshots por cuenta para economía, catálogo, clientes, supply, publicidad, contenido y reputación. Declara evidencia, memoria usada, score, findings, prioridades y datos faltantes.
 
-### Dieciséis daemons especialistas
+### Dieciséis perfiles daemon
 
-Un scheduler declarativo reutiliza exactamente los dieciséis contratos del Agent OS. Cada daemon obtiene evidencia fresca y solo crea work orders gobernadas en modo `ask`.
+Un scheduler declarativo comparte una implementación durable y reutiliza exactamente los dieciséis contratos del Agent OS. Cada perfil define agente, capability, evidencia obligatoria e instrucción; solo crea work orders gobernadas en modo `ask` cuando están presentes todos sus tipos de evidencia.
 
 ### Creative Studio concreto
 
