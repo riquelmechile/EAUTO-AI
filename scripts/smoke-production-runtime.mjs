@@ -1,11 +1,15 @@
 import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { loadConfig } from "../apps/api/dist/config.js";
+import { createCompanyIntelligenceRuntime } from "../apps/api/dist/companyIntelligenceRuntime.js";
+import { createOperationalIntelligenceRuntime } from "../apps/api/dist/operationalIntelligenceRuntime.js";
 import { createRuntime } from "../apps/api/dist/runtime.js";
 
 const compose = ["compose", "-p", "eauto-postgres-smoke", "-f", "infra/compose/docker-compose.yml"];
 const databaseUrl = "postgres://eauto:eauto@127.0.0.1:5432/eauto";
 let runtime = null;
+let operationalRuntime = null;
+let companyRuntime = null;
 let stage = "initialize";
 
 try {
@@ -49,6 +53,10 @@ try {
   run("node", ["scripts/smoke-mercadolibre-product-ads-postgres.mjs"], {
     DATABASE_URL: databaseUrl,
   });
+  stage = "verify-gentleman-parity";
+  run("node", ["scripts/smoke-gentleman-parity-postgres.mjs"], {
+    DATABASE_URL: databaseUrl,
+  });
   stage = "verify-migration-idempotency";
   run("node", ["scripts/migrate.mjs"], { DATABASE_URL: databaseUrl });
 
@@ -56,8 +64,9 @@ try {
   const template = parseEnvironment(
     await readFile(new URL("../.env.production.example", import.meta.url), "utf8"),
   );
-  const config = loadConfig({
+  const smokeEnvironment = {
     ...template,
+    NODE_ENV: "production",
     POSTGRES_PASSWORD: "eauto",
     DATABASE_URL: databaseUrl,
     MINIO_ROOT_USER: "minio-smoke-user",
@@ -87,12 +96,29 @@ try {
     MELI_WEBHOOK_TOKEN: "smoke-webhook-token-0123456789abcdef",
     MELI_QUESTION_ANSWER_ENABLED: "true",
     MELI_QUESTION_ANSWER_ACCOUNT_ID: "plasticov",
-  });
+  };
+  const config = loadConfig(smokeEnvironment);
 
   stage = "create-production-runtime";
   runtime = await createRuntime(config);
+  operationalRuntime = createOperationalIntelligenceRuntime(runtime, config);
+  companyRuntime = createCompanyIntelligenceRuntime(
+    runtime,
+    operationalRuntime,
+    config,
+    smokeEnvironment,
+  );
+  await companyRuntime.initialize();
   assert(runtime.persistenceMode === "postgres", "production runtime must use Postgres");
-  assert(runtime.contentGenerationMode === "external", "content provider must be external");
+  assert(runtime.contentGenerationMode === "deterministic", "legacy generic content gateway must remain disabled");
+  assert(companyRuntime.creativeStudio !== null, "MiniMax Creative Studio must be wired separately");
+  assert(companyRuntime.economic !== null, "economic operations require PostgreSQL wiring");
+  assert(companyRuntime.enabled, "company intelligence worker must be enabled");
+  assert(
+    (await companyRuntime.daemons.listStates({ organizationId: "maustian", accountId: "plasticov" }))
+      .length === 16,
+    "Plasticov must initialize exactly sixteen specialist daemons",
+  );
   assert(
     runtime.catalogAcquisitionMode === "external",
     "catalog acquisition providers must be external",
@@ -141,6 +167,10 @@ try {
   console.log("✓ Catalog acquisition persistence and review lifecycle verified");
   console.log("✓ MercadoLibre taxonomy snapshot versions and scope verified");
   console.log("✓ Product Ads snapshots, reconciliation and tenant isolation verified");
+  console.log("✓ Agent bus, Evidence Router, semantic memory and Account Brain verified");
+  console.log("✓ Sixteen specialist daemons, supply workflows and lifecycle BI verified");
+  console.log("✓ Economic CLI persistence contract verified");
+  console.log("✓ MiniMax Creative Studio wired with private object storage");
   console.log("✓ Production configuration parsed");
   console.log("✓ Generic marketplace writes disabled and question.answer wired explicitly");
   console.log("✓ Product Ads v2 read plane and reconciliation runtime wired");
@@ -153,6 +183,8 @@ try {
   );
   throw error;
 } finally {
+  await companyRuntime?.close();
+  await operationalRuntime?.close();
   await runtime?.close();
   run("docker", [...compose, "down", "--volumes", "--remove-orphans"], {}, true);
 }
