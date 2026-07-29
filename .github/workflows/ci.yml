@@ -34,9 +34,7 @@ jobs:
       - name: Audit all dependency severities
         run: npm audit
       - name: Check formatting
-        run: |
-          npm run format
-          git diff --exit-code
+        run: npm run format:check
       - name: Typecheck
         run: npm run typecheck
       - name: Lint
