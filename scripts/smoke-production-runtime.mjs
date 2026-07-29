@@ -5,7 +5,13 @@ import { createCompanyIntelligenceRuntime } from "../apps/api/dist/companyIntell
 import { createOperationalIntelligenceRuntime } from "../apps/api/dist/operationalIntelligenceRuntime.js";
 import { createRuntime } from "../apps/api/dist/runtime.js";
 
-const compose = ["compose", "-p", "eauto-postgres-smoke", "-f", "infra/compose/docker-compose.yml"];
+const compose = [
+  "compose",
+  "-p",
+  "eauto-postgres-smoke",
+  "-f",
+  "infra/compose/docker-compose.yml",
+];
 const databaseUrl = "postgres://eauto:eauto@127.0.0.1:5432/eauto";
 let runtime = null;
 let operationalRuntime = null;
@@ -110,13 +116,20 @@ try {
   );
   await companyRuntime.initialize();
   assert(runtime.persistenceMode === "postgres", "production runtime must use Postgres");
-  assert(runtime.contentGenerationMode === "deterministic", "legacy generic content gateway must remain disabled");
+  assert(
+    runtime.contentGenerationMode === "deterministic",
+    "legacy generic content gateway must remain disabled",
+  );
   assert(companyRuntime.creativeStudio !== null, "MiniMax Creative Studio must be wired separately");
   assert(companyRuntime.economic !== null, "economic operations require PostgreSQL wiring");
   assert(companyRuntime.enabled, "company intelligence worker must be enabled");
   assert(
-    (await companyRuntime.daemons.listStates({ organizationId: "maustian", accountId: "plasticov" }))
-      .length === 16,
+    (
+      await companyRuntime.daemons.listStates({
+        organizationId: "maustian",
+        accountId: "plasticov",
+      })
+    ).length === 16,
     "Plasticov must initialize exactly sixteen specialist daemons",
   );
   assert(
