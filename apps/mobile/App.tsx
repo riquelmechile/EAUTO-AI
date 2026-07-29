@@ -19,18 +19,25 @@ import { MercadoLibreScreen } from "./src/features/mercadolibre/MercadoLibreScre
 import { ProductIdentificationScreen } from "./src/features/product-identification/ProductIdentificationScreen";
 import { api } from "./src/lib/api";
 import { sessionStore, type MobileSession } from "./src/lib/session";
+import { theme } from "./src/theme";
 
 type Tab =
-  "dashboard" | "agents" | "intelligence" | "mercadolibre" | "product" | "inbox" | "studio";
+  | "dashboard"
+  | "agents"
+  | "intelligence"
+  | "mercadolibre"
+  | "product"
+  | "inbox"
+  | "studio";
 
-const TABS: readonly { id: Tab; label: string }[] = [
-  { id: "dashboard", label: "Empresa" },
-  { id: "agents", label: "Agentes" },
-  { id: "intelligence", label: "Inteligencia" },
-  { id: "mercadolibre", label: "MercadoLibre" },
-  { id: "product", label: "Producto" },
-  { id: "inbox", label: "Decisiones" },
-  { id: "studio", label: "Contenido" },
+const TABS: readonly { id: Tab; label: string; icon: string }[] = [
+  { id: "dashboard", label: "Empresa", icon: "⌂" },
+  { id: "agents", label: "Agentes", icon: "◎" },
+  { id: "intelligence", label: "Intel", icon: "✦" },
+  { id: "mercadolibre", label: "MercadoLibre", icon: "M" },
+  { id: "product", label: "Producto", icon: "◇" },
+  { id: "inbox", label: "Decisiones", icon: "✓" },
+  { id: "studio", label: "Contenido", icon: "◐" },
 ];
 
 export default function App() {
@@ -65,7 +72,10 @@ export default function App() {
     return (
       <SafeAreaView style={styles.centered}>
         <StatusBar style="light" />
-        <ActivityIndicator color="#7dd3fc" size="large" />
+        <View style={styles.loaderMark}>
+          <Text style={styles.loaderMarkText}>EA</Text>
+        </View>
+        <ActivityIndicator color={theme.colors.primary} size="large" />
         <Text style={styles.loadingText}>Validando sesión segura…</Text>
       </SafeAreaView>
     );
@@ -84,30 +94,60 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <View style={styles.header}>
-        <View>
-          <Text style={styles.brand}>EAUTO-AI</Text>
-          <Text style={styles.subtitle}>Empresa agéntica autónoma</Text>
-          <Text style={styles.actor}>{session.actor.id}</Text>
+        <View style={styles.brandGroup}>
+          <View style={styles.logo}>
+            <Text style={styles.logoText}>EA</Text>
+          </View>
+          <View style={styles.brandCopy}>
+            <Text style={styles.brand}>EAUTO-AI</Text>
+            <Text style={styles.subtitle}>Control center comercial</Text>
+          </View>
         </View>
-        <Pressable accessibilityRole="button" onPress={() => void logout()} style={styles.logout}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void logout()}
+          style={({ pressed }) => [styles.logout, pressed && styles.pressed]}
+        >
           <Text style={styles.logoutText}>Salir</Text>
         </Pressable>
       </View>
+
+      <View style={styles.sessionBar}>
+        <View style={styles.statusGroup}>
+          <View style={styles.statusDot} />
+          <Text style={styles.statusText}>Sesión protegida</Text>
+        </View>
+        <Text numberOfLines={1} style={styles.actor}>
+          {session.actor.id}
+        </Text>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.tabs}
         horizontal
         showsHorizontalScrollIndicator={false}
       >
-        {TABS.map((item) => (
-          <Pressable
-            key={item.id}
-            onPress={() => setTab(item.id)}
-            style={[styles.tab, tab === item.id && styles.activeTab]}
-          >
-            <Text style={styles.tabText}>{item.label}</Text>
-          </Pressable>
-        ))}
+        {TABS.map((item) => {
+          const active = tab === item.id;
+          return (
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: active }}
+              key={item.id}
+              onPress={() => setTab(item.id)}
+              style={({ pressed }) => [
+                styles.tab,
+                active && styles.activeTab,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.tabIcon, active && styles.activeTabIcon]}>{item.icon}</Text>
+              <Text style={[styles.tabText, active && styles.activeTabText]}>{item.label}</Text>
+            </Pressable>
+          );
+        })}
       </ScrollView>
+
       <ScrollView contentContainerStyle={styles.content}>
         {tab === "dashboard" ? <DashboardScreen /> : null}
         {tab === "agents" ? <AgentOsScreen roles={session.actor.roles} /> : null}
@@ -124,41 +164,172 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: "#0b1120", flex: 1 },
+  safeArea: {
+    backgroundColor: theme.colors.background,
+    flex: 1,
+  },
   centered: {
     alignItems: "center",
-    backgroundColor: "#0b1120",
+    backgroundColor: theme.colors.background,
     flex: 1,
-    gap: 14,
+    gap: theme.spacing.lg,
     justifyContent: "center",
   },
-  loadingText: { color: "#cbd5e1" },
+  loaderMark: {
+    alignItems: "center",
+    backgroundColor: theme.colors.primaryMuted,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.radius.large,
+    borderWidth: 1,
+    height: 64,
+    justifyContent: "center",
+    width: 64,
+  },
+  loaderMarkText: {
+    color: theme.colors.white,
+    fontSize: 20,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  loadingText: {
+    color: theme.colors.textSoft,
+    fontWeight: "600",
+  },
   header: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.lg,
   },
-  brand: { color: "#f8fafc", fontSize: 26, fontWeight: "900", letterSpacing: 1 },
-  subtitle: { color: "#7dd3fc", marginTop: 3 },
-  actor: { color: "#94a3b8", fontSize: 12, marginTop: 3 },
+  brandGroup: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 1,
+    gap: theme.spacing.md,
+  },
+  logo: {
+    alignItems: "center",
+    backgroundColor: theme.colors.primaryStrong,
+    borderColor: theme.colors.primary,
+    borderRadius: theme.radius.medium,
+    borderWidth: 1,
+    height: 46,
+    justifyContent: "center",
+    width: 46,
+  },
+  logoText: {
+    color: theme.colors.white,
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  brandCopy: {
+    flexShrink: 1,
+  },
+  brand: {
+    color: theme.colors.text,
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  subtitle: {
+    color: theme.colors.primary,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 2,
+  },
   logout: {
-    backgroundColor: "#1e293b",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    backgroundColor: theme.colors.surfaceElevated,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.medium,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: 10,
   },
-  logoutText: { color: "#e2e8f0", fontWeight: "700" },
-  tabs: { gap: 8, padding: 16 },
+  logoutText: {
+    color: theme.colors.textSoft,
+    fontWeight: "800",
+  },
+  sessionBar: {
+    alignItems: "center",
+    backgroundColor: theme.colors.backgroundRaised,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: theme.spacing.xl,
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+  },
+  statusGroup: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: theme.spacing.sm,
+  },
+  statusDot: {
+    backgroundColor: theme.colors.success,
+    borderRadius: theme.radius.pill,
+    height: 8,
+    width: 8,
+  },
+  statusText: {
+    color: theme.colors.textSoft,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  actor: {
+    color: theme.colors.textMuted,
+    flexShrink: 1,
+    fontSize: 12,
+    marginLeft: theme.spacing.md,
+    textAlign: "right",
+  },
+  tabs: {
+    gap: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
+  },
   tab: {
     alignItems: "center",
-    backgroundColor: "#182033",
-    borderRadius: 12,
-    minWidth: 105,
-    padding: 11,
+    backgroundColor: theme.colors.surfaceMuted,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.medium,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 7,
+    minWidth: 106,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 11,
   },
-  activeTab: { backgroundColor: "#2563eb" },
-  tabText: { color: "white", fontSize: 12, fontWeight: "700" },
-  content: { gap: 16, padding: 16, paddingBottom: 36 },
+  activeTab: {
+    backgroundColor: theme.colors.primaryMuted,
+    borderColor: theme.colors.primary,
+  },
+  tabIcon: {
+    color: theme.colors.textMuted,
+    fontSize: 15,
+    fontWeight: "900",
+  },
+  activeTabIcon: {
+    color: theme.colors.primary,
+  },
+  tabText: {
+    color: theme.colors.textSoft,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  activeTabText: {
+    color: theme.colors.white,
+  },
+  pressed: {
+    opacity: 0.72,
+  },
+  content: {
+    gap: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: 48,
+  },
 });
