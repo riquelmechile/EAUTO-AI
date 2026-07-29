@@ -86,16 +86,38 @@ CREATE TABLE semantic_memory_entries (
   content_hash text NOT NULL CHECK (content_hash ~ '^[a-f0-9]{64}$'),
   payload_json jsonb NOT NULL,
   created_at timestamptz NOT NULL,
-  search_document tsvector GENERATED ALWAYS AS (
-    to_tsvector('simple',
-      coalesce(topic_key, '') || ' ' || coalesce(title, '') || ' ' ||
-      coalesce(observation, '') || ' ' || coalesce(rationale, '') || ' ' ||
-      coalesce(scope_description, '') || ' ' || array_to_string(keywords, ' ')
-    )
-  ) STORED,
+  search_document tsvector NOT NULL DEFAULT ''::tsvector,
   FOREIGN KEY (organization_id, account_id)
     REFERENCES commerce_accounts (organization_id, id) ON DELETE CASCADE
 );
+
+CREATE FUNCTION semantic_memory_search_document_refresh()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.search_document := to_tsvector(
+    'simple'::regconfig,
+    concat_ws(
+      ' ',
+      NEW.topic_key,
+      NEW.title,
+      NEW.observation,
+      NEW.rationale,
+      NEW.scope_description,
+      array_to_string(NEW.keywords, ' ')
+    )
+  );
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER semantic_memory_search_document_refresh_trigger
+BEFORE INSERT OR UPDATE OF topic_key, title, observation, rationale, scope_description, keywords
+ON semantic_memory_entries
+FOR EACH ROW
+EXECUTE FUNCTION semantic_memory_search_document_refresh();
+
 CREATE INDEX semantic_memory_scope_topic_idx
   ON semantic_memory_entries (organization_id, account_id, topic_key, revision DESC);
 CREATE INDEX semantic_memory_search_idx ON semantic_memory_entries USING gin (search_document);
