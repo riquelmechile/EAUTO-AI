@@ -21,6 +21,7 @@ const checks = [
   ["scripts/production-doctor.mjs", ...productionArguments],
   ["scripts/credentials-doctor.mjs", ...productionArguments],
   ["scripts/product-ads-production-doctor.mjs", ...productionArguments],
+  ["scripts/gentleman-parity-doctor.mjs"],
   ["scripts/capability-parity-doctor.mjs"],
   ["scripts/release-doctor.mjs"],
   ["scripts/workflow-supply-chain-doctor.mjs"],
