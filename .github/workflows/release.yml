@@ -108,6 +108,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   android:
+    if: github.event_name == 'workflow_dispatch'
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -116,7 +117,7 @@ jobs:
       EAS_PROJECT_ID: ${{ secrets.EAS_PROJECT_ID }}
       EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
       GOOGLE_SERVICE_ACCOUNT_KEY_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY_JSON }}
-      SUBMIT_TO_PLAY: ${{ github.event_name == 'workflow_dispatch' && inputs.submit_to_play == true }}
+      SUBMIT_TO_PLAY: ${{ inputs.submit_to_play == true }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
