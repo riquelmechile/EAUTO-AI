@@ -4,14 +4,16 @@ on:
   push:
     branches:
       - "release/v0.1.0-readiness"
-  workflow_dispatch:
+    paths:
+      - ".github/workflows/dependency-refresh-probe.yml"
+      - "package.json"
+      - "scripts/audit-policy.mjs"
 
 permissions:
   contents: write
 
 jobs:
   refresh:
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message != 'security: refresh lockfile from current advisories'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
