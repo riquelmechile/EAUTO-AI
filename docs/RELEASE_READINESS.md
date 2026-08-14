@@ -12,7 +12,7 @@ Una etiqueta o un GitHub Release **no convierte por sí solo a EAUTO-AI en produ
 La primera release técnica puede publicarse únicamente cuando el commit exacto cumple todos estos gates internos:
 
 - lockfile reproducible;
-- `npm audit` sin vulnerabilidades admitidas por omisión;
+- auditoría de dependencias fail-closed mediante `npm run audit:ci`, con cualquier excepción explícita, acotada y expirable documentada en [Excepciones de seguridad](SECURITY_EXCEPTIONS.md);
 - Prettier, TypeScript estricto y ESLint;
 - suite de tests y cobertura mínima configurada;
 - build de servidor y Android;
@@ -60,7 +60,7 @@ En local puede ejecutarse:
 
 ```bash
 npm ci
-npm audit
+npm run audit:ci
 npm run format:check
 npm run typecheck
 npm run lint
@@ -136,6 +136,7 @@ Nunca adjuntar tokens, contraseñas, claves privadas, cookies, datos personales 
 
 - [Release de producción](runbooks/production-release.md)
 - [Credenciales](runbooks/credentials.md)
+- [Excepciones de seguridad](SECURITY_EXCEPTIONS.md)
 - [Proveedores de producción](PRODUCTION_PROVIDERS.md)
 - [Seguridad e identidad](SECURITY_AND_IDENTITY.md)
 - [Política de autonomía](AUTONOMY_POLICY.md)
