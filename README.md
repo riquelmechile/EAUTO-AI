@@ -4,111 +4,162 @@
 
 ### La empresa agéntica de comercio dirigida desde Android
 
-**Convierte datos operativos en decisiones con evidencia, aprobación por riesgo, ejecución verificable y aprendizaje basado en resultados reales.**
+**Convierte señales operativas en decisiones con evidencia, aprobación por riesgo, ejecución verificable y aprendizaje basado en outcomes reales.**
 
 [![CI](https://github.com/riquelmechile/EAUTO-AI/actions/workflows/ci.yml/badge.svg)](https://github.com/riquelmechile/EAUTO-AI/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A522.13-339933?logo=nodedotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![Android](https://img.shields.io/badge/Android-Expo%20%2B%20React%20Native-000020?logo=expo&logoColor=white)
-![Autonomía](https://img.shields.io/badge/Autonom%C3%ADa-controlada-7C3AED)
-
-`Observa` · `Prioriza` · `Propone` · `Aprueba` · `Ejecuta` · `Verifica` · `Aprende`
 
 </div>
 
-> [!NOTE]
-> El primer contexto operacional es **MercadoLibre Chile**, con **Plasticov** y **Maustian** como cuentas independientes. La arquitectura está diseñada para crecer hacia ecommerce propio, proveedores, publicidad, redes sociales y otros marketplaces.
+<p align="center">
+  <img src="docs/assets/eauto-ai-control-loop.svg" alt="Ciclo de control de EAUTO-AI: señales, evidencia, Agent OS, aprobación y verificación" width="100%" />
+</p>
 
 > [!IMPORTANT]
-> **Estado actual:** la fundación técnica está construida, auditada y ejecutable. El despliegue comercial real todavía requiere infraestructura, secretos y validación live de proveedores. Las escrituras externas permanecen **fail-closed** hasta contar con evidencia, política, aprobación y verificación posterior.
+> **Estado real:** la base técnica es ejecutable y está protegida por CI, tests, doctors, aislamiento multi-cuenta y gates fail-closed. **Release técnico reproducible ≠ producción comercial live.** Los gates externos de MercadoLibre, infraestructura, AAB físico y restore drill siguen rastreados en [#41](https://github.com/riquelmechile/EAUTO-AI/issues/41).
 
-## Por qué existe
+## En 60 segundos
 
-Operar comercio digital suele significar revisar datos fragmentados, reaccionar tarde, repetir tareas manuales y confiar en automatizaciones que no pueden demostrar qué hicieron realmente.
+EAUTO-AI es un **control plane agéntico para comercio digital**. Un CEO humano dirige desde Android; el backend observa el negocio 24/7, organiza evidencia, despierta agentes solo cuando existe una razón económica y convierte sus propuestas en acciones gobernadas.
 
-EAUTO-AI busca resolver ese problema convirtiendo el negocio en una organización agéntica gobernada por un CEO humano.
-
-| Problema operativo                                                                  | Respuesta de EAUTO-AI                                                                |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Información repartida entre ventas, publicaciones, reclamos, anuncios y proveedores | Un modelo operacional autoritativo con aislamiento por organización y cuenta         |
-| Decisiones reactivas o basadas en intuición                                         | Evidencia fresca, utilidad esperada, costo y riesgo antes de activar razonamiento    |
-| Automatizaciones que actúan sin control                                             | Políticas explícitas, RBAC, aprobación humana y máquinas de estado fail-closed       |
-| Una API responde `200`, pero nadie sabe si la acción ocurrió                        | Lectura posterior, receipts append-only y outcomes verificados                       |
-| Agentes que inventan, se autoconceden permisos o delegan sin límite                 | Contratos de rol, skills versionadas, preflight, presupuestos y máximo de delegación |
-| Dos cuentas comerciales que pueden contaminarse entre sí                            | Scope obligatorio por organización, cuenta e idempotency key                         |
-| Costos de IA difíciles de justificar                                                | Wake policy por utilidad esperada y costeo de cache hit, cache miss y output         |
-
-## La visión
-
-**Un CEO humano dirige desde Android una empresa digital que observa 24/7, despierta agentes solo cuando vale la pena, prepara acciones verificables y aprende únicamente de resultados comprobados.**
-
-El KPI central no es “cantidad de agentes” ni “tokens procesados”:
-
-> **Beneficio neto sostenible y verificable, ajustado por riesgo, capital y costo de IA.**
-
-## Cómo funciona
-
-```mermaid
-flowchart LR
-    A[Señales del negocio] --> B[Ingesta y read models]
-    B --> C[Evidence bundle]
-    C --> D{¿Existe utilidad esperada?}
-    D -- No --> E[No despertar agentes]
-    D -- Sí --> F[CEO Agent y especialistas]
-    F --> G[Propuesta con costo, riesgo y evidencia]
-    G --> H{Política y aprobación}
-    H -- Rechazada --> I[Auditoría y aprendizaje]
-    H -- Aprobada --> J[Ejecución idempotente]
-    J --> K[Verificación posterior]
-    K --> L[Receipts y outcome económico]
-    L --> M[Scorecards y memoria consultiva]
-```
-
-La autonomía no nace de una respuesta del modelo. Cada paso pasa por controles deterministas fuera del LLM.
-
-## Qué hace diferente a EAUTO-AI
-
-### 1. Agent OS, no prompts sueltos
-
-Cada agente tiene un contrato de rol, capabilities permitidas, skills versionadas, evidencia obligatoria, presupuesto, timeout, máximo de iteraciones, autonomía predeterminada y scorecard.
-
-La [skill Agent OS](doctrine/skills/agent-os/SKILL.md) resume el principio central: **los modelos ayudan a razonar, pero nunca sustituyen políticas, evidencia ni máquinas de estado**.
-
-### 2. Skills como contratos verificables
-
-Una skill no es una competencia que el agente declara tener. Es un contrato versionado que define:
-
-- qué puede y qué no puede hacer;
-- qué evidencia necesita;
-- qué riesgo y presupuesto admite;
-- cuándo requiere aprobación humana;
-- cuántas iteraciones puede ejecutar;
-- qué salidas y receipts debe producir.
-
-Los contratos y las skills se hashean durante el preflight. Un cambio de versión invalida el contexto estable anterior.
-
-### 3. Confianza verificable
-
-EAUTO-AI separa explícitamente:
+No confía en que un modelo “diga que hizo algo”. El sistema separa explícitamente:
 
 ```text
-propuesta ≠ aprobación ≠ ejecución ≠ verificación ≠ outcome
+señal → evidencia → razonamiento → propuesta → aprobación → ejecución → verificación → outcome
 ```
 
-Una acción sensible solo puede avanzar con evidencia, policy hash, scope, aprobación y receipt chain. Cuando el resultado externo no puede confirmarse, la acción queda en estado `uncertain` y no se reintenta ciegamente.
+La primera operación objetivo es **MercadoLibre Chile**, manteniendo **Plasticov** y **Maustian** como cuentas aisladas. La arquitectura está preparada para proveedores, publicidad, ecommerce propio, contenido y otros marketplaces.
 
-### 4. Autonomía limitada por diseño
+### Qué resuelve
 
-El sistema opera con tres niveles conceptuales:
+| Problema                                                             | Respuesta de EAUTO-AI                                             |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Datos repartidos entre ventas, catálogo, Ads, reclamos y proveedores | Read models y evidencia scoped por organización y cuenta          |
+| Decisiones reactivas                                                 | Utilidad esperada, costo, riesgo y freshness antes de razonar     |
+| Automatizaciones que actúan sin control                              | Policy, RBAC, aprobación humana y máquinas de estado fail-closed  |
+| Una API responde `200` y nadie sabe qué ocurrió                      | Verificación posterior, receipts append-only y outcomes separados |
+| Agentes que inventan autoridad                                       | Skills versionadas, preflight, budgets y capabilities explícitas  |
+| Contaminación entre cuentas                                          | Scope compuesto, constraints e idempotency keys por cuenta        |
+| IA cara sin impacto comprobable                                      | Wake policy económica, costo de inferencia y scorecards           |
 
-| Modo         | Comportamiento                                                                       |
-| ------------ | ------------------------------------------------------------------------------------ |
-| `ask`        | Prepara y solicita aprobación                                                        |
-| `inform`     | Ejecuta solo dentro de una política previamente autorizada e informa                 |
-| `autonomous` | Reservado para capacidades con historial, presupuesto, rollback y política explícita |
+## Inicio rápido
 
-La fundación actual mantiene las mutaciones externas en modo controlado. Ningún agente puede promover su propia autonomía.
+### Requisitos
+
+- Node.js 22.13 o superior;
+- npm 10 o superior;
+- Docker y Docker Compose;
+- Android Studio o Expo/EAS si se ejecutará la app móvil.
+
+### Camino mínimo
+
+```bash
+npm ci
+npm run check
+npm run dev:api
+```
+
+En terminales separadas:
+
+```bash
+npm run dev:worker
+npm run dev:mobile
+```
+
+Android Emulator usa `http://10.0.2.2:3000` por defecto. En un dispositivo físico:
+
+```bash
+EXPO_PUBLIC_API_URL=http://IP_DE_TU_PC:3000 npm run dev:mobile
+```
+
+### Infraestructura local completa
+
+```bash
+docker compose -f infra/compose/docker-compose.yml up -d
+npm run doctor
+```
+
+En desarrollo, `AUTH_MODE=disabled` puede crear un owner local. Producción exige autenticación, PostgreSQL y configuración validada por `doctor:production`.
+
+## Modelo mental
+
+### El LLM propone; el sistema conserva la autoridad
+
+El modelo puede investigar, resumir, comparar y proponer. No controla por sí mismo:
+
+- scope de organización o cuenta;
+- permisos;
+- thresholds económicos;
+- policy version;
+- aprobación;
+- idempotencia;
+- evidencia requerida;
+- estado final de una acción;
+- verificación post-ejecución.
+
+Cuando el resultado externo no puede reconciliarse, la acción termina en `uncertain`. El sistema no interpreta incertidumbre como éxito ni reintenta a ciegas.
+
+### Agent OS, no prompts sueltos
+
+Cada perfil de agente está definido por contratos versionados: capabilities, evidencia obligatoria, presupuesto, timeout, máximo de iteraciones, modo de autonomía y scorecard. La [skill Agent OS](doctrine/skills/agent-os/SKILL.md) conserva la regla central: **razonamiento probabilístico dentro de límites deterministas**.
+
+### Autonomía por evidencia
+
+| Modo         | Comportamiento                                                                      |
+| ------------ | ----------------------------------------------------------------------------------- |
+| `ask`        | Prepara la acción y solicita aprobación                                             |
+| `inform`     | Solo puede ejecutar dentro de una policy previamente autorizada e informa           |
+| `autonomous` | Reservado para capabilities con historial real, budget, rollback y policy explícita |
+
+Ningún agente puede promover su propio nivel de autonomía. El gate live para aumentarla está definido en [#41](https://github.com/riquelmechile/EAUTO-AI/issues/41).
+
+## Estado verificable
+
+**Leyenda:** ✅ implementado/gateado en código · 🟡 requiere integración o evidencia live · 🔒 bloqueado intencionalmente
+
+| Área                      | Estado | Evidencia disponible en el proyecto                                              |
+| ------------------------- | :----: | -------------------------------------------------------------------------------- |
+| Dominio y gobernanza      |   ✅   | Dinero, evidencia, policy, autonomía y máquinas de estado                        |
+| Aislamiento multi-cuenta  |   ✅   | Scope por organización/cuenta, constraints e idempotencia                        |
+| Agent OS                  |   ✅   | Catálogo, preflight, work sessions, heartbeats, perfiles daemon y scorecards     |
+| API                       |   ✅   | Fastify, auth/RBAC, dashboard, inbox, acciones, receipts y operaciones           |
+| Android                   |   ✅   | Control plane Expo/React Native, cuentas, agentes, operaciones y Content Studio  |
+| Persistencia              |   ✅   | PostgreSQL, migraciones idempotentes, leases y transacciones                     |
+| Procesamiento 24/7        |   ✅   | Workers recuperables, outbox, retries, dead-letter y replay                      |
+| Evidencia y auditoría     |   ✅   | Evidence bundles, receipts SHA-256 y outcomes separados                          |
+| Object storage            |   ✅   | MinIO/S3 privado, versionado, signed URLs y smoke contractual                    |
+| Seguridad de supply chain |   ✅   | Actions pinneadas a SHA, audit, imagen por digest, SBOM y provenance             |
+| CI/release técnico        |   ✅   | Formato, tipos, lint, tests, cobertura, build, PostgreSQL, Docker y doctors      |
+| MercadoLibre live         |   🟡   | Contratos/OAuth/webhook/Product Ads preparados; falta evidencia operacional real |
+| Proveedores externos      |   🟡   | Gateways y contratos; las credenciales y validaciones live son externas al repo  |
+| Producción comercial      |   🟡   | Depende de DNS/TLS, secretos, restore, AAB físico y ventanas de reconciliación   |
+| Autonomía externa         |   🔒   | No se promueve hasta cumplir los gates temporales y operativos de #41            |
+
+Para la definición exacta de “release listo”, consulte [Readiness de release y producción](docs/RELEASE_READINESS.md).
+
+## Arquitectura
+
+```mermaid
+flowchart TB
+    Mobile[Android CEO App] --> API[Fastify API]
+    API --> App[Application services]
+    App --> Domain[Dominio puro]
+    App --> Worker[Workers + transactional outbox]
+
+    API --> PG[(PostgreSQL)]
+    Worker --> PG
+    API --> S3[(MinIO / S3)]
+
+    App --> Gateways[Gateways externos allowlisted]
+    Gateways --> ML[MercadoLibre]
+    Gateways --> LLM[Proveedor LLM]
+    Gateways --> Media[Imagen / video / catálogo]
+```
+
+La dirección de dependencias apunta hacia el dominio. `packages/domain` no necesita conocer Fastify, PostgreSQL, Android ni proveedores externos.
 
 ## Organización agéntica
 
@@ -132,141 +183,57 @@ flowchart TB
     V --> V1[Riesgo · auditoría · memoria · evaluación]
 ```
 
-La jerarquía admite como máximo dos niveles reales de delegación: **CEO Agent → director → especialista**.
+La delegación real se limita a **CEO Agent → director → especialista**. Profundidad limitada significa menos autoridad implícita y una trazabilidad más simple.
 
-## Arquitectura
+## Calidad, seguridad y release
 
-```mermaid
-flowchart TB
-    Mobile[Android CEO App] --> API[Fastify API]
-    API --> App[Application services]
-    App --> Domain[Dominio puro]
-    App --> Worker[Workers y transactional outbox]
+El comando corto de calidad es:
 
-    Worker --> PG[(PostgreSQL)]
-    API --> PG
-    API --> S3[(MinIO / object storage)]
-
-    App --> Gateway[Gateways externos]
-    Gateway --> ML[MercadoLibre]
-    Gateway --> LLM[LLM provider]
-    Gateway --> Media[Imagen y video]
-
-    Domain -. sin dependencias .-> Domain
+```bash
+npm run check
 ```
 
-La regla de dependencias siempre apunta hacia el dominio. El dominio no conoce Fastify, PostgreSQL, Android ni proveedores de IA.
+La CI agrega gates que no caben en una prueba unitaria: lockfile reproducible, audit de dependencias, cobertura, PostgreSQL real, migraciones, colisiones de idempotencia, credentials doctor, capability doctors, Compose, Caddy, Docker y object storage.
 
-## Estado actual
+El workflow de release vuelve a ejecutar calidad antes de construir artefactos y usa:
 
-**Leyenda:** ✅ verificado · 🟡 integración pendiente · 🔒 bloqueado intencionalmente
+- GitHub Actions fijadas a commits SHA;
+- checkout sin credenciales persistentes;
+- contenedor multi-arquitectura;
+- SBOM y provenance;
+- digest inmutable de GHCR;
+- build EAS esperado hasta finalización;
+- build ID Android exacto para un eventual submit a Play.
 
-| Área                              | Estado | Qué existe hoy                                                                      |
-| --------------------------------- | :----: | ----------------------------------------------------------------------------------- |
-| Dominio y gobernanza              |   ✅   | Dinero, evidencia, objetivos, políticas, autonomía y máquinas de estado             |
-| Aislamiento multi-cuenta          |   ✅   | Scope por organización y cuenta para Plasticov y Maustian                           |
-| Agent OS                          |   ✅   | Catálogo, planner determinista, preflight, work sessions, heartbeats y scorecards   |
-| API                               |   ✅   | Fastify, autenticación/RBAC, dashboard, inbox, acciones, receipts y operaciones     |
-| Android                           |   ✅   | Control plane Expo/React Native, empresa, inbox, agentes y Content Studio           |
-| Persistencia                      |   ✅   | PostgreSQL, migraciones idempotentes, constraints, leases y transacciones           |
-| Procesamiento 24/7                |   ✅   | Worker recuperable, outbox, retries, dead-letter y replay administrativo            |
-| Evidencia y auditoría             |   ✅   | Evidence bundles, receipts SHA-256, delivery log y outcomes separados               |
-| Object storage                    |   ✅   | MinIO, bucket privado, versionado, URLs firmadas y smoke test                       |
-| Seguridad de despliegue           |   ✅   | Imágenes por digest, secrets fail-closed y GitHub Actions pinneadas por SHA         |
-| CI y release                      |   ✅   | Formato, tipos, lint, tests, build, PostgreSQL real, Docker, MinIO y doctors        |
-| MercadoLibre live                 |   🟡   | Contratos, OAuth/webhook y guards preparados; faltan credenciales y validación real |
-| Proveedores de contenido          |   🟡   | Gateway y simulación trazable; faltan adaptadores reales de imagen/video            |
-| Escrituras externas autónomas     |   🔒   | Deshabilitadas hasta validar política, rollback y verificación post-acción          |
-| Operación comercial en producción |   🟡   | Falta infraestructura, secretos, restore drill, AAB real y pruebas live             |
+> [!NOTE]
+> Publicar `v0.1.0` valida el commit y sus artefactos. No cierra automáticamente el checklist live de [#41](https://github.com/riquelmechile/EAUTO-AI/issues/41).
 
-### Qué puede demostrarse hoy
+## Producción
 
-- La suite completa, el build server/mobile y los doctors pasan en CI.
-- Las migraciones corren contra PostgreSQL limpio y verifican idempotencia y concurrencia.
-- Las cuentas están aisladas por organización, cuenta, constraints e idempotency keys.
-- Las acciones sensibles recorren propuesta → review → aprobación → ejecución → verificación.
-- Los receipts forman una cadena append-only verificable.
-- El runtime productivo usa imágenes inmutables y falla si no puede descargar el artefacto correcto.
-- La release Android espera el AAB firmado y, opcionalmente, envía ese build ID exacto a Google Play.
+Los secretos reales no pertenecen al repositorio. El flujo previsto es:
 
-### Qué falta antes de operar dinero real
+```bash
+npm run credentials:generate -- --output=.env.production
+npm run credentials:doctor -- --env=.env.production
+npm run doctor:production -- --env=.env.production
+```
 
-- configurar dominios, servidor y secretos productivos;
-- conectar DeepSeek y los adapters externos seleccionados;
-- validar OAuth, webhooks e ingesta con Plasticov y Maustian;
-- ejecutar backup y restore drill fuera del repositorio;
-- generar e instalar el primer AAB firmado en un dispositivo real;
-- validar acciones MercadoLibre en shadow mode antes de habilitar cualquier escritura;
-- medir outcomes económicos reales antes de promover autonomía.
-
-Consulte el [roadmap actualizado](docs/ROADMAP.md) para ver las siguientes fases.
+Antes de mover dinero real se requieren, entre otros, DNS/TLS productivo, credenciales de proveedores, Plasticov live, refresh/webhook observados, Product Ads reconciliado, restore drill, AAB físico y outcomes económicos reales. El checklist completo vive en [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) y en el issue [#41](https://github.com/riquelmechile/EAUTO-AI/issues/41).
 
 ## Stack
 
-| Capa            | Tecnología                                   |
-| --------------- | -------------------------------------------- |
-| Lenguaje        | TypeScript 5.8 en modo estricto              |
-| Runtime         | Node.js 22+                                  |
-| API             | Fastify                                      |
-| Android         | Expo + React Native                          |
-| Datos           | PostgreSQL 17                                |
-| Objetos         | MinIO / S3-compatible storage                |
-| Procesamiento   | Workers, leases y transactional outbox       |
-| Pruebas         | Vitest + smokes productivos                  |
-| Infraestructura | Docker Compose + Caddy                       |
-| CI/CD           | GitHub Actions pinneadas por SHA, GHCR y EAS |
-
-## Inicio rápido
-
-### Requisitos
-
-- Node.js 22.13 o superior;
-- npm 10 o superior;
-- Docker y Docker Compose;
-- Android Studio o Expo/EAS para Android.
-
-### Aplicación local
-
-```bash
-npm ci
-npm run check
-npm run dev:api
-```
-
-En terminales separadas:
-
-```bash
-npm run dev:worker
-npm run dev:mobile
-```
-
-Android Emulator usa por defecto `http://10.0.2.2:3000`. Para un teléfono físico:
-
-```bash
-EXPO_PUBLIC_API_URL=http://IP_DE_TU_PC:3000 npm run dev:mobile
-```
-
-### Infraestructura completa con Docker
-
-```bash
-docker compose -f infra/compose/docker-compose.yml up -d
-npm run doctor
-```
-
-En desarrollo, `AUTH_MODE=disabled` crea un owner local. En producción se exige `AUTH_MODE=static-token`, PostgreSQL, una identidad hashada y configuración completa validada por `doctor:production`.
-
-## Flujo de calidad
-
-```bash
-npm run format:check
-npm run typecheck
-npm run lint
-npm test
-npm run build
-npm run doctor
-```
-
-La CI añade validaciones contra PostgreSQL real, migraciones, Compose, Caddy, Docker, MinIO, configuración productiva, release Android y cadena de suministro.
+| Capa            | Tecnología                             |
+| --------------- | -------------------------------------- |
+| Lenguaje        | TypeScript 5.8 estricto                |
+| Runtime         | Node.js 22+                            |
+| API             | Fastify                                |
+| Android         | Expo + React Native                    |
+| Datos           | PostgreSQL 17                          |
+| Objetos         | MinIO / S3-compatible storage          |
+| Procesamiento   | Workers, leases y transactional outbox |
+| Tests           | Vitest + smokes productivos            |
+| Infraestructura | Docker Compose + Caddy                 |
+| CI/CD           | GitHub Actions, GHCR y EAS             |
 
 <details>
 <summary><strong>Endpoints principales</strong></summary>
@@ -303,7 +270,8 @@ La CI añade validaciones contra PostgreSQL real, migraciones, Compose, Caddy, D
 
 </details>
 
-## Principios no negociables
+<details>
+<summary><strong>Principios no negociables</strong></summary>
 
 1. No inventar datos faltantes.
 2. El dominio no depende del LLM ni de frameworks.
@@ -312,32 +280,75 @@ La CI añade validaciones contra PostgreSQL real, migraciones, Compose, Caddy, D
 5. Una respuesta HTTP exitosa no equivale a ejecución verificada.
 6. Plasticov y Maustian permanecen aislados por cuenta.
 7. Android es el plano de control; los procesos 24/7 viven en backend persistente.
-8. Toda acción sensible requiere evidencia, política, aprobación y receipts.
+8. Toda acción sensible requiere evidencia, policy, aprobación y receipts.
 9. El razonamiento se activa por utilidad esperada, no por round-robin ciego.
 10. Las rutas productivas no usan fixtures silenciosos.
 
-## Doctrina de ingeniería
+</details>
 
-La arquitectura sigue los principios de [The Amazing Gentleman Programming Book](https://the-amazing-gentleman-programming-book.vercel.app/es), traducidos a contratos, skills, policies, gates, pruebas y evidencia verificable. El libro no se reenvía completo al LLM ni se utiliza como sustituto del diseño del sistema.
+## Solución de problemas
+
+### `npm run doctor` falla
+
+Ejecute primero:
+
+```bash
+npm ci
+npm run check
+```
+
+Después revise la salida del doctor específico. No reemplace un gate fallido por un valor inventado ni desactive la validación para conseguir un verde artificial.
+
+### Android no llega a la API desde un teléfono
+
+`localhost` apunta al teléfono. Use la IP de la máquina que ejecuta EAUTO-AI:
+
+```bash
+EXPO_PUBLIC_API_URL=http://IP_DE_TU_PC:3000 npm run dev:mobile
+```
+
+En producción, la URL pública debe ser HTTPS.
+
+### Falta una credencial productiva
+
+Use el inventario y doctor de credenciales. Nunca copie un secreto a Markdown, issues, logs o commits:
+
+```bash
+npm run credentials:doctor -- --env=.env.production
+```
+
+### Un proveedor externo devuelve un resultado dudoso
+
+El adapter debe fallar cerrado. No convierta una observación de proveedor en autoridad de scope, identidad, policy o aprobación.
+
+### Una acción externa no puede verificarse
+
+Debe permanecer `uncertain` hasta reconciliar evidencia. No la marque como exitosa ni la reintente a ciegas.
 
 ## Documentación
 
-| Documento                                                    | Contenido                                                     |
-| ------------------------------------------------------------ | ------------------------------------------------------------- |
-| [Visión de producto](docs/PRODUCT_VISION.md)                 | Problema, resultado buscado y KPI                             |
-| [Agent OS](docs/AGENT_OS.md)                                 | Organización, roles, skills, preflight, sesiones y scorecards |
-| [Arquitectura objetivo](docs/TARGET_ARCHITECTURE.md)         | Capas y planos del sistema                                    |
-| [Política de autonomía](docs/AUTONOMY_POLICY.md)             | Riesgo, aprobación y promoción controlada                     |
-| [Confianza verificable](docs/VERIFIABLE_TRUST.md)            | Evidencia, receipts y outcomes                                |
-| [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md)       | RBAC, scopes y secretos                                       |
-| [LLM Gateway](docs/LLM_GATEWAY.md)                           | Provider, caché, costos y límites                             |
-| [Roadmap](docs/ROADMAP.md)                                   | Estado real y próximas fases                                  |
-| [Release de producción](docs/runbooks/production-release.md) | Despliegue, Android, backups y rollback                       |
+| Documento                                                      | Contenido                                                     |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| [Readiness de release y producción](docs/RELEASE_READINESS.md) | Qué certifica una release y qué exige producción live         |
+| [Visión de producto](docs/PRODUCT_VISION.md)                   | Problema, resultado buscado y KPI                             |
+| [Agent OS](docs/AGENT_OS.md)                                   | Organización, roles, skills, preflight, sesiones y scorecards |
+| [Arquitectura objetivo](docs/TARGET_ARCHITECTURE.md)           | Capas y planos del sistema                                    |
+| [Política de autonomía](docs/AUTONOMY_POLICY.md)               | Riesgo, aprobación y promoción controlada                     |
+| [Confianza verificable](docs/VERIFIABLE_TRUST.md)              | Evidencia, receipts y outcomes                                |
+| [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md)         | RBAC, scopes y secretos                                       |
+| [LLM Gateway](docs/LLM_GATEWAY.md)                             | Provider, caché, costos y límites                             |
+| [Proveedores de producción](docs/PRODUCTION_PROVIDERS.md)      | Contratos y configuración externa                             |
+| [Roadmap](docs/ROADMAP.md)                                     | Estado y próximas fases                                       |
+| [Runbook de producción](docs/runbooks/production-release.md)   | Despliegue, Android, backups y rollback                       |
+
+## Doctrina de ingeniería
+
+La arquitectura aplica principios de [The Amazing Gentleman Programming Book](https://the-amazing-gentleman-programming-book.vercel.app/es) mediante contratos, skills, policies, gates, tests y evidencia verificable. El libro no sustituye el diseño del sistema ni se usa como autoridad operacional.
 
 ---
 
 <div align="center">
 
-**EAUTO-AI no busca reemplazar al dueño del negocio. Busca darle una empresa digital que observe, razone y actúe con disciplina verificable.**
+**EAUTO-AI no reemplaza al dueño del negocio: le entrega un sistema que observa, propone y ejecuta dentro de límites verificables.**
 
 </div>
