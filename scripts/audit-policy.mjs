@@ -73,35 +73,41 @@ if (
   fail(`el alcance de ${ALLOWED_PACKAGE} cambió y requiere revisión`);
 }
 
-function collectRootAdvisories(name, stack = new Set()) {
-  if (stack.has(name)) {
-    fail(`ciclo inesperado en el grafo de npm audit: ${[...stack, name].join(" -> ")}`);
-  }
-  const vulnerability = vulnerabilities[name];
-  if (!vulnerability) {
-    fail(`npm audit referencia una vulnerabilidad desconocida: ${name}`);
-  }
-
-  const nextStack = new Set(stack);
-  nextStack.add(name);
+function collectRootAdvisories(startName) {
+  const pending = [startName];
+  const visited = new Set();
   const roots = new Set();
 
-  for (const via of vulnerability.via ?? []) {
-    if (typeof via === "string") {
-      for (const advisory of collectRootAdvisories(via, nextStack)) {
-        roots.add(advisory);
-      }
+  while (pending.length > 0) {
+    const name = pending.pop();
+    if (visited.has(name)) {
       continue;
     }
+    visited.add(name);
 
-    if (!via?.url) {
-      fail(`advisory sin URL para ${name}`);
+    const vulnerability = vulnerabilities[name];
+    if (!vulnerability) {
+      fail(`npm audit referencia una vulnerabilidad desconocida: ${name}`);
     }
-    roots.add(via.url);
+
+    for (const via of vulnerability.via ?? []) {
+      if (typeof via === "string") {
+        if (!vulnerabilities[via]) {
+          fail(`npm audit referencia una dependencia vulnerable desconocida: ${name} -> ${via}`);
+        }
+        pending.push(via);
+        continue;
+      }
+
+      if (!via?.url) {
+        fail(`advisory sin URL para ${name}`);
+      }
+      roots.add(via.url);
+    }
   }
 
   if (roots.size === 0) {
-    fail(`no se pudo demostrar la raíz de la vulnerabilidad ${name}`);
+    fail(`no se pudo demostrar la raíz de la vulnerabilidad ${startName}`);
   }
   return roots;
 }
