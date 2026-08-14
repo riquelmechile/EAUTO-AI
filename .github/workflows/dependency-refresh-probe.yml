@@ -7,10 +7,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   refresh:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message != 'security: refresh lockfile from current advisories'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -26,6 +27,31 @@ jobs:
         run: npm audit fix --package-lock-only --ignore-scripts --no-fund || true
       - name: Capture remaining audit findings
         run: npm audit --json > npm-audit.json || true
+      - name: Commit refreshed lockfile through GitHub API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already current"
+            exit 0
+          fi
+          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/contents/package-lock.json?ref=$GITHUB_REF_NAME" --jq .sha)"
+          export CURRENT_SHA="$current_sha"
+          node <<'NODE'
+          const fs = require("node:fs");
+          const payload = {
+            message: "security: refresh lockfile from current advisories",
+            content: fs.readFileSync("package-lock.json").toString("base64"),
+            sha: process.env.CURRENT_SHA,
+            branch: process.env.GITHUB_REF_NAME,
+          };
+          fs.writeFileSync("/tmp/package-lock-update.json", JSON.stringify(payload));
+          NODE
+          gh api \
+            --method PUT \
+            "repos/$GITHUB_REPOSITORY/contents/package-lock.json" \
+            --input /tmp/package-lock-update.json \
+            --silent
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dependency-refresh
