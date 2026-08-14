@@ -3,6 +3,16 @@ name: Production release
 on:
   workflow_dispatch:
     inputs:
+      publish_release:
+        description: Create the Git tag and GitHub Release for the package version
+        required: true
+        default: true
+        type: boolean
+      build_android:
+        description: Build the signed Android App Bundle with EAS
+        required: true
+        default: false
+        type: boolean
       submit_to_play:
         description: Submit the Android App Bundle to the configured Play track
         required: true
@@ -24,6 +34,8 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    outputs:
+      release_tag: ${{ steps.release_meta.outputs.tag }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -32,6 +44,33 @@ jobs:
         with:
           node-version: 22.16.0
           cache: npm
+      - name: Resolve and validate release identity
+        id: release_meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_tag="v$(node -p "require('./package.json').version")"
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            if [[ "$GITHUB_REF_TYPE" != "tag" || "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+              echo "Tag $GITHUB_REF_NAME does not match package version $expected_tag"
+              exit 1
+            fi
+            release_tag="$GITHUB_REF_NAME"
+          else
+            release_tag="$expected_tag"
+            if [[ "${{ inputs.publish_release }}" == "true" && "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "Publishing a GitHub Release is only allowed from main"
+              exit 1
+            fi
+            if [[ "${{ inputs.submit_to_play }}" == "true" && "${{ inputs.build_android }}" != "true" ]]; then
+              echo "submit_to_play requires build_android"
+              exit 1
+            fi
+          fi
+
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "Release identity: $release_tag @ $GITHUB_SHA"
       - name: Verify lockfile is reproducible
         run: |
           npm install --package-lock-only --ignore-scripts --no-audit --no-fund
@@ -71,6 +110,8 @@ jobs:
   container:
     needs: quality
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -87,6 +128,7 @@ jobs:
           images: ghcr.io/riquelmechile/eauto-ai
           tags: |
             type=ref,event=tag
+            type=raw,value=${{ needs.quality.outputs.release_tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.publish_release == true }}
             type=sha,prefix=sha-
       - id: build
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
@@ -108,7 +150,7 @@ jobs:
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
   android:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.build_android == true
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -179,3 +221,74 @@ jobs:
             --wait
       - if: always()
         run: rm -f apps/mobile/google-service-account.json
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
+    needs: [quality, container]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Ensure the release does not already exist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Tag $RELEASE_TAG already exists; refusing to overwrite it"
+            exit 1
+          fi
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to overwrite it"
+            exit 1
+          fi
+      - name: Prepare Spanish release notes
+        env:
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+          IMAGE_DIGEST: ${{ needs.container.outputs.digest }}
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          ## EAUTO-AI $RELEASE_TAG
+
+          Primer release técnico reproducible de EAUTO-AI.
+
+          ### Incluye
+
+          - documentación principal reorganizada íntegramente en español;
+          - nuevo diagrama SVG accesible del ciclo de control agéntico;
+          - CI y release endurecidos con lockfile reproducible, auditoría de dependencias, tests, cobertura, build y doctors;
+          - imagen multi-arquitectura en GHCR con SBOM, provenance y digest inmutable;
+          - actualización de dependencias con todos los parches no-breaking disponibles;
+          - excepción temporal, exacta y fail-closed para las dos advisories de image-size sin versión parcheada upstream.
+
+          ### Evidencia
+
+          - Commit: \`$GITHUB_SHA\`
+          - Imagen: \`ghcr.io/riquelmechile/eauto-ai@$IMAGE_DIGEST\`
+
+          ### Alcance
+
+          Esta release certifica el software y sus artefactos reproducibles. **No declara producción comercial live**: DNS/TLS real, credenciales, OAuth/webhooks/Product Ads de MercadoLibre, AAB físico, restore drill y ventanas de reconciliación siguen controlados por el issue #41.
+          EOF
+      - name: Create immutable tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.quality.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+          gh api \
+            --method POST \
+            "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$RELEASE_TAG" \
+            -f sha="$GITHUB_SHA" \
+            --silent
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "EAUTO-AI $RELEASE_TAG" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
+          echo "Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
