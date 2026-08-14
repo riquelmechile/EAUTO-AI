@@ -1,64 +1,13 @@
-name: Dependency refresh probe
+name: Dependency refresh probe (completed)
 
 on:
-  push:
-    branches:
-      - "release/v0.1.0-readiness"
-    paths:
-      - ".github/workflows/dependency-refresh-probe.yml"
-      - "package.json"
-      - "scripts/audit-policy.mjs"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  refresh:
+  completed:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: 22.16.0
-          cache: npm
-      - run: npm ci --no-audit --no-fund
-      - name: Apply non-breaking audit fixes to lockfile
-        run: npm audit fix --package-lock-only --ignore-scripts --no-fund || true
-      - name: Capture remaining audit findings
-        run: npm audit --json > npm-audit.json || true
-      - name: Commit refreshed lockfile through GitHub API
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if git diff --quiet -- package-lock.json; then
-            echo "package-lock.json already current"
-            exit 0
-          fi
-          current_sha="$(gh api "repos/$GITHUB_REPOSITORY/contents/package-lock.json?ref=$GITHUB_REF_NAME" --jq .sha)"
-          export CURRENT_SHA="$current_sha"
-          node <<'NODE'
-          const fs = require("node:fs");
-          const payload = {
-            message: "security: refresh lockfile from current advisories",
-            content: fs.readFileSync("package-lock.json").toString("base64"),
-            sha: process.env.CURRENT_SHA,
-            branch: process.env.GITHUB_REF_NAME,
-          };
-          fs.writeFileSync("/tmp/package-lock-update.json", JSON.stringify(payload));
-          NODE
-          gh api \
-            --method PUT \
-            "repos/$GITHUB_REPOSITORY/contents/package-lock.json" \
-            --input /tmp/package-lock-update.json \
-            --silent
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: dependency-refresh
-          path: |
-            package-lock.json
-            npm-audit.json
-          if-no-files-found: error
-          retention-days: 1
+      - run: echo "Dependency refresh completed; this probe is intentionally inert."
