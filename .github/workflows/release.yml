@@ -223,8 +223,8 @@ jobs:
         run: rm -f apps/mobile/google-service-account.json
 
   publish:
-    if: github.event_name == 'workflow_dispatch' && inputs.publish_release == true
-    needs: [quality, container]
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.publish_release == true && needs.quality.result == 'success' && needs.container.result == 'success' && (needs.android.result == 'success' || needs.android.result == 'skipped') }}
+    needs: [quality, container, android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
