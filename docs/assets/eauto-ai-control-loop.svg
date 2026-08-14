@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="eauto-title eauto-desc">
+  <title id="eauto-title">EAUTO-AI: ciclo de control agéntico verificable</title>
+  <desc id="eauto-desc">Diagrama del flujo señal, evidencia, razonamiento, aprobación humana, ejecución y verificación con un anillo de gobernanza alrededor.</desc>
+  <defs>
+    <linearGradient id="eauto-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="eauto-core" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <filter id="eauto-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="eauto-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="520" rx="28" fill="url(#eauto-bg)"/>
+  <g opacity=".2" stroke="#94a3b8">
+    <path d="M60 84H1140M60 436H1140" stroke-dasharray="4 10"/>
+    <path d="M120 48V472M1080 48V472" stroke-dasharray="4 10"/>
+  </g>
+
+  <text x="72" y="74" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="26" font-weight="700">EAUTO-AI</text>
+  <text x="72" y="105" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="16">Empresa agéntica gobernada desde Android · evidencia antes que autonomía</text>
+
+  <g fill="none" stroke="#475569" stroke-width="2.5" marker-end="url(#eauto-arrow)">
+    <path d="M222 268H328"/>
+    <path d="M458 268H544"/>
+    <path d="M674 268H760"/>
+    <path d="M890 268H976"/>
+  </g>
+
+  <g font-family="system-ui, sans-serif">
+    <g>
+      <rect x="72" y="210" width="150" height="116" rx="20" fill="#0f172a" stroke="#334155"/>
+      <circle cx="147" cy="244" r="15" fill="#22d3ee" opacity=".85"/>
+      <path d="M139 244h16M147 236v16" stroke="#07111f" stroke-width="3" stroke-linecap="round"/>
+      <text x="147" y="286" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="650">Señales</text>
+      <text x="147" y="309" text-anchor="middle" fill="#94a3b8" font-size="13">negocio · mercado</text>
+    </g>
+
+    <g>
+      <rect x="328" y="210" width="130" height="116" rx="20" fill="#0f172a" stroke="#334155"/>
+      <rect x="365" y="232" width="56" height="28" rx="8" fill="#14b8a6" opacity=".85"/>
+      <path d="M376 246h34" stroke="#ecfeff" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="393" y="286" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="650">Evidencia</text>
+      <text x="393" y="309" text-anchor="middle" fill="#94a3b8" font-size="13">fresca · scoped</text>
+    </g>
+
+    <g filter="url(#eauto-glow)">
+      <rect x="544" y="190" width="130" height="156" rx="26" fill="#111827" stroke="url(#eauto-core)" stroke-width="3"/>
+      <circle cx="609" cy="238" r="24" fill="url(#eauto-core)"/>
+      <path d="M598 239l8 8 15-18" fill="none" stroke="#07111f" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="609" y="289" text-anchor="middle" fill="#f8fafc" font-size="19" font-weight="700">Agent OS</text>
+      <text x="609" y="314" text-anchor="middle" fill="#cbd5e1" font-size="13">razona · propone</text>
+    </g>
+
+    <g>
+      <rect x="760" y="210" width="130" height="116" rx="20" fill="#0f172a" stroke="#334155"/>
+      <circle cx="825" cy="246" r="19" fill="#f59e0b" opacity=".9"/>
+      <path d="M817 246l6 6 11-13" fill="none" stroke="#1f2937" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="825" y="286" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="650">Aprobación</text>
+      <text x="825" y="309" text-anchor="middle" fill="#94a3b8" font-size="13">humana · policy</text>
+    </g>
+
+    <g>
+      <rect x="976" y="210" width="152" height="116" rx="20" fill="#0f172a" stroke="#334155"/>
+      <circle cx="1052" cy="244" r="17" fill="#34d399" opacity=".9"/>
+      <path d="M1044 244l6 6 12-14" fill="none" stroke="#052e2b" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="1052" y="286" text-anchor="middle" fill="#f8fafc" font-size="18" font-weight="650">Verificación</text>
+      <text x="1052" y="309" text-anchor="middle" fill="#94a3b8" font-size="13">receipt · outcome</text>
+    </g>
+  </g>
+
+  <path d="M1050 350C930 422 770 456 606 456C436 456 270 418 148 350" fill="none" stroke="#334155" stroke-width="2.5" stroke-dasharray="8 9" marker-end="url(#eauto-arrow)"/>
+  <text x="600" y="434" text-anchor="middle" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="14">el outcome verificado alimenta scorecards y memoria consultiva; nunca concede autoridad por sí solo</text>
+
+  <g font-family="system-ui, sans-serif" font-size="13" fill="#cbd5e1">
+    <rect x="72" y="365" width="166" height="34" rx="17" fill="#172033" stroke="#334155"/>
+    <text x="155" y="387" text-anchor="middle">fail-closed por defecto</text>
+    <rect x="260" y="365" width="160" height="34" rx="17" fill="#172033" stroke="#334155"/>
+    <text x="340" y="387" text-anchor="middle">scope por cuenta</text>
+    <rect x="442" y="365" width="160" height="34" rx="17" fill="#172033" stroke="#334155"/>
+    <text x="522" y="387" text-anchor="middle">idempotencia</text>
+    <rect x="624" y="365" width="160" height="34" rx="17" fill="#172033" stroke="#334155"/>
+    <text x="704" y="387" text-anchor="middle">presupuesto + riesgo</text>
+    <rect x="806" y="365" width="160" height="34" rx="17" fill="#172033" stroke="#334155"/>
+    <text x="886" y="387" text-anchor="middle">rollback gobernado</text>
+    <rect x="988" y="365" width="140" height="34" rx="17" fill="#172033" stroke="#334155"/>
+    <text x="1058" y="387" text-anchor="middle">audit trail</text>
+  </g>
+</svg>
