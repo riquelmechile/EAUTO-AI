@@ -35,15 +35,15 @@ La primera operación objetivo es **MercadoLibre Chile**, manteniendo **Plastico
 
 ### Qué resuelve
 
-| Problema | Respuesta de EAUTO-AI |
-| --- | --- |
-| Datos repartidos entre ventas, catálogo, Ads, reclamos y proveedores | Read models y evidencia scoped por organización y cuenta |
-| Decisiones reactivas | Utilidad esperada, costo, riesgo y freshness antes de razonar |
-| Automatizaciones que actúan sin control | Policy, RBAC, aprobación humana y máquinas de estado fail-closed |
-| Una API responde `200` y nadie sabe qué ocurrió | Verificación posterior, receipts append-only y outcomes separados |
-| Agentes que inventan autoridad | Skills versionadas, preflight, budgets y capabilities explícitas |
-| Contaminación entre cuentas | Scope compuesto, constraints e idempotency keys por cuenta |
-| IA cara sin impacto comprobable | Wake policy económica, costo de inferencia y scorecards |
+| Problema                                                             | Respuesta de EAUTO-AI                                             |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Datos repartidos entre ventas, catálogo, Ads, reclamos y proveedores | Read models y evidencia scoped por organización y cuenta          |
+| Decisiones reactivas                                                 | Utilidad esperada, costo, riesgo y freshness antes de razonar     |
+| Automatizaciones que actúan sin control                              | Policy, RBAC, aprobación humana y máquinas de estado fail-closed  |
+| Una API responde `200` y nadie sabe qué ocurrió                      | Verificación posterior, receipts append-only y outcomes separados |
+| Agentes que inventan autoridad                                       | Skills versionadas, preflight, budgets y capabilities explícitas  |
+| Contaminación entre cuentas                                          | Scope compuesto, constraints e idempotency keys por cuenta        |
+| IA cara sin impacto comprobable                                      | Wake policy económica, costo de inferencia y scorecards           |
 
 ## Inicio rápido
 
@@ -108,10 +108,10 @@ Cada perfil de agente está definido por contratos versionados: capabilities, ev
 
 ### Autonomía por evidencia
 
-| Modo | Comportamiento |
-| --- | --- |
-| `ask` | Prepara la acción y solicita aprobación |
-| `inform` | Solo puede ejecutar dentro de una policy previamente autorizada e informa |
+| Modo         | Comportamiento                                                                      |
+| ------------ | ----------------------------------------------------------------------------------- |
+| `ask`        | Prepara la acción y solicita aprobación                                             |
+| `inform`     | Solo puede ejecutar dentro de una policy previamente autorizada e informa           |
 | `autonomous` | Reservado para capabilities con historial real, budget, rollback y policy explícita |
 
 Ningún agente puede promover su propio nivel de autonomía. El gate live para aumentarla está definido en [#41](https://github.com/riquelmechile/EAUTO-AI/issues/41).
@@ -120,23 +120,23 @@ Ningún agente puede promover su propio nivel de autonomía. El gate live para a
 
 **Leyenda:** ✅ implementado/gateado en código · 🟡 requiere integración o evidencia live · 🔒 bloqueado intencionalmente
 
-| Área | Estado | Evidencia disponible en el proyecto |
-| --- | :---: | --- |
-| Dominio y gobernanza | ✅ | Dinero, evidencia, policy, autonomía y máquinas de estado |
-| Aislamiento multi-cuenta | ✅ | Scope por organización/cuenta, constraints e idempotencia |
-| Agent OS | ✅ | Catálogo, preflight, work sessions, heartbeats, perfiles daemon y scorecards |
-| API | ✅ | Fastify, auth/RBAC, dashboard, inbox, acciones, receipts y operaciones |
-| Android | ✅ | Control plane Expo/React Native, cuentas, agentes, operaciones y Content Studio |
-| Persistencia | ✅ | PostgreSQL, migraciones idempotentes, leases y transacciones |
-| Procesamiento 24/7 | ✅ | Workers recuperables, outbox, retries, dead-letter y replay |
-| Evidencia y auditoría | ✅ | Evidence bundles, receipts SHA-256 y outcomes separados |
-| Object storage | ✅ | MinIO/S3 privado, versionado, signed URLs y smoke contractual |
-| Seguridad de supply chain | ✅ | Actions pinneadas a SHA, audit, imagen por digest, SBOM y provenance |
-| CI/release técnico | ✅ | Formato, tipos, lint, tests, cobertura, build, PostgreSQL, Docker y doctors |
-| MercadoLibre live | 🟡 | Contratos/OAuth/webhook/Product Ads preparados; falta evidencia operacional real |
-| Proveedores externos | 🟡 | Gateways y contratos; las credenciales y validaciones live son externas al repo |
-| Producción comercial | 🟡 | Depende de DNS/TLS, secretos, restore, AAB físico y ventanas de reconciliación |
-| Autonomía externa | 🔒 | No se promueve hasta cumplir los gates temporales y operativos de #41 |
+| Área                      | Estado | Evidencia disponible en el proyecto                                              |
+| ------------------------- | :----: | -------------------------------------------------------------------------------- |
+| Dominio y gobernanza      |   ✅   | Dinero, evidencia, policy, autonomía y máquinas de estado                        |
+| Aislamiento multi-cuenta  |   ✅   | Scope por organización/cuenta, constraints e idempotencia                        |
+| Agent OS                  |   ✅   | Catálogo, preflight, work sessions, heartbeats, perfiles daemon y scorecards     |
+| API                       |   ✅   | Fastify, auth/RBAC, dashboard, inbox, acciones, receipts y operaciones           |
+| Android                   |   ✅   | Control plane Expo/React Native, cuentas, agentes, operaciones y Content Studio  |
+| Persistencia              |   ✅   | PostgreSQL, migraciones idempotentes, leases y transacciones                     |
+| Procesamiento 24/7        |   ✅   | Workers recuperables, outbox, retries, dead-letter y replay                      |
+| Evidencia y auditoría     |   ✅   | Evidence bundles, receipts SHA-256 y outcomes separados                          |
+| Object storage            |   ✅   | MinIO/S3 privado, versionado, signed URLs y smoke contractual                    |
+| Seguridad de supply chain |   ✅   | Actions pinneadas a SHA, audit, imagen por digest, SBOM y provenance             |
+| CI/release técnico        |   ✅   | Formato, tipos, lint, tests, cobertura, build, PostgreSQL, Docker y doctors      |
+| MercadoLibre live         |   🟡   | Contratos/OAuth/webhook/Product Ads preparados; falta evidencia operacional real |
+| Proveedores externos      |   🟡   | Gateways y contratos; las credenciales y validaciones live son externas al repo  |
+| Producción comercial      |   🟡   | Depende de DNS/TLS, secretos, restore, AAB físico y ventanas de reconciliación   |
+| Autonomía externa         |   🔒   | No se promueve hasta cumplir los gates temporales y operativos de #41            |
 
 Para la definición exacta de “release listo”, consulte [Readiness de release y producción](docs/RELEASE_READINESS.md).
 
@@ -222,18 +222,18 @@ Antes de mover dinero real se requieren, entre otros, DNS/TLS productivo, creden
 
 ## Stack
 
-| Capa | Tecnología |
-| --- | --- |
-| Lenguaje | TypeScript 5.8 estricto |
-| Runtime | Node.js 22+ |
-| API | Fastify |
-| Android | Expo + React Native |
-| Datos | PostgreSQL 17 |
-| Objetos | MinIO / S3-compatible storage |
-| Procesamiento | Workers, leases y transactional outbox |
-| Tests | Vitest + smokes productivos |
-| Infraestructura | Docker Compose + Caddy |
-| CI/CD | GitHub Actions, GHCR y EAS |
+| Capa            | Tecnología                             |
+| --------------- | -------------------------------------- |
+| Lenguaje        | TypeScript 5.8 estricto                |
+| Runtime         | Node.js 22+                            |
+| API             | Fastify                                |
+| Android         | Expo + React Native                    |
+| Datos           | PostgreSQL 17                          |
+| Objetos         | MinIO / S3-compatible storage          |
+| Procesamiento   | Workers, leases y transactional outbox |
+| Tests           | Vitest + smokes productivos            |
+| Infraestructura | Docker Compose + Caddy                 |
+| CI/CD           | GitHub Actions, GHCR y EAS             |
 
 <details>
 <summary><strong>Endpoints principales</strong></summary>
@@ -327,19 +327,19 @@ Debe permanecer `uncertain` hasta reconciliar evidencia. No la marque como exito
 
 ## Documentación
 
-| Documento | Contenido |
-| --- | --- |
-| [Readiness de release y producción](docs/RELEASE_READINESS.md) | Qué certifica una release y qué exige producción live |
-| [Visión de producto](docs/PRODUCT_VISION.md) | Problema, resultado buscado y KPI |
-| [Agent OS](docs/AGENT_OS.md) | Organización, roles, skills, preflight, sesiones y scorecards |
-| [Arquitectura objetivo](docs/TARGET_ARCHITECTURE.md) | Capas y planos del sistema |
-| [Política de autonomía](docs/AUTONOMY_POLICY.md) | Riesgo, aprobación y promoción controlada |
-| [Confianza verificable](docs/VERIFIABLE_TRUST.md) | Evidencia, receipts y outcomes |
-| [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md) | RBAC, scopes y secretos |
-| [LLM Gateway](docs/LLM_GATEWAY.md) | Provider, caché, costos y límites |
-| [Proveedores de producción](docs/PRODUCTION_PROVIDERS.md) | Contratos y configuración externa |
-| [Roadmap](docs/ROADMAP.md) | Estado y próximas fases |
-| [Runbook de producción](docs/runbooks/production-release.md) | Despliegue, Android, backups y rollback |
+| Documento                                                      | Contenido                                                     |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| [Readiness de release y producción](docs/RELEASE_READINESS.md) | Qué certifica una release y qué exige producción live         |
+| [Visión de producto](docs/PRODUCT_VISION.md)                   | Problema, resultado buscado y KPI                             |
+| [Agent OS](docs/AGENT_OS.md)                                   | Organización, roles, skills, preflight, sesiones y scorecards |
+| [Arquitectura objetivo](docs/TARGET_ARCHITECTURE.md)           | Capas y planos del sistema                                    |
+| [Política de autonomía](docs/AUTONOMY_POLICY.md)               | Riesgo, aprobación y promoción controlada                     |
+| [Confianza verificable](docs/VERIFIABLE_TRUST.md)              | Evidencia, receipts y outcomes                                |
+| [Seguridad e identidad](docs/SECURITY_AND_IDENTITY.md)         | RBAC, scopes y secretos                                       |
+| [LLM Gateway](docs/LLM_GATEWAY.md)                             | Provider, caché, costos y límites                             |
+| [Proveedores de producción](docs/PRODUCTION_PROVIDERS.md)      | Contratos y configuración externa                             |
+| [Roadmap](docs/ROADMAP.md)                                     | Estado y próximas fases                                       |
+| [Runbook de producción](docs/runbooks/production-release.md)   | Despliegue, Android, backups y rollback                       |
 
 ## Doctrina de ingeniería
 
