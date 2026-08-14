@@ -65,11 +65,7 @@ if (!root) {
 if (root.isDirect) {
   fail(`${ALLOWED_PACKAGE} no puede convertirse en dependencia directa`);
 }
-if (
-  root.nodes?.length !== 1 ||
-  root.nodes[0] !== ALLOWED_NODE ||
-  root.severity !== "high"
-) {
+if (root.nodes?.length !== 1 || root.nodes[0] !== ALLOWED_NODE || root.severity !== "high") {
   fail(`el alcance de ${ALLOWED_PACKAGE} cambió y requiere revisión`);
 }
 
@@ -122,9 +118,7 @@ for (const name of names) {
 }
 
 const observedRootUrls = new Set(
-  (root.via ?? [])
-    .filter((via) => typeof via !== "string" && via?.url)
-    .map((via) => via.url),
+  (root.via ?? []).filter((via) => typeof via !== "string" && via?.url).map((via) => via.url),
 );
 if (
   observedRootUrls.size !== ALLOWED_ROOT_ADVISORIES.size ||
@@ -136,6 +130,4 @@ if (
 console.warn(
   `audit-policy: excepción temporal y acotada: ${names.length} entradas de npm audit derivan exclusivamente de ${ALLOWED_PACKAGE}@${ALLOWED_VERSION}; expira ${EXPIRES_AT.toISOString()}`,
 );
-console.warn(
-  `audit-policy: advisories permitidas: ${[...ALLOWED_ROOT_ADVISORIES].join(", ")}`,
-);
+console.warn(`audit-policy: advisories permitidas: ${[...ALLOWED_ROOT_ADVISORIES].join(", ")}`);
